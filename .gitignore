@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+*service_account*.json
+node_modules/
+backend/
+.DS_Store
+Thumbs.db
+
+# Local audit exports may contain detailed evidence and must not be published.
+SPU-Audit-Dashboard_*.json
+audit-export*.json

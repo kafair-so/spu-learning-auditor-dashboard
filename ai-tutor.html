@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OOE AI Tutor Dashboard 2569</title>
+<style>
+:root{--navy:#102a43;--blue:#245dcc;--ink:#243b53;--muted:#627d98;--line:#d9e2ec;--bg:#f3f6fb;--green:#199c6b;--amber:#eaa018;--red:#e64256;--gray:#7b8794;--shadow:0 8px 24px rgba(16,42,67,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px "Noto Sans Thai","Leelawadee UI",Tahoma,Arial,sans-serif}
+.topbar{background:#142b50;color:#fff}.topbar-inner{max-width:1500px;margin:auto;padding:23px 28px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
+h1{margin:0;font-size:clamp(23px,3vw,34px)}.subtitle{margin:5px 0 0;color:#d9e8f5}.source{text-align:right;color:#d9e8f5;font-size:13px;line-height:1.5}
+main{max-width:1500px;margin:auto;padding:22px 28px 40px}.panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:var(--shadow)}
+.page-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tab{min-width:112px;height:42px;background:#dfe8f4;color:var(--navy);border:1px solid #c8d5e5;border-radius:9px;padding:0 18px;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.tab:hover{text-decoration:none;background:#cfdced}.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.filters{padding:18px;display:grid;grid-template-columns:minmax(170px,1fr) minmax(150px,.8fr) minmax(170px,1fr) minmax(260px,1.35fr) auto;gap:12px;align-items:end}
+.field label{display:block;margin:0 0 6px;color:var(--muted);font-size:12px;font-weight:700}.field select,.field input{width:100%;height:42px;padding:0 12px;border:1px solid #bcccdc;border-radius:9px;background:#fff;color:var(--ink);font:inherit}
+button{height:42px;border:0;border-radius:9px;padding:0 18px;font:inherit;font-weight:700;cursor:pointer}.refresh{background:var(--blue);color:#fff}.reset{background:#e6edf8;color:var(--navy)}.filter-actions{display:flex;gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0}.kpi{position:relative;padding:19px 22px;min-height:122px;border-left:5px solid var(--blue)}.kpi.green{border-color:var(--green)}.kpi.amber{border-color:var(--amber)}.kpi.red{border-color:var(--red)}.kpi.gray{border-color:var(--gray)}.kpi-label{font-size:13px;color:var(--muted)}.kpi-value{font-size:34px;font-weight:800;line-height:1.25;margin:7px 0 4px;color:#071d40}.kpi-note{font-size:12px;color:var(--muted)}
+.charts-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,.8fr);gap:16px;margin-bottom:16px;align-items:start}.chart-panel{padding:22px}.section-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:20px}.section-head h2,.table-tools h2{margin:0;color:#071d40;font-size:20px}.section-head p,.table-tools p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend span{display:flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:50%}.dot.green{background:var(--green)}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}.dot.gray{background:var(--gray)}
+.chart{display:flex;flex-direction:column;gap:13px}.chart-row{display:grid;grid-template-columns:minmax(190px,290px) 1fr 78px;gap:12px;align-items:center}.faculty{text-align:right;font-size:13px;line-height:1.25}.track{height:30px;background:#edf2f7;border-radius:7px;display:flex;overflow:hidden}.seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}.seg.green{background:var(--green)}.seg.amber{background:var(--amber)}.seg.red{background:var(--red)}.seg.gray{background:var(--gray)}.total{font-weight:800;color:#071d40;white-space:nowrap}
+.donut-body{display:grid;grid-template-columns:180px 1fr;align-items:center;gap:22px;min-height:250px}.donut{width:180px;height:180px;border-radius:50%;display:grid;place-items:center;background:#e8eef5}.donut::before{content:"";width:112px;height:112px;border-radius:50%;background:#fff}.donut-center{position:absolute;text-align:center;color:#071d40}.donut-wrap{position:relative;width:180px;height:180px;display:grid;place-items:center}.donut-number{display:block;font-size:28px;font-weight:800}.donut-label{display:block;margin-top:4px;color:var(--muted);font-size:12px}.donut-list{display:flex;flex-direction:column;gap:13px}.donut-item{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;color:var(--muted);font-size:13px}.donut-item strong{color:#071d40}
+.table-panel{overflow:hidden}.table-tools{padding:19px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:14px}.count{color:var(--muted);font-size:13px}.table-wrap{overflow:auto;max-height:650px}table{width:100%;min-width:1250px;border-collapse:separate;border-spacing:0}thead th{position:sticky;top:0;z-index:2;padding:12px 14px;background:#edf2f8;border-bottom:1px solid #cbd5e1;text-align:left;color:#44546a;font-size:12px;white-space:nowrap}tbody td{padding:13px 14px;border-bottom:1px solid #edf2f7;vertical-align:middle;font-size:13px;max-width:320px}tbody tr:hover{background:#f7fbff}.num{text-align:right}.center{text-align:center}.nowrap{white-space:nowrap}.course{font-weight:800;color:#14345f}a{color:var(--blue);text-decoration:none;font-weight:800}a:hover{text-decoration:underline}.badge{display:inline-flex;border-radius:999px;padding:5px 10px;color:#fff;font-weight:700;white-space:nowrap}.badge.green{background:var(--green)}.badge.amber{background:#c77a00}.badge.red{background:var(--red)}.badge.gray{background:var(--gray)}.pager{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line)}.pager-controls{display:flex;gap:8px}.pager button{height:34px;padding:0 12px;background:#e6edf8;color:var(--navy)}.pager button:disabled{opacity:.45}.empty{padding:28px;text-align:center;color:var(--muted);background:#f7fafc;border-radius:10px}
+.note{margin:13px 0 0;color:var(--muted);font-size:12px}
+@media(max-width:1150px){.charts-grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){main{padding:16px 12px 30px}.topbar-inner{padding:18px 14px;align-items:flex-start;flex-direction:column}.source{text-align:left}.filters{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}.chart-row{grid-template-columns:1fr}.faculty{text-align:left}.donut-body{grid-template-columns:1fr;justify-items:center}.filter-actions{display:grid;grid-template-columns:1fr 1fr}}
+</style>
+<script>document.documentElement.classList.add("auth-check");</script>
+<style>
+html.auth-check body{visibility:hidden}
+.auth-chip{position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 13px;background:rgba(255,255,255,.96);border:1px solid #d9e2ec;border-radius:999px;box-shadow:0 8px 24px rgba(16,42,67,.14);font-size:12px;color:#627d98}
+.auth-chip button{height:30px;padding:0 12px;border:0;border-radius:999px;background:#e6edf8;color:#102a43;font:inherit;font-weight:700;cursor:pointer}
+</style>
+<script src="auth-config.js"></script>
+<script src="auth.js"></script>
+<script>OOEAuth.requireAuth();</script>
+
+<style>
+/* OOE dashboard micro-interactions */
+.kpi{
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.kpi:hover{
+  transform:translateY(-3px);
+  box-shadow:0 14px 30px rgba(16,42,67,.13);
+}
+.live-indicator{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-right:9px;
+  color:#d9fbe9;
+  font-weight:700;
+  white-space:nowrap;
+}
+.live-indicator i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#32d583;
+  box-shadow:0 0 0 4px rgba(50,213,131,.14);
+}
+.dashboard-reveal .seg{
+  transform-origin:left center;
+  animation:barReveal .7s cubic-bezier(.2,.75,.25,1) both;
+}
+@property --ooe-sweep{
+  syntax:"<angle>";
+  inherits:false;
+  initial-value:0deg;
+}
+.dashboard-reveal .donut{
+  -webkit-mask:conic-gradient(#000 0 var(--ooe-sweep),transparent var(--ooe-sweep) 360deg);
+  mask:conic-gradient(#000 0 var(--ooe-sweep),transparent var(--ooe-sweep) 360deg);
+  animation:donutReveal .85s cubic-bezier(.2,.75,.25,1) both;
+}
+@keyframes barReveal{
+  from{transform:scaleX(0);opacity:.4}
+  to{transform:scaleX(1);opacity:1}
+}
+@keyframes donutReveal{
+  from{--ooe-sweep:0deg}
+  to{--ooe-sweep:360deg}
+}
+@media (prefers-reduced-motion:reduce){
+  .kpi,.kpi:hover{transition:none;transform:none}
+  .dashboard-reveal .seg,.dashboard-reveal .donut{animation:none}
+}
+</style>
+
+
+<style>
+/* Interactive faculty chart + loading skeleton */
+.chart-row[data-faculty]{
+  cursor:pointer;
+  border-radius:8px;
+  transition:background .16s ease,transform .16s ease;
+}
+.chart-row[data-faculty]:hover,
+.chart-row[data-faculty]:focus-visible{
+  background:#f7fbff;
+  transform:translateX(2px);
+  outline:none;
+}
+.skeleton-block,.skeleton-line,.skeleton-pill,.skeleton-circle{
+  position:relative;
+  overflow:hidden;
+  background:#e7edf4 !important;
+}
+.skeleton-block::after,.skeleton-line::after,.skeleton-pill::after,.skeleton-circle::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);
+  animation:skeletonShimmer 1.15s ease-in-out infinite;
+}
+.skeleton-kpi{display:block;width:78px;height:38px;border-radius:8px;margin-top:6px}
+.skeleton-chart-row{display:grid;grid-template-columns:minmax(190px,290px) 1fr 78px;gap:12px;align-items:center;min-height:30px}
+.skeleton-line{display:block;height:14px;border-radius:7px}
+.skeleton-track{height:30px;border-radius:7px}
+.skeleton-pill{display:inline-block;width:64px;height:14px;border-radius:999px}
+.donut.skeleton-circle{background:#e7edf4 !important}
+.skeleton-legend{display:flex;flex-direction:column;gap:13px;width:100%}
+.skeleton-legend .skeleton-line:nth-child(1){width:92%}
+.skeleton-legend .skeleton-line:nth-child(2){width:78%}
+.skeleton-legend .skeleton-line:nth-child(3){width:86%}
+.skeleton-table-row td{padding-top:15px;padding-bottom:15px}
+.skeleton-cell{display:block;height:13px;border-radius:7px;background:#e7edf4;position:relative;overflow:hidden}
+.skeleton-cell::after{
+  content:"";position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);
+  animation:skeletonShimmer 1.15s ease-in-out infinite;
+}
+@keyframes skeletonShimmer{to{transform:translateX(100%)}}
+@media(max-width:650px){.skeleton-chart-row{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){
+  .chart-row[data-faculty]{transition:none}
+  .skeleton-block::after,.skeleton-line::after,.skeleton-pill::after,.skeleton-circle::after,.skeleton-cell::after{animation:none}
+}
+</style>
+
+
+<style>
+/* AI Tutor advice modal */
+.advice-btn{
+  width:36px;
+  height:36px;
+  display:inline-grid;
+  place-items:center;
+  border:1px solid #d8e7f5;
+  background:#f5f9fd;
+  color:#2b78c5;
+  border-radius:10px;
+  padding:0;
+  cursor:pointer;
+  transition:background .16s ease,border-color .16s ease,transform .16s ease;
+}
+.advice-btn:hover{
+  background:#edf5fc;
+  border-color:#bfd7ec;
+  transform:translateY(-1px);
+}
+.advice-btn svg{width:18px;height:18px;display:block}
+.advice-dash{color:#a5b1be}
+.advice-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(16,42,67,.38);
+  backdrop-filter:blur(2px);
+}
+.advice-modal.open{display:flex}
+.advice-dialog{
+  width:min(650px,100%);
+  max-height:min(88vh,760px);
+  overflow:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  box-shadow:0 24px 60px rgba(16,42,67,.18);
+  animation:adviceEnter .18s ease-out both;
+}
+.advice-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:22px 24px 14px;
+}
+.advice-head h2{
+  margin:0;
+  color:#102a43;
+  font-size:22px;
+  letter-spacing:-.2px;
+}
+.advice-close{
+  width:40px;
+  height:40px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:12px;
+  background:#f4f7fa;
+  color:#334e68;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+}
+.advice-close:hover{background:#ebf0f5}
+.advice-close svg{width:18px;height:18px;display:block}
+.advice-body{padding:0 24px 24px}
+.advice-course{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:16px 18px;
+  border:1px solid #dce9f5;
+  border-radius:14px;
+  background:#f7fbff;
+}
+.advice-course-icon{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  background:#e8f3ff;
+  color:#2b78c5;
+}
+.advice-course-icon svg{
+  width:22px;
+  height:22px;
+  display:block;
+}
+.advice-course-text{min-width:0}
+.advice-course-text strong{
+  display:block;
+  color:#0f5fa8;
+  font-size:17px;
+  line-height:1.4;
+}
+.advice-course-text span{
+  display:block;
+  margin-top:4px;
+  color:#718399;
+  font-size:13px;
+}
+.advice-alert{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:12px;
+  align-items:start;
+  margin-top:12px;
+  padding:14px 16px;
+  border-radius:14px;
+  background:#fff4f5;
+  border:1px solid #f2d0d5;
+}
+.advice-alert .icon{
+  width:32px;height:32px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#e84258;
+  color:#fff;
+  font-weight:800;
+  font-size:17px;
+}
+.advice-status{font-weight:800;color:#243b53}
+.advice-message{
+  margin-top:5px;
+  color:#334e68;
+  line-height:1.65;
+}
+.advice-section{
+  margin-top:12px;
+  padding:14px 16px;
+  border:1px solid #e3eaf1;
+  border-radius:14px;
+  background:#f6faff;
+}
+.advice-section h3{
+  margin:0 0 8px;
+  color:#163a5f;
+  font-size:15px;
+}
+.advice-section ul{
+  margin:0;
+  padding-left:20px;
+  color:#334e68;
+  line-height:1.75;
+}
+.advice-foot{
+  display:flex;
+  justify-content:flex-end;
+  padding:0 24px 22px;
+}
+.advice-foot button{
+  border:1px solid #dde5ed;
+  border-radius:9px;
+  padding:8px 16px;
+  background:#f7f9fb;
+  color:#163a5f;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+.advice-foot button:hover{background:#eef3f7}
+@keyframes adviceEnter{
+  from{opacity:0;transform:translateY(6px) scale(.995)}
+  to{opacity:1;transform:none}
+}
+@media(max-width:600px){
+  .advice-modal{padding:12px}
+  .advice-dialog{border-radius:15px}
+  .advice-head,.advice-body,.advice-foot{padding-left:16px;padding-right:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  .advice-dialog{animation:none}
+  .advice-btn{transition:none}
+}
+</style>
+
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><div><h1>Dashboard AI Tutor</h1><p class="subtitle">ปีการศึกษา 2569 · ภาคการศึกษา 1</p></div><div class="source">สำนักการจัดการศึกษาออนไลน์ (OOE)<br>ข้อมูลอ้างอิง ณ วันที่ 18/09/2569<br><span class="live-indicator" aria-label="สถานะออนไลน์"><i></i></span><span id="sourceDate"></span></div></div></header>
+<main>
+<nav class="page-tabs"><a class="tab" href="index.html#GR">หน้า GR</a><a class="tab" href="index.html#GS">หน้า GS</a><a class="tab active" href="ai-tutor.html">AI Tutor</a><a class="tab " href="podcast.html">Podcast</a></nav>
+<section class="panel filters">
+<div class="field"><label>คณะ / วิทยาลัย</label><select id="facultyFilter"><option value="">ทั้งหมด</option></select></div>
+<div class="field"><label>ประเภทรายวิชา</label><select id="typeFilter"><option value="">ทั้งหมด</option></select></div>
+<div class="field"><label>สถานะ AI Tutor</label><select id="statusFilter"><option value="">ทั้งหมด</option><option value="ทำ">ทำ</option><option value="ไม่ทำ">ไม่ทำ</option></select></div>
+<div class="field"><label>ค้นหารหัสวิชาหรือรหัสรายวิชาในระบบ</label><input id="searchBox" type="search" placeholder="เช่น ICT112 หรือ 691GN..."></div>
+<div class="filter-actions"><button class="refresh" id="refreshBtn">อัปเดตข้อมูล</button><button class="reset" id="resetBtn">ล้างตัวกรอง</button></div>
+</section>
+<section class="kpis"><article class="panel kpi "><div class="kpi-label">รายวิชาทั้งหมด</div><div class="kpi-value" id="totalKpi">0</div><div class="kpi-note" id="totalNote"></div></article><article class="panel kpi green"><div class="kpi-label">ทำ AI Tutor</div><div class="kpi-value" id="doneKpi">0</div><div class="kpi-note" id="doneNote"></div></article><article class="panel kpi red"><div class="kpi-label">ไม่ทำ AI Tutor</div><div class="kpi-value" id="notdoneKpi">0</div><div class="kpi-note" id="notdoneNote"></div></article></section>
+<section class="charts-grid">
+<article class="panel chart-panel"><div class="section-head"><div><h2>สถานะ AI Tutor แยกตามคณะ</h2><p>แสดงจำนวนรายวิชาที่ทำ / ไม่ทำ AI Tutor แยกตามคณะ</p></div></div><div class="chart" id="facultyChart"></div></article>
+<article class="panel chart-panel"><div class="section-head"><div><h2>สัดส่วนสถานะ AI Tutor</h2><p>คำนวณตามตัวกรองที่เลือก</p></div></div><div class="donut-body"><div class="donut-wrap"><div class="donut" id="donutChart"></div><div class="donut-center"><span class="donut-number" id="donutTotal">0</span><span class="donut-label">รายวิชา</span></div></div><div class="donut-list" id="donutLegend"></div></div></article>
+</section>
+<section class="panel table-panel"><div class="table-tools"><div><h2>รายละเอียดรายวิชา — AI Tutor</h2><p>ข้อมูลจาก Google Sheets ที่เผยแพร่สำหรับ Dashboard</p></div><div class="count" id="resultCount"></div></div><div class="table-wrap"><table><thead><tr><th>ลำดับ</th><th>รหัสวิชา</th><th>รหัสรายวิชาในระบบ</th><th>ประเภท</th><th>คณะ / วิทยาลัย</th><th>อาจารย์ผู้สอน</th><th class="center">AI Tutor</th><th class="center">สถานะ AI Tutor</th><th class="center">คำแนะนำ</th><th>รายวิชา</th></tr></thead><tbody id="courseRows"></tbody></table></div><div class="pager"><div class="count" id="pageInfo"></div><div class="pager-controls"><button id="prevBtn">ก่อนหน้า</button><button id="nextBtn">ถัดไป</button></div></div></section>
+<p class="note">ข้อมูลจะอัปเดตเมื่อเปิดหน้าเว็บหรือกด “อัปเดตข้อมูล” · ไม่มีการเผยแพร่อีเมลผู้สอนใน Dashboard</p>
+
+<div class="advice-modal" id="aiAdviceModal" role="dialog" aria-modal="true" aria-labelledby="aiAdviceTitle">
+  <div class="advice-dialog">
+    <div class="advice-head">
+      <h2 id="aiAdviceTitle">คำแนะนำการจัดทำ AI Tutor</h2>
+      <button class="advice-close" id="aiAdviceClose" type="button" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="advice-body">
+      <div class="advice-course">
+        <div class="advice-course-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="5" y="6" width="14" height="11" rx="4" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 3.5V6M9 12h.01M15 12h.01M9.5 17v2.2M14.5 17v2.2M3 10.5h2M19 10.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9.5 14.5c.7.55 1.55.8 2.5.8s1.8-.25 2.5-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="advice-course-text">
+          <strong id="aiAdviceCourse"></strong>
+          <span id="aiAdviceProfile"></span>
+        </div>
+      </div>
+
+      <div class="advice-alert">
+        <div class="icon">!</div>
+        <div>
+          <div class="advice-status">สถานะ: ไม่ทำ</div>
+          <div class="advice-message">ยังไม่พบการจัดทำ AI Tutor ในรายวิชานี้ กรุณาจัดทำให้เป็นไปตามเกณฑ์ที่กำหนด</div>
+        </div>
+      </div>
+
+      <div class="advice-section">
+        <h3>เกณฑ์การจัดทำ AI Tutor</h3>
+        <ul>
+          <li>AI Tutor สามารถให้คำแนะนำเนื้อหาของบทเรียนทั้งรายวิชา</li>
+          <li>AI Tutor สามารถให้คำแนะนำวิธีการเรียนของรายวิชา</li>
+          <li>สามารถใช้ SPU AI หรือรูปแบบอื่นตามความเหมาะสมกับลักษณะรายวิชา</li>
+        </ul>
+      </div>
+    </div>
+    <div class="advice-foot">
+      <button type="button" id="aiAdviceCloseBottom">ปิด</button>
+    </div>
+  </div>
+</div>
+
+</main>
+<script>
+const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=223035731&single=true&output=csv';
+let DATA=[]; const PAGE_SIZE=20; let currentPage=1;
+let dashboardRevealDone=false;
+function revealDashboardOnce(){
+  if(dashboardRevealDone)return;
+  dashboardRevealDone=true;
+  document.body.classList.add('dashboard-reveal');
+  window.setTimeout(()=>document.body.classList.remove('dashboard-reveal'),950);
+}
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function showLoadingSkeleton(){
+  document.querySelectorAll('.kpi-value').forEach(el=>{
+    el.innerHTML='<span class="skeleton-block skeleton-kpi" aria-hidden="true"></span>';
+  });
+  $('facultyChart').innerHTML=Array.from({length:6},(_,i)=>`
+    <div class="skeleton-chart-row" aria-hidden="true">
+      <span class="skeleton-line" style="width:${72-(i%3)*9}%"></span>
+      <span class="skeleton-block skeleton-track"></span>
+      <span class="skeleton-pill"></span>
+    </div>`).join('');
+  $('donutChart').classList.add('skeleton-circle');
+  $('donutChart').style.background='';
+  $('donutTotal').textContent='';
+  $('donutLegend').innerHTML='<div class="skeleton-legend" aria-hidden="true"><span class="skeleton-line"></span><span class="skeleton-line"></span><span class="skeleton-line"></span></div>';
+  const cols=document.querySelectorAll('thead th').length||8;
+  $('courseRows').innerHTML=Array.from({length:6},()=>`<tr class="skeleton-table-row" aria-hidden="true">${Array.from({length:cols},(_,i)=>`<td><span class="skeleton-cell" style="width:${55+(i%4)*10}%"></span></td>`).join('')}</tr>`).join('');
+  $('resultCount').innerHTML='<span class="skeleton-pill" aria-hidden="true"></span>';
+  $('pageInfo').textContent='กำลังโหลดข้อมูล...';
+}
+function clearLoadingSkeleton(){
+  $('donutChart').classList.remove('skeleton-circle');
+}
+function selectFacultyFromChart(faculty){
+  const select=$('facultyFilter');
+  if(!select||![...select.options].some(o=>o.value===faculty))return;
+  select.value=faculty;
+  currentPage=1;
+  render();
+}
+function bindFacultyChartFilter(){
+  const chart=$('facultyChart');
+  if(!chart||chart.dataset.filterBound==='1')return;
+  chart.dataset.filterBound='1';
+  chart.addEventListener('click',e=>{
+    const row=e.target.closest('.chart-row[data-faculty]');
+    if(row)selectFacultyFromChart(row.dataset.faculty);
+  });
+  chart.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const row=e.target.closest('.chart-row[data-faculty]');
+    if(!row)return;
+    e.preventDefault();
+    selectFacultyFromChart(row.dataset.faculty);
+  });
+}
+
+const natural=(a,b)=>String(a).localeCompare(String(b),'th',{numeric:true,sensitivity:'base'});
+function normalizeStatus(v){
+  const s=String(v||'').trim();
+  if(s==='ทำ') return 'ทำ';
+  if(s==='ไม่ทำ') return 'ไม่ทำ';
+  return 'รอข้อมูล';
+}
+function parseCSV(text){
+  const rows=[];let row=[],cell='',inQuotes=false;
+  for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];
+    if(ch==='"'&&inQuotes&&next==='"'){cell+='"';i++;}
+    else if(ch==='"')inQuotes=!inQuotes;
+    else if(ch===','&&!inQuotes){row.push(cell);cell='';}
+    else if((ch==='\n'||ch==='\r')&&!inQuotes){if(ch==='\r'&&next==='\n')i++;row.push(cell);if(row.some(v=>v!==''))rows.push(row);row=[];cell='';}
+    else cell+=ch;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  if(!rows.length)return[];
+  const h=rows[0].map(x=>String(x||'').trim());
+  return rows.slice(1).map(v=>Object.fromEntries(h.map((k,i)=>[k,v[i]??''])));
+}
+function mapRow(r){return {
+  faculty:String(r.faculty||'').trim(),courseType:String(r.courseType||'').trim(),courseCode:String(r.courseCode||'').trim(),
+  courseProfile:String(r.courseProfile||'').trim(),profileType:String(r.profileType||'').trim(),createdDate:String(r.createdDate||'').trim(),
+  courseName:String(r.courseName||'').trim(),instructors:String(r.instructors||'').trim(),teacherType:String(r.teacherType||'').trim(),
+  teacherCount:String(r.teacherCount||'').trim(),students:String(r.students||'').trim(),weeks:String(r.weeks||'').trim(),
+  aiTutor:String(r.aiTutor||'').trim(),aiStatus:String(r.aiStatus||'').trim(),
+  podcastCount:String(r.podcastCount||'').trim(),podcastStatus:String(r.podcastStatus||'').trim(),courseLink:String(r.courseLink||'').trim()
+}}
+function addOptions(id,vals){vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;$(id).appendChild(o)})}
+function refillFilters(){
+  const fs=[...new Set(DATA.map(d=>d.faculty).filter(Boolean))].sort(natural);
+  const ts=[...new Set(DATA.map(d=>d.courseType).filter(Boolean))].sort(natural);
+  $('facultyFilter').innerHTML='<option value="">ทั้งหมด</option>';addOptions('facultyFilter',fs);
+  $('typeFilter').innerHTML='<option value="">ทั้งหมด</option>';addOptions('typeFilter',ts);
+}
+function filtered(){
+  const f=$('facultyFilter').value,t=$('typeFilter').value,s=$('statusFilter').value,q=$('searchBox').value.trim().toLowerCase();
+  return DATA.filter(d=>(!f||d.faculty===f)&&(!t||d.courseType===t)&&(!s||normalizeStatus(d.aiStatus)===s)&&(!q||[d.courseCode,d.courseProfile,d.courseName,d.faculty,d.instructors].some(x=>String(x||'').toLowerCase().includes(q))));
+}
+function setKpis(rows){const total=rows.length,all=DATA.length;const done=rows.filter(d=>normalizeStatus(d.aiStatus)==='ทำ').length;
+  const notdone=rows.filter(d=>normalizeStatus(d.aiStatus)==='ไม่ทำ').length;
+  $('totalKpi').textContent=total.toLocaleString('th-TH');
+  $('doneKpi').textContent=done.toLocaleString('th-TH');
+  $('notdoneKpi').textContent=notdone.toLocaleString('th-TH');
+  $('totalNote').textContent=`จากทั้งหมด ${all.toLocaleString('th-TH')} รายวิชา`;
+  $('doneNote').textContent=`${done} จาก ${total} รายวิชาที่แสดง`;
+  $('notdoneNote').textContent=`${notdone} จาก ${total} รายวิชาที่แสดง`;}
+function renderChart(rows){
+  const groups={};
+  rows.forEach(d=>{const f=d.faculty||'ไม่ระบุคณะ';groups[f]??={done:0,notdone:0,pending:0,total:0};
+    groups[f].total++;
+    const s=normalizeStatus(d.aiStatus);
+    if(s==='ทำ') groups[f].done++;
+    else if(s==='ไม่ทำ') groups[f].notdone++;
+    else groups[f].pending++;});
+  const list=Object.entries(groups).sort((a,b)=>b[1].total-a[1].total||natural(a[0],b[0]));
+  const max=Math.max(1,...list.map(([,v])=>v.total));
+  const seg=(n,c,total)=>n?`<div class="seg ${c}" style="width:${n/total*100}%"><span>${n}</span></div>`:'';
+  $('facultyChart').innerHTML=list.length?list.map(([f,v])=>`<div class="chart-row" data-faculty="${esc(f)}" role="button" tabindex="0" title="คลิกเพื่อกรองตามคณะนี้"><div class="faculty">${esc(f)} (${v.total})</div><div class="track" style="width:${v.total/max*100}%">${seg(v.done,'green',v.total)}${seg(v.notdone,'red',v.total)}</div><div class="total">${v.done}/${v.total}</div></div>`).join(''):'<div class="empty">ไม่พบข้อมูลตามตัวกรอง</div>';
+}
+function renderDonut(rows){const total=rows.length;const item=(label,n,p,cls)=>`<div class="donut-item"><i class="dot ${cls}"></i><span>${label}</span><strong>${n} (${p.toFixed(1)}%)</strong></div>`;const done=rows.filter(d=>normalizeStatus(d.aiStatus)==='ทำ').length;
+  const notdone=rows.filter(d=>normalizeStatus(d.aiStatus)==='ไม่ทำ').length;
+  const pending=rows.filter(d=>normalizeStatus(d.aiStatus)==='รอข้อมูล').length;
+  const dp=total?done/total*100:0,np=total?notdone/total*100:0,pp=total?pending/total*100:0;
+  $('donutChart').style.background=total?`conic-gradient(var(--green) 0 ${dp}%,var(--red) ${dp}% ${dp+np}%,var(--gray) ${dp+np}% 100%)`:'#e8eef5';
+  $('donutTotal').textContent=total.toLocaleString('th-TH');
+  $('donutLegend').innerHTML=item('ทำ AI Tutor',done,dp,'green')+item('ไม่ทำ AI Tutor',notdone,np,'red');}
+const td=(v,c='')=>`<td class="${c}">${esc(v)}</td>`;
+function statusBadge(s){
+  s=normalizeStatus(s);
+  if(s==='ทำ') return '<span class="badge green">ทำ</span>';
+  if(s==='ไม่ทำ') return '<span class="badge red">ไม่ทำ</span>';
+  return '<span class="badge gray">รอข้อมูล</span>';
+}
+function adviceCell(d){
+  const s=normalizeStatus(d.aiStatus);
+  if(s==='ทำ') return '<span class="advice-dash">—</span>';
+  if(s==='ไม่ทำ'){
+    return `<button type="button" class="advice-btn" data-advice="${esc(d.courseProfile)}" aria-label="ดูคำแนะนำ" title="ดูคำแนะนำ">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 5.5c2.6-.8 4.9-.4 7 1.2v11.8c-2.1-1.6-4.4-2-7-1.2V5.5Zm15 0c-2.6-.8-4.9-.4-7 1.2v11.8c2.1-1.6 4.4-2 7-1.2V5.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      </svg>
+    </button>`;
+  }
+  return '<span class="advice-dash">—</span>';
+}
+function renderTable(rows){
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));currentPage=Math.min(currentPage,pages);const start=(currentPage-1)*PAGE_SIZE;const p=rows.slice(start,start+PAGE_SIZE);
+  $('courseRows').innerHTML=p.map((d,i)=>`<tr>${td(start+i+1,'num')}${td(d.courseCode,'course nowrap')}${td(d.courseProfile,'nowrap')}${td(d.courseType,'nowrap')}${td(d.faculty)}${td(d.instructors||'—')}${td(d.aiTutor||'0','center')}<td class="center">${statusBadge(d.aiStatus)}</td><td class="center">${adviceCell(d)}</td><td>${d.courseLink?`<a href="${esc(d.courseLink)}" target="_blank" rel="noopener">เปิด ↗</a>`:'—'}</td></tr>`).join('');
+  $('resultCount').textContent=`แสดง ${rows.length.toLocaleString('th-TH')} จาก ${DATA.length.toLocaleString('th-TH')} วิชา`;
+  $('pageInfo').textContent=rows.length?`แสดง ${start+1}–${Math.min(start+PAGE_SIZE,rows.length)} จาก ${rows.length} รายวิชา`:'ไม่พบข้อมูล';
+  $('prevBtn').disabled=currentPage===1;$('nextBtn').disabled=currentPage===pages;
+}
+function openAIAdvice(courseProfile){
+  const d=DATA.find(x=>x.courseProfile===courseProfile);
+  if(!d||normalizeStatus(d.aiStatus)!=='ไม่ทำ')return;
+  $('aiAdviceCourse').textContent=d.courseName||d.courseCode||d.courseProfile;
+  $('aiAdviceProfile').textContent=`${d.courseProfile} · ภาคการศึกษา 1/2569`;
+  $('aiAdviceModal').classList.add('open');
+  document.body.style.overflow='hidden';
+  $('aiAdviceClose').focus();
+}
+function closeAIAdvice(){
+  $('aiAdviceModal').classList.remove('open');
+  document.body.style.overflow='';
+}
+function render(reset=true){if(reset)currentPage=1;const rows=filtered();setKpis(rows);renderChart(rows);renderDonut(rows);renderTable(rows)}
+async function loadData(){
+  showLoadingSkeleton();
+  $('sourceDate').textContent='กำลังโหลดข้อมูลออนไลน์...';$('refreshBtn').disabled=true;
+  try{const res=await fetch(CSV_URL+(CSV_URL.includes('?')?'&':'?')+'_='+Date.now(),{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);DATA=parseCSV(await res.text()).map(mapRow).filter(d=>d.courseProfile);refillFilters();const now=new Date();$('sourceDate').textContent=`ดึงข้อมูลเมื่อ ${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${DATA.length.toLocaleString('th-TH')} รายวิชา`;clearLoadingSkeleton();render();revealDashboardOnce();}
+  catch(e){clearLoadingSkeleton();console.error(e);$('sourceDate').textContent='ยังไม่ได้เผยแพร่ชีทนี้เป็น CSV หรือโหลดข้อมูลไม่สำเร็จ';$('facultyChart').innerHTML='<div class="empty">กรุณา Publish ชีทสำหรับ Dashboard นี้เป็น CSV ก่อน</div>';}
+  finally{$('refreshBtn').disabled=false;}
+}
+['facultyFilter','typeFilter','statusFilter'].forEach(id=>$(id).addEventListener('change',()=>render()));
+$('searchBox').addEventListener('input',()=>render());
+$('resetBtn').addEventListener('click',()=>{$('facultyFilter').value='';$('typeFilter').value='';$('statusFilter').value='';$('searchBox').value='';render()});
+$('refreshBtn').addEventListener('click',loadData);$('prevBtn').addEventListener('click',()=>{currentPage--;render(false)});$('nextBtn').addEventListener('click',()=>{currentPage++;render(false)});
+$('courseRows').addEventListener('click',e=>{
+  const btn=e.target.closest('.advice-btn[data-advice]');
+  if(btn)openAIAdvice(btn.dataset.advice);
+});
+$('aiAdviceClose').addEventListener('click',closeAIAdvice);
+$('aiAdviceCloseBottom').addEventListener('click',closeAIAdvice);
+$('aiAdviceModal').addEventListener('click',e=>{
+  if(e.target===$('aiAdviceModal'))closeAIAdvice();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('aiAdviceModal').classList.contains('open'))closeAIAdvice();
+});
+bindFacultyChartFilter();
+loadData();
+</script>
+<div class="auth-chip" aria-label="บัญชีผู้ใช้"><span id="authUserEmail"></span><button type="button" onclick="OOEAuth.logout()">ออกจากระบบ</button></div>
+</body></html>

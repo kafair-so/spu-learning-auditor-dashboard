@@ -1,0 +1,208 @@
+(() => {
+  const cfg = window.OOE_AUTH_CONFIG || {};
+  const loginPage = "login.html";
+
+  function decodeJwt(token) {
+    try {
+      const part = token.split(".")[1];
+      if (!part) return null;
+      const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+      const json = decodeURIComponent(
+        atob(padded)
+          .split("")
+          .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(json);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isConfigured() {
+    return Boolean(
+      cfg.googleClientId &&
+      !cfg.googleClientId.includes("PASTE_GOOGLE_OAUTH_CLIENT_ID_HERE")
+    );
+  }
+
+  function validateCredential(token) {
+    if (!token || !isConfigured()) return null;
+    const p = decodeJwt(token);
+    if (!p) return null;
+
+    const now = Math.floor(Date.now() / 1000);
+    const email = String(p.email || "").toLowerCase();
+    const domain = String(cfg.allowedDomain || "").toLowerCase();
+
+    const valid =
+      p.aud === cfg.googleClientId &&
+      Number(p.exp || 0) > now &&
+      p.email_verified === true &&
+      email.endsWith("@" + domain) &&
+      (!p.hd || String(p.hd).toLowerCase() === domain);
+
+    return valid ? p : null;
+  }
+
+  function getCredential() {
+    const key = cfg.storageKey || "ooe_google_credential";
+    // ID tokens are short-lived credentials. Keep them only for the current
+    // browser session so closing the browser also ends Dashboard access.
+    localStorage.removeItem(key);
+    return sessionStorage.getItem(key) || "";
+  }
+
+  function getUser() {
+    if (cfg.previewMode && (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
+      return { email:"preview@spu.ac.th", name:"Integration Preview", preview:true };
+    }
+    return validateCredential(getCredential());
+  }
+
+  function saveCredential(token) {
+    const key = cfg.storageKey || "ooe_google_credential";
+    localStorage.removeItem(key);
+    sessionStorage.setItem(key, token);
+  }
+
+  function clearCredential() {
+    const key = cfg.storageKey || "ooe_google_credential";
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  }
+
+  function dashboardUrl() {
+    const next = new URLSearchParams(location.search).get("next");
+    if (next && !next.includes("://") && !next.startsWith("//")) return next;
+    return "index.html";
+  }
+
+  function requireAuth() {
+    const user = getUser();
+    if (!user) {
+      const current = location.pathname.split("/").pop() || "index.html";
+      const suffix = location.hash || "";
+      location.replace(loginPage + "?next=" + encodeURIComponent(current + suffix));
+      return null;
+    }
+    document.documentElement.classList.remove("auth-check");
+    window.addEventListener("DOMContentLoaded", () => renderUser(user));
+    return user;
+  }
+
+  async function requireReviewer() {
+    const user = requireAuth();
+    if (!user) return null;
+    if (user.preview && cfg.previewMode) {
+      document.documentElement.classList.remove("auth-check");
+      return user;
+    }
+    try {
+      const base = String(cfg.backendApiUrl || "").replace(/\/$/, "");
+      if (!base) throw new Error("backend_not_configured");
+      const response = await fetch(base + "/api/v1/admin/session", {
+        headers: {
+          Authorization: `Bearer ${getCredential()}`,
+          apikey: cfg.supabasePublishableKey || ""
+        },
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("reviewer_required");
+      document.documentElement.classList.remove("auth-check");
+      renderUser(user);
+      return user;
+    } catch (_) {
+      document.documentElement.classList.remove("auth-check");
+      document.body.innerHTML = '<main style="max-width:760px;margin:60px auto;padding:24px;font-family:Tahoma,sans-serif"><h1>ไม่มีสิทธิ์เข้าถึงหลังบ้านทีมตรวจ</h1><p>บัญชีนี้เปิดดูผลสำหรับอาจารย์ได้ แต่ไม่ได้อยู่ในรายชื่อทีมตรวจ</p><p><a href="index.html">กลับ Dashboard รายวิชา</a></p></main>';
+      return null;
+    }
+  }
+
+  function renderUser(user) {
+    const el = document.getElementById("authUserEmail");
+    if (el) el.textContent = user.email || "";
+  }
+
+  function handleGoogleCredential(response) {
+    const token = response && response.credential;
+    const user = validateCredential(token);
+
+    const msg = document.getElementById("loginMessage");
+    if (!user) {
+      clearCredential();
+      if (msg) {
+        msg.textContent = "บัญชีนี้ไม่ได้รับอนุญาต กรุณาใช้บัญชี @" + (cfg.allowedDomain || "spu.ac.th");
+        msg.className = "message error";
+      }
+      return;
+    }
+
+    saveCredential(token);
+    location.replace(dashboardUrl());
+  }
+
+  function logout() {
+    clearCredential();
+    try {
+      if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.disableAutoSelect();
+      }
+    } catch (_) {}
+    location.replace(loginPage);
+  }
+
+  function setupLogin() {
+    const msg = document.getElementById("loginMessage");
+    const box = document.getElementById("googleSignIn");
+
+    if (!isConfigured()) {
+      if (msg) {
+        msg.textContent = "ยังไม่ได้ตั้งค่า Google OAuth Client ID";
+        msg.className = "message setup";
+      }
+      if (box) box.innerHTML = '<div class="setup-box">ตั้งค่า <code>auth-config.js</code> ก่อนเปิดใช้งานจริง</div>';
+      return;
+    }
+
+    const existing = getUser();
+    if (existing) {
+      location.replace(dashboardUrl());
+      return;
+    }
+
+    if (!window.google || !google.accounts || !google.accounts.id) {
+      setTimeout(setupLogin, 150);
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: cfg.googleClientId,
+      callback: handleGoogleCredential,
+      hd: cfg.allowedDomain,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+
+    google.accounts.id.renderButton(box, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      shape: "pill",
+      logo_alignment: "left",
+      width: 300
+    });
+  }
+
+  window.OOEAuth = {
+    requireAuth,
+    requireReviewer,
+    setupLogin,
+    logout,
+    getUser,
+    getCredential,
+    handleGoogleCredential
+  };
+})();

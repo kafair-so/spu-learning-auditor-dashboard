@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เข้าสู่ระบบ | OOE Dashboard 2569</title>
+<style>
+:root{
+  --navy:#102a43;
+  --navy-2:#142b50;
+  --blue:#245dcc;
+  --muted:#627d98;
+  --line:#d9e2ec;
+  --bg:#f3f6fb;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  padding:20px;
+  color:#243b53;
+  font:15px "Noto Sans Thai","Leelawadee UI",Tahoma,Arial,sans-serif;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(36,93,204,.10),transparent 30%),
+    radial-gradient(circle at 82% 80%,rgba(16,42,67,.08),transparent 32%),
+    linear-gradient(145deg,#eef4fb,#f8fafc);
+}
+body::before,
+body::after{
+  content:"";
+  position:fixed;
+  border-radius:50%;
+  filter:blur(2px);
+  pointer-events:none;
+  opacity:.65;
+  animation:float 9s ease-in-out infinite;
+}
+body::before{
+  width:240px;height:240px;
+  left:-80px;top:-70px;
+  background:linear-gradient(145deg,rgba(36,93,204,.10),rgba(255,255,255,.05));
+}
+body::after{
+  width:190px;height:190px;
+  right:-55px;bottom:-45px;
+  background:linear-gradient(145deg,rgba(16,42,67,.08),rgba(36,93,204,.05));
+  animation-delay:-4s;
+}
+.login-layout{
+  position:relative;
+  width:min(430px,100%);
+  display:grid;
+  place-items:center;
+  isolation:isolate;
+}
+.card{
+  position:relative;
+  z-index:2;
+  width:min(430px,100%);
+  padding:40px 34px 34px;
+  overflow:hidden;
+  text-align:center;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:24px;
+  box-shadow:0 22px 60px rgba(16,42,67,.13);
+  backdrop-filter:blur(14px);
+  animation:enter .5s ease-out both;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:3px;
+  background:linear-gradient(90deg,transparent,var(--blue),transparent);
+  opacity:.75;
+}
+.mark{
+  position:relative;
+  width:68px;height:68px;
+  margin:0 auto 18px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:20px;
+  background:linear-gradient(145deg,var(--navy-2),#1c3d69);
+  color:#fff;
+  font-size:23px;
+  font-weight:800;
+  letter-spacing:.5px;
+  box-shadow:0 10px 25px rgba(20,43,80,.18);
+}
+.mark::after{
+  content:"";
+  position:absolute;
+  width:28px;height:110px;
+  top:-20px;left:-45px;
+  transform:rotate(24deg);
+  background:rgba(255,255,255,.18);
+  animation:shine 5s ease-in-out infinite;
+}
+h1{
+  margin:0;
+  color:#071d40;
+  font-size:28px;
+  letter-spacing:-.25px;
+}
+.subtitle{
+  margin:8px 0 0;
+  color:var(--muted);
+}
+.access{
+  width:max-content;
+  max-width:100%;
+  margin:16px auto 0;
+  padding:6px 10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid #dce6f2;
+  border-radius:999px;
+  background:#f8fbff;
+  color:#526b85;
+  font-size:12px;
+}
+.access-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  background:#1aa36f;
+  box-shadow:0 0 0 4px rgba(26,163,111,.10);
+}
+.divider{
+  height:1px;
+  margin:25px 0;
+  background:linear-gradient(90deg,transparent,var(--line),transparent);
+}
+#googleSignIn{
+  display:flex;
+  justify-content:center;
+  min-height:44px;
+  transition:transform .2s ease;
+}
+#googleSignIn:hover{transform:translateY(-1px)}
+.hint{
+  margin:19px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.65;
+}
+.hint strong{color:#415b78}
+.message{
+  margin:16px 0 0;
+  padding:10px 12px;
+  border-radius:10px;
+  font-size:13px;
+}
+.message:empty{display:none}
+.message.error{background:#fdecef;color:#a61b35}
+.message.setup{background:#fff4d6;color:#895b00}
+.setup-box{
+  padding:12px 16px;
+  border:1px dashed #bcccdc;
+  border-radius:12px;
+  color:#627d98;
+  background:#f8fafc;
+}
+code{font-family:Consolas,monospace}
+.footer{
+  margin-top:25px;
+  color:#9aa8b6;
+  font-size:12px;
+}
+.mascot-wrap{
+  position:absolute;
+  z-index:1;
+  top:-142px;
+  right:-78px;
+  width:270px;
+  height:270px;
+  overflow:visible;
+  pointer-events:none;
+  animation:robotPeek 1.25s cubic-bezier(.18,.82,.25,1.1) .25s both;
+}
+.mascot{
+  width:270px;
+  height:auto;
+  display:block;
+  filter:drop-shadow(0 12px 18px rgba(16,42,67,.16));
+  transform:rotate(8deg);
+}
+@keyframes robotPeek{
+  0%{transform:translateY(92px) rotate(10deg);opacity:0}
+  35%{opacity:1}
+  72%{transform:translateY(-5px) rotate(6deg)}
+  100%{transform:translateY(0) rotate(8deg)}
+}
+@keyframes enter{
+  from{opacity:0;transform:translateY(10px) scale(.99)}
+  to{opacity:1;transform:none}
+}
+@keyframes float{
+  0%,100%{transform:translate3d(0,0,0)}
+  50%{transform:translate3d(0,10px,0)}
+}
+@keyframes shine{
+  0%,72%{left:-45px}
+  88%,100%{left:95px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+@media(max-width:760px){
+  body{overflow:auto;padding:120px 16px 26px}
+  .login-layout{width:min(430px,100%)}
+  .mascot-wrap{top:-104px;right:-38px;width:182px;height:182px}
+  .mascot{width:182px;transform:rotate(6deg)}
+  .card{width:min(430px,100%)}
+}
+@media(max-width:480px){
+  body{padding-top:108px}
+  .card{padding:34px 22px 28px;border-radius:20px}
+  h1{font-size:25px}
+  .mascot-wrap{top:-102px;right:-34px;width:168px;height:178px}
+  .mascot{width:168px;transform:rotate(6deg)}
+}
+</style>
+<script src="auth-config.js?v=20261001"></script>
+<script src="auth.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div class="login-layout">
+  <main class="card">
+    <div class="mark">OOE</div>
+    <h1>OOE Dashboard 2569</h1>
+    <p class="subtitle">สำนักการจัดการศึกษาออนไลน์</p>
+
+    <div class="access">
+      <span class="access-dot"></span>
+      <span>Google Workspace access</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="googleSignIn"></div>
+    <div id="loginMessage" class="message"></div>
+
+    <p class="hint">
+      เข้าสู่ระบบด้วยบัญชี Google Workspace ของมหาวิทยาลัย<br>
+      <strong>@spu.ac.th</strong>
+    </p>
+
+    <div class="footer">Office of Online Education · Sripatum University</div>
+  </main>
+
+  <div class="mascot-wrap" aria-hidden="true">
+    <img class="mascot" src="assets/ooe-robot.svg" alt="">
+  </div>
+</div>
+
+<script>
+window.addEventListener("load", () => OOEAuth.setupLogin());
+</script>
+</body>
+</html>
