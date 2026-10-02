@@ -48,23 +48,24 @@
 
   function getCredential() {
     const key = cfg.storageKey || "ooe_google_credential";
-    // ID tokens are short-lived credentials. Keep them only for the current
-    // browser session so closing the browser also ends Dashboard access.
-    localStorage.removeItem(key);
-    return sessionStorage.getItem(key) || "";
+    const token = sessionStorage.getItem(key) || localStorage.getItem(key) || "";
+    if (token && !sessionStorage.getItem(key)) sessionStorage.setItem(key, token);
+    return token;
   }
 
   function getUser() {
     if (cfg.previewMode && (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
       return { email:"preview@spu.ac.th", name:"Integration Preview", preview:true };
     }
-    return validateCredential(getCredential());
+    const user = validateCredential(getCredential());
+    if (!user) clearCredential();
+    return user;
   }
 
   function saveCredential(token) {
     const key = cfg.storageKey || "ooe_google_credential";
-    localStorage.removeItem(key);
     sessionStorage.setItem(key, token);
+    localStorage.setItem(key, token);
   }
 
   function clearCredential() {
@@ -89,7 +90,29 @@
     }
     document.documentElement.classList.remove("auth-check");
     window.addEventListener("DOMContentLoaded", () => renderUser(user));
+    revealReviewerLinks();
     return user;
+  }
+
+  let reviewerSessionPromise;
+  async function reviewerSession() {
+    const user = getUser();
+    if (!user || !cfg.backendApiUrl) return null;
+    if (!reviewerSessionPromise) reviewerSessionPromise = fetch(String(cfg.backendApiUrl).replace(/\/$/, "") + "/api/v1/admin/session", {
+      headers: { Authorization: `Bearer ${getCredential()}`, apikey: cfg.supabasePublishableKey || "" },
+      cache: "no-store"
+    }).then(async response => response.ok ? response.json() : null).catch(() => null);
+    return reviewerSessionPromise;
+  }
+
+  function revealReviewerLinks() {
+    const reveal = async () => {
+      const session = await reviewerSession();
+      if (!session?.reviewer) return;
+      document.querySelectorAll("[data-reviewer-only]").forEach(element => { element.hidden = false; });
+    };
+    if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", reveal, { once:true });
+    else reveal();
   }
 
   async function requireReviewer() {
@@ -100,17 +123,8 @@
       return user;
     }
     try {
-      const base = String(cfg.backendApiUrl || "").replace(/\/$/, "");
-      if (!base) throw new Error("backend_not_configured");
-      const response = await fetch(base + "/api/v1/admin/session", {
-        headers: {
-          Authorization: `Bearer ${getCredential()}`,
-          apikey: cfg.supabasePublishableKey || ""
-        },
-        cache: "no-store"
-      });
-      if (!response.ok) throw new Error("reviewer_required");
-      const session = await response.json();
+      const session = await reviewerSession();
+      if (!session?.reviewer) throw new Error("reviewer_required");
       document.documentElement.classList.remove("auth-check");
       const reviewerUser = { ...user, reviewer:true, role:session.role || "admin" };
       renderUser(reviewerUser);
@@ -205,6 +219,8 @@
     logout,
     getUser,
     getCredential,
+    reviewerSession,
+    revealReviewerLinks,
     handleGoogleCredential
   };
 })();

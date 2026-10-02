@@ -8,7 +8,14 @@
   function setQueueMessage(text,type="ok"){$("queueMessage").textContent=text;$("queueMessage").className=`message ${type}`;}
   function setWorkerMessage(text,type="ok"){$("workerMessage").textContent=text;$("workerMessage").className=`message ${type}`;}
   function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
-  let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0;
+  let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[];
+
+  async function loadResults(message=""){
+    const result=await AuditApi.adminResults();
+    records=result.records||[];
+    render();
+    if(message)setMessage(message);
+  }
 
   async function loadAccessUsers(){
     const result=await AuditApi.accessUsers();
@@ -44,9 +51,8 @@
       if(state?.status==="result_ready"){
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
         await AuditApi.submitResult(state.job.jobId,state.result);
-        AuditBridge.importPayload([state.result]);
         await AuditWorker.acknowledge(state.job.jobId);
-        processedThisSession++;render();
+        processedThisSession++;await loadResults();
         setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
       }
@@ -77,14 +83,13 @@
   }
 
   function render(){
-    const records=AuditBridge.latestRecords();
     for(const status of AuditBridge.INTERNAL)$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass").textContent=records.filter(record=>record.internalStatus===status).length.toLocaleString("th-TH");
     const query=$("search").value.trim().toLowerCase(),filter=$("filter").value;
     const rows=records.filter(record=>(!filter||record.internalStatus===filter)&&(!query||[record.courseCode,record.courseProfile,record.courseTitle,record.courseId].join(" ").toLowerCase().includes(query))).sort((a,b)=>String(b.auditedAt||"").localeCompare(String(a.auditedAt||"")));
     $("count").textContent=`${rows.length.toLocaleString("th-TH")} รายการ`;
     $("rows").innerHTML=rows.length?rows.map(record=>{
-      const key=encodeURIComponent(AuditBridge.runKey(record));
-      const decisions=record.internalStatus==="needs_review"?`<div class="actions"><button data-key="${key}" data-decision="pass">ผ่าน</button><button data-key="${key}" data-decision="has_content">มีเนื้อหา</button><button data-key="${key}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">รอตรวจระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
+      const runId=esc(record.runId||"");
+      const decisions=record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">มีเนื้อหา</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">รอตรวจระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
       return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td>${score(record.confirmedScore)} / ${score(record.threshold)}</td><td>${score(record.possibleScore)} / ${score(record.threshold)}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(record.reason||"—")}</td><td>${decisions}</td></tr>`;
     }).join(""):'<tr><td colspan="7" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>';
   }
@@ -103,40 +108,28 @@
       const files=[...$("files").files];
       if(!files.length)throw new Error("กรุณาเลือกไฟล์ JSON จาก SPU Learning Auditor");
       const payloads=await readFiles(files);
-      const result=AuditBridge.importPayload(payloads);
-      let remoteText="";
-      if(AuditApi.enabled()&&OOEAuth.getCredential()){
-        let uploaded=0;
-        for(const payload of payloads){await AuditApi.uploadResult(payload);uploaded++;}
-        remoteText=` · บันทึกฐานข้อมูลกลาง ${uploaded.toLocaleString("th-TH")} รายการ`;
-      }else if(AuditApi.enabled()){
-        remoteText=" · เก็บในเครื่องเท่านั้น กรุณาเข้าสู่ระบบจริงก่อนส่งฐานข้อมูลกลาง";
-      }
-      setMessage(`นำเข้า ${result.count.toLocaleString("th-TH")} รายการแล้ว · มีผลตรวจทั้งหมด ${result.total.toLocaleString("th-TH")} รายการ${remoteText}`);
-      $("files").value="";render();
+      let uploaded=0;
+      for(const payload of payloads){await AuditApi.uploadResult(payload);uploaded++;}
+      $("files").value="";
+      await loadResults(`นำเข้าและบันทึกฐานข้อมูลกลาง ${uploaded.toLocaleString("th-TH")} รายการแล้ว`);
     }catch(error){setMessage(error.message||String(error),"error");}
   });
 
-  $("rows").addEventListener("click",event=>{
+  $("rows").addEventListener("click",async event=>{
     const button=event.target.closest("button[data-decision]");if(!button)return;
-    const key=decodeURIComponent(button.dataset.key),decision=button.dataset.decision;
-    const records=AuditBridge.loadRecords();
-    const index=records.findIndex(record=>AuditBridge.runKey(record)===key);if(index<0)return;
-    records[index]={...records[index],internalStatus:decision,publicStatus:decision,reviewedAt:new Date().toISOString(),reason:"reviewer_decision"};
-    AuditBridge.saveRecords(records);setMessage(`บันทึกผล “${AuditBridge.LABELS[decision]}” แล้ว`);render();
+    const runId=button.dataset.runId,decision=button.dataset.decision;
+    try{button.disabled=true;await AuditApi.decideResult(runId,decision);await loadResults(`บันทึกผล “${AuditBridge.LABELS[decision]}” ลงระบบกลางแล้ว`);}
+    catch(error){button.disabled=false;setMessage(error.message||String(error),"error");}
   });
 
   $("export").addEventListener("click",()=>{
-    const rows=AuditBridge.latestRecords().map(AuditBridge.publishableRecord).filter(Boolean);
+    const rows=records.map(AuditBridge.publishableRecord).filter(Boolean);
     const url=URL.createObjectURL(new Blob(["\uFEFF"+AuditBridge.toCSV(rows)],{type:"text/csv;charset=utf-8"}));
     const link=document.createElement("a");link.href=url;link.download=`OOE-Auditor-Public-${new Date().toISOString().slice(0,10)}.csv`;link.click();URL.revokeObjectURL(url);
     setMessage(`ส่งออกข้อมูลสาธารณะ ${rows.length.toLocaleString("th-TH")} รายการแล้ว โดยไม่มีสถานะสีส้มและสีเทา`);
   });
 
-  $("clear").addEventListener("click",()=>{
-    if(!confirm("ล้างผลตรวจที่นำเข้าในเบราว์เซอร์นี้ทั้งหมดหรือไม่"))return;
-    AuditBridge.saveRecords([]);setMessage("ล้างข้อมูลทดลองแล้ว");render();
-  });
+  $("reloadResults").addEventListener("click",()=>loadResults("โหลดผลล่าสุดจากระบบกลางแล้ว").catch(error=>setMessage(error.message||String(error),"error")));
   $("filter").addEventListener("change",render);$("search").addEventListener("input",render);render();
   $("queueMissing").addEventListener("click",async()=>{
     try{if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueMissing("current");setQueueMessage(`สร้างคิวรายวิชาที่ยังไม่มีผล ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
@@ -167,4 +160,5 @@
   });
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
+  loadResults().catch(error=>setMessage(`โหลดผลจากระบบกลางไม่สำเร็จ: ${error.message||error}`,"error"));
 })();

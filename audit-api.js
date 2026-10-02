@@ -57,6 +57,8 @@
     courseHistory,
     evidence,
     session:()=>request("/v1/admin/session"),
+    adminResults:()=>request("/v1/admin/results"),
+    decideResult:(runId,decision)=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({decision})}),
     accessUsers:()=>request("/v1/admin/access-users"),
     saveAccessUser:(email,displayName="")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName})}),
     setAccessUserStatus:(email,active)=>request(`/v1/admin/access-users/${encodeURIComponent(email)}/status`,{method:"POST",body:JSON.stringify({active})}),
