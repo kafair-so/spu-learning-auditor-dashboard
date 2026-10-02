@@ -7,7 +7,24 @@
   function setMessage(text,type="ok"){$("message").textContent=text;$("message").className=`message ${type}`;}
   function setQueueMessage(text,type="ok"){$("queueMessage").textContent=text;$("queueMessage").className=`message ${type}`;}
   function setWorkerMessage(text,type="ok"){$("workerMessage").textContent=text;$("workerMessage").className=`message ${type}`;}
+  function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
   let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0;
+
+  async function loadAccessUsers(){
+    const result=await AuditApi.accessUsers();
+    const users=result.users||[];
+    $("accessList").innerHTML=users.length?users.map(user=>{
+      const protectedRow=user.role==="super_admin";
+      const action=protectedRow?'<span class="muted">บัญชีหลักของระบบ</span>':`<button type="button" data-access-email="${esc(user.email)}" data-access-active="${user.active?"false":"true"}">${user.active?"ปิดสิทธิ์":"เปิดสิทธิ์"}</button>`;
+      return `<div class="access-item"><div><strong>${esc(user.display_name||user.email)}</strong><div class="muted">${esc(user.email)}</div></div><span class="role-badge ${protectedRow?"":"admin"}">${protectedRow?"SUPER ADMIN":"ADMIN"}</span><span class="access-state ${user.active?"active":"inactive"}">${user.active?"ใช้งาน":"ปิดสิทธิ์"}</span><div>${action}</div></div>`;
+    }).join(""):'<div class="empty">ยังไม่มีรายชื่อผู้ดูแล</div>';
+  }
+
+  async function setupAccessManagement(){
+    if(window.OOEReviewer?.role!=="super_admin")return;
+    $("accessPanel").hidden=false;
+    try{await loadAccessUsers();}catch(error){setAccessMessage(error.message||String(error),"error");}
+  }
 
   const workerStateLabel=state=>state?.status==="running"?`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}`:state?.status==="result_ready"?"มีผลตรวจรอส่งเข้าฐานข้อมูล":state?.status==="idle"?"พร้อมรับงาน":"กำลังเริ่มเครื่องตรวจ";
   function scheduleWorker(ms=2500){clearTimeout(workerTimer);if(workerRunning)workerTimer=setTimeout(runWorkerStep,ms);}
@@ -131,5 +148,23 @@
   });
   $("workerStart").addEventListener("click",startWorker);
   $("workerStop").addEventListener("click",()=>{workerStopRequested=true;$("workerStop").disabled=true;setWorkerMessage("รับคำสั่งแล้ว · จะหยุดหลังวิชาปัจจุบันเสร็จ");});
+  $("accessForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    try{
+      const email=$("adminEmail").value.trim().toLowerCase();
+      const displayName=$("adminName").value.trim();
+      await AuditApi.saveAccessUser(email,displayName);
+      $("accessForm").reset();
+      await loadAccessUsers();
+      setAccessMessage(`เพิ่มสิทธิ์ Admin ให้ ${email} แล้ว`);
+    }catch(error){setAccessMessage(error.message||String(error),"error");}
+  });
+  $("accessList").addEventListener("click",async event=>{
+    const button=event.target.closest("button[data-access-email]");if(!button)return;
+    const email=button.dataset.accessEmail,active=button.dataset.accessActive==="true";
+    try{button.disabled=true;await AuditApi.setAccessUserStatus(email,active);await loadAccessUsers();setAccessMessage(`${active?"เปิด":"ปิด"}สิทธิ์ ${email} แล้ว`);}
+    catch(error){button.disabled=false;setAccessMessage(error.message||String(error),"error");}
+  });
   refreshWorkerStatus().catch(()=>{});
+  setupAccessManagement();
 })();

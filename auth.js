@@ -110,9 +110,11 @@
         cache: "no-store"
       });
       if (!response.ok) throw new Error("reviewer_required");
+      const session = await response.json();
       document.documentElement.classList.remove("auth-check");
-      renderUser(user);
-      return user;
+      const reviewerUser = { ...user, reviewer:true, role:session.role || "admin" };
+      renderUser(reviewerUser);
+      return reviewerUser;
     } catch (_) {
       document.documentElement.classList.remove("auth-check");
       document.body.innerHTML = '<main style="max-width:760px;margin:60px auto;padding:24px;font-family:Tahoma,sans-serif"><h1>ไม่มีสิทธิ์เข้าถึงหลังบ้านทีมตรวจ</h1><p>บัญชีนี้เปิดดูผลสำหรับอาจารย์ได้ แต่ไม่ได้อยู่ในรายชื่อทีมตรวจ</p><p><a href="index.html">กลับ Dashboard รายวิชา</a></p></main>';
