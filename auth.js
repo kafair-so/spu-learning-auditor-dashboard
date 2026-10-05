@@ -84,7 +84,7 @@
     const user = getUser();
     if (!user) {
       const current = location.pathname.split("/").pop() || "index.html";
-      const suffix = location.hash || "";
+      const suffix = (location.search || "") + (location.hash || "");
       location.replace(loginPage + "?next=" + encodeURIComponent(current + suffix));
       return null;
     }
