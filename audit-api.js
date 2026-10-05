@@ -17,6 +17,8 @@
       publicStatus:first(record.publicStatus,record.public_status,record.status,""),
       internalStatus:first(record.internalStatus,record.internal_status,""),
       confirmedScore:first(record.confirmedScore,record.score,null),
+      possibleScore:first(record.possibleScore,record.possible_score,null),
+      maxScore:first(record.maxScore,record.max_score,110),
       threshold:first(record.threshold,record.passingScore,record.passing_score,null),
       auditedAt:first(record.auditedAt,record.audited_at,""),
       publishedAt:first(record.publishedAt,record.published_at,""),
@@ -50,6 +52,14 @@
     if(!response.ok)throw new Error(`เปิดไฟล์หลักฐานไม่สำเร็จ (HTTP ${response.status})`);
     return response.json();
   }
+  async function adminEvidence(courseId,runId){
+    const payload=await request(`/v1/admin/evidence/${encodeURIComponent(courseId)}/${encodeURIComponent(runId)}`);
+    const signedUrl=payload.signedUrl||payload.signedURL||payload.signed_url;
+    if(!signedUrl)throw new Error("ไม่พบไฟล์หลักฐาน");
+    const response=await fetch(signedUrl,{cache:"no-store"});
+    if(!response.ok)throw new Error(`เปิดไฟล์หลักฐานไม่สำเร็จ (HTTP ${response.status})`);
+    return response.json();
+  }
   window.AuditApi={
     enabled,
     normalizeRecord,
@@ -58,6 +68,8 @@
     evidence,
     session:()=>request("/v1/admin/session"),
     adminResults:()=>request("/v1/admin/results"),
+    adminCourseHistory:courseId=>request(`/v1/admin/courses/${encodeURIComponent(courseId)}/history`),
+    adminEvidence,
     decideResult:(runId,decision)=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({decision})}),
     accessUsers:()=>request("/v1/admin/access-users"),
     saveAccessUser:(email,displayName="")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName})}),
