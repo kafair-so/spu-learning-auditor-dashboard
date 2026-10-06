@@ -1,6 +1,8 @@
 (() => {
   const cfg = window.OOE_AUTH_CONFIG || {};
   const loginPage = "login.html";
+  let renewalPromise = null;
+  let renewalTimer = null;
 
   function decodeJwt(token) {
     try {
@@ -53,6 +55,11 @@
     return token;
   }
 
+  function secondsUntilExpiry(token = getCredential()) {
+    const payload = decodeJwt(token);
+    return Math.floor(Number(payload?.exp || 0) - Date.now() / 1000);
+  }
+
   function getUser() {
     if (cfg.previewMode && (location.protocol === "file:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
       return { email:"preview@spu.ac.th", name:"Integration Preview", preview:true };
@@ -74,6 +81,95 @@
     localStorage.removeItem(key);
   }
 
+  function scheduleCredentialRenewal() {
+    clearTimeout(renewalTimer);
+    const seconds = secondsUntilExpiry();
+    if (seconds <= 0) return;
+    // Refresh before the API token expires. Google may still require an
+    // interaction; that case is handled as a safe worker pause, never a lost job.
+    renewalTimer = setTimeout(async () => {
+      const renewed = await refreshCredential({ interactive:false }).catch(() => false);
+      if (renewed) scheduleCredentialRenewal();
+      else renewalTimer = setTimeout(() => scheduleCredentialRenewal(), 60 * 1000);
+    }, Math.max(60, seconds - 10 * 60) * 1000);
+  }
+
+  function acceptCredential(response) {
+    const token = response && response.credential;
+    const user = validateCredential(token);
+    if (!user) return null;
+    saveCredential(token);
+    scheduleCredentialRenewal();
+    window.dispatchEvent(new CustomEvent("ooeauthrenewed", { detail:{ email:user.email } }));
+    return user;
+  }
+
+  function loadGoogleIdentity() {
+    if (window.google?.accounts?.id) return Promise.resolve(true);
+    if (!isConfigured() || !document.head) return Promise.resolve(false);
+
+    const existing = document.querySelector('script[data-ooe-google-identity]');
+    if (existing) {
+      return new Promise(resolve => {
+        existing.addEventListener("load", () => resolve(Boolean(window.google?.accounts?.id)), { once:true });
+        existing.addEventListener("error", () => resolve(false), { once:true });
+        setTimeout(() => resolve(Boolean(window.google?.accounts?.id)), 8000);
+      });
+    }
+
+    return new Promise(resolve => {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.dataset.ooeGoogleIdentity = "true";
+      script.onload = () => resolve(Boolean(window.google?.accounts?.id));
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+      setTimeout(() => resolve(Boolean(window.google?.accounts?.id)), 8000);
+    });
+  }
+
+  async function refreshCredential({ interactive = false } = {}) {
+    if (validateCredential(getCredential()) && secondsUntilExpiry() > 10 * 60) return true;
+    if (renewalPromise) return renewalPromise;
+    renewalPromise = loadGoogleIdentity().then(available => new Promise(resolve => {
+      if (!available || !window.google?.accounts?.id) { resolve(false); return; }
+      let settled = false;
+      const finish = value => { if (!settled) { settled = true; resolve(value); } };
+      try {
+        google.accounts.id.initialize({
+          client_id: cfg.googleClientId,
+          callback: response => finish(Boolean(acceptCredential(response))),
+          hd: cfg.allowedDomain,
+          auto_select: true,
+          cancel_on_tap_outside: !interactive
+        });
+        google.accounts.id.prompt(notification => {
+          if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+            if (!interactive) finish(false);
+          }
+        });
+        setTimeout(() => finish(false), interactive ? 30000 : 8000);
+      } catch (_) { finish(false); }
+    })).finally(() => { renewalPromise = null; });
+    return renewalPromise;
+  }
+
+  async function ensureFreshCredential({ interactive = false } = {}) {
+    // A still-valid credential must keep the current audit moving while a
+    // background renewal is attempted; do not interrupt a course mid-scan.
+    if (validateCredential(getCredential())) {
+      if (secondsUntilExpiry() <= 10 * 60) refreshCredential({ interactive:false }).catch(() => {});
+      return true;
+    }
+    return refreshCredential({ interactive });
+  }
+
+  function isSessionError(error) {
+    return /exp.? claim|timestamp check|jwt expired|missing_token|session_expired|เซสชันหมดอายุ|HTTP 401/i.test(String(error?.message || error));
+  }
+
   function dashboardUrl() {
     const next = new URLSearchParams(location.search).get("next");
     if (next && !next.includes("://") && !next.startsWith("//")) return next;
@@ -89,6 +185,7 @@
       return null;
     }
     document.documentElement.classList.remove("auth-check");
+    scheduleCredentialRenewal();
     window.addEventListener("DOMContentLoaded", () => renderUser(user));
     revealReviewerLinks();
     return user;
@@ -142,8 +239,7 @@
   }
 
   function handleGoogleCredential(response) {
-    const token = response && response.credential;
-    const user = validateCredential(token);
+    const user = acceptCredential(response);
 
     const msg = document.getElementById("loginMessage");
     if (!user) {
@@ -155,11 +251,11 @@
       return;
     }
 
-    saveCredential(token);
     location.replace(dashboardUrl());
   }
 
   function logout() {
+    clearTimeout(renewalTimer);
     clearCredential();
     try {
       if (window.google && google.accounts && google.accounts.id) {
@@ -219,6 +315,9 @@
     logout,
     getUser,
     getCredential,
+    refreshCredential,
+    ensureFreshCredential,
+    isSessionError,
     reviewerSession,
     revealReviewerLinks,
     handleGoogleCredential

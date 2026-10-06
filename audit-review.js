@@ -63,7 +63,19 @@
       await AuditWorker.start(claimed.job);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
       scheduleWorker();
-    }catch(error){setWorkerMessage(error.message||String(error),"error");scheduleWorker(5000);}
+    }catch(error){
+      if(OOEAuth.isSessionError(error)){
+        workerRunning=false;clearTimeout(workerTimer);workerTimer=null;
+        $("workerStart").disabled=true;$("workerStop").disabled=true;
+        setWorkerMessage("เซสชันหมดอายุ · กำลังขอสิทธิ์ใหม่จาก Google เพื่อทำคิวเดิมต่อ", "error");
+        const renewed=await OOEAuth.refreshCredential({interactive:true});
+        if(renewed){setWorkerMessage("ต่ออายุเซสชันแล้ว · กลับมาทำคิวเดิมต่อ");await startWorker();return;}
+        $("workerStart").disabled=false;
+        setWorkerMessage("เซสชันหมดอายุ · กรุณาเข้าสู่ระบบใหม่ แล้วกด “เปิดเครื่องตรวจ” ระบบจะกลับไปทำคิวเดิมโดยไม่ต้องสร้างคิวซ้ำ", "error");
+        return;
+      }
+      setWorkerMessage(error.message||String(error),"error");scheduleWorker(5000);
+    }
   }
   function stopWorker(message="หยุดรับงานใหม่แล้ว"){
     workerRunning=false;workerStopRequested=false;clearTimeout(workerTimer);workerTimer=null;

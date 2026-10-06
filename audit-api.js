@@ -29,11 +29,15 @@
   }
   async function request(path,options={}){
     if(!enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");
+    if(options.auth!==false){
+      const renewed=await OOEAuth.ensureFreshCredential({interactive:false});
+      if(!renewed)throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");
+    }
     const token=OOEAuth.getCredential();
-    if(options.auth!==false&&!token)throw new Error("กรุณาเข้าสู่ระบบใหม่");
+    if(options.auth!==false&&!token)throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");
     const {auth,...fetchOptions}=options;
     const response=await fetch(base+"/api"+path,{...fetchOptions,headers:{...(token?{Authorization:`Bearer ${token}`}:{ }),apikey:cfg.supabasePublishableKey||"",...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});
-    if(!response.ok){let detail={};try{detail=await response.json();}catch{}throw new Error(detail.error||`HTTP ${response.status}`);}
+    if(!response.ok){let detail={};try{detail=await response.json();}catch{}const message=detail.error||`HTTP ${response.status}`;if(response.status===401||OOEAuth.isSessionError(message))throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");throw new Error(message);}
     return response.json();
   }
   async function publicResults(){

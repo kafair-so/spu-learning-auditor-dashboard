@@ -30,7 +30,7 @@ An authorized reviewer creates a refresh batch. The API snapshots the identifier
 3. The API validates course identity, schema version, completion state, and evidence ownership.
 4. A green, yellow, or red result becomes the new public result immediately.
 5. Orange or gray stays private and preserves the previous public result until the review or rerun finishes.
-6. The API keeps the newest run and two prior runs per course. Adding a fourth run deletes or archives the oldest only after the new run is committed.
+6. The API keeps the newest run and two prior runs per course. Adding a fourth run retires the oldest only after the new run is committed; its private evidence is queued for deletion with retry. If the instructor-facing result points to an older run because newer scans are orange or gray, that published run and its evidence are protected until a newer public result replaces it.
 
 ## Required data collections
 
