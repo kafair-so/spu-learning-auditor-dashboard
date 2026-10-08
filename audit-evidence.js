@@ -4,6 +4,20 @@
   const date=value=>value?new Date(value).toLocaleString("th-TH",{dateStyle:"long",timeStyle:"short"}):"—";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
   const criterionStatus=value=>({pass:"ผ่าน",pass_tolerance:"ผ่านตามค่าผ่อนปรน",needs_review:"รอตรวจ",fail:"ไม่ผ่าน",not_applicable:"ไม่มีข้อบังคับ/ไม่มี"}[value]||value||"—");
+  const statusExplanation=(status,run)=>{
+    const confirmed=Number(run.confirmedScore)||0,possible=Number(run.possibleScore)||0,threshold=Number(run.threshold)||80;
+    if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`,actions:[]};
+    if(status==="needs_review")return {title:"รอตรวจโดยทีมตรวจ",text:`คะแนนยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ แต่คะแนนที่อาจได้ ${score(possible)} อาจถึง ${score(threshold)} คะแนน จึงต้องให้ทีมตรวจยืนยันหลักฐานก่อน`,actions:["ผู้สอนไม่ต้องส่งคำยืนยันในหน้านี้ แต่ควรเตรียมหลักฐานของหัวข้อที่ระบุว่า “รอตรวจ” ไว้ให้ทีมตรวจ"]};
+    if(status==="has_content")return {title:"มีเนื้อหา แต่ยังไม่ถึงเกณฑ์",text:`คะแนนที่อาจได้สูงสุด ${score(possible)} ยังต่ำกว่าเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`,actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่เพื่อยืนยันคะแนน"]};
+    if(status==="no_content")return {title:"ยังไม่พบองค์ประกอบรายวิชา",text:"ระบบตรวจสำเร็จแล้ว แต่ไม่พบองค์ประกอบที่ใช้คำนวณคะแนน",actions:["เพิ่มองค์ประกอบการสอนและหลักฐานในรายวิชา แล้วตรวจใหม่"]};
+    return {title:"ตรวจไม่สำเร็จ",text:"ระบบเข้าถึงหรืออ่านข้อมูลได้ไม่ครบ จึงยังสรุปผลรายวิชาไม่ได้",actions:["ตรวจสอบสิทธิ์เข้าถึงรายวิชาและลิงก์ภายนอก แล้วรันการตรวจใหม่"]};
+  };
+  const qualityMessage=run=>{
+    const failures=run.qualityGate?.failures;
+    if(!Array.isArray(failures)||!failures.length)return"";
+    const labels={schema_outdated:"รูปแบบผลตรวจเป็นรุ่นเก่า",score_model_outdated:"โมเดลคะแนนเป็นรุ่นเก่า",auditor_version_outdated:"Extension เป็นรุ่นเก่า",scan_incomplete:"การอ่านข้อมูลยังไม่ครบ"};
+    return `ข้อควรระวังคุณภาพข้อมูล: ${failures.map(value=>labels[value]||value).join(" · ")} — สถานะรายวิชายังคงอิงคะแนนและหลักฐานที่แสดงด้านล่าง`;
+  };
 
   function render(selected,history){
     $("course").textContent=[selected.courseCode,selected.courseProfile,selected.courseTitle].filter(Boolean).join(" · ")||selected.courseId;
@@ -19,13 +33,15 @@
       }).join("");
       const weekRows=weeks.map(week=>{
         const criteria=Array.isArray(week.criteria)?week.criteria:[];
-        const items=criteria.map(item=>`<li><strong>${esc(item.label||`หัวข้อที่ ${item.criterion||"—"}`)}</strong> — ${esc(criterionStatus(item.status))}<div class="muted">${esc(item.detail||"")}</div></li>`).join("");
+        const items=criteria.map(item=>`<li class="criterion ${esc(item.status||"")}"><strong>${esc(item.label||`หัวข้อที่ ${item.criterion||"—"}`)}</strong><span class="criterion-badge">${esc(criterionStatus(item.status))}</span><div class="muted">${esc(item.detail||"")}</div></li>`).join("");
         return `<section class="week-evidence"><h4>${esc(week.section||`ครั้งที่ ${week.session||"—"}`)}</h4><ol>${items}</ol></section>`;
       }).join("");
       const status=run.publicStatus||run.internalStatus;
       const maximum=Number.isFinite(Number(run.maxScore))?Number(run.maxScore):110;
       const possible=Number.isFinite(Number(run.possibleScore))?Math.min(maximum,Number(run.possibleScore)):null;
-      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><div class="facts"><div class="fact"><span>คะแนนยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div><div class="fact"><span>เกณฑ์ผ่าน</span><strong>${score(run.threshold)}</strong></div><div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString("th-TH")}</strong></div></div>${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.2</div>'}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
+      const explanation=statusExplanation(status,run),quality=qualityMessage(run);
+      const actions=explanation.actions.length?`<ul class="action-list">${explanation.actions.map(action=>`<li>${esc(action)}</li>`).join("")}</ul>`:"";
+      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section><div class="facts"><div class="fact"><span>คะแนนยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div><div class="fact"><span>เกณฑ์ผ่าน</span><strong>${score(run.threshold)} / ${score(maximum)}</strong></div><div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString("th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.10</div>'}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
     }).join("");
   }
 

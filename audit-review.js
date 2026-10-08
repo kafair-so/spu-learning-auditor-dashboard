@@ -104,9 +104,10 @@
       const runId=esc(record.runId||"");
       const courseId=encodeURIComponent(record.courseId||"");
       const evidence=record.runId&&record.courseId?`<a href="audit-evidence.html?admin=1&amp;courseId=${courseId}" target="_blank" rel="noopener">ดูผลตรวจ ↗</a>`:'<span class="muted">—</span>';
-      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.2 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">มีเนื้อหา</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">รอตรวจระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
+      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.10 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">มีเนื้อหา</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
       const possible=Number.isFinite(Number(record.possibleScore))?Math.min(maxScore(record),Number(record.possibleScore)):null;
-      const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":record.reason||"—";
+      const qualityWarning=record.qualityGate?.failures?.length?`ข้อควรระวังคุณภาพข้อมูล: ${record.qualityGate.failures.join(", ")}`:"";
+      const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":record.reason||qualityWarning||"—";
       return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td></tr>`;
     }).join(""):'<tr><td colspan="9" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>';
   }

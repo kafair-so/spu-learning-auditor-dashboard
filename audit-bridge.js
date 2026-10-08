@@ -82,7 +82,7 @@
 
   function validateRecord(record) {
     if(!record||typeof record!=="object")throw new Error("รูปแบบผลตรวจไม่ถูกต้อง");
-    if(record.recordType!=="spu_learning_audit_result"||Number(record.schemaVersion)!==1)throw new Error("ไฟล์นี้ไม่ใช่ผลจาก SPU Learning Auditor รุ่นที่รองรับ");
+    if(record.recordType!=="spu_learning_audit_result"||Number(record.schemaVersion)<1)throw new Error("ไฟล์นี้ไม่ใช่ผลจาก SPU Learning Auditor รุ่นที่รองรับ");
     if(!INTERNAL.has(record.internalStatus))throw new Error("สถานะผลตรวจไม่ถูกต้อง");
     if(!identityKeys(record).length)throw new Error("ผลตรวจไม่มี Course ID, Course Profile หรือรหัสวิชาสำหรับจับคู่");
   }
