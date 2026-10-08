@@ -4,6 +4,9 @@
   const badge=status=>status?`<span class="status ${AuditBridge.COLORS[status]}">${AuditBridge.LABELS[status]}</span>`:"—";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
+  document.head.insertAdjacentHTML("beforeend",`<style>
+    [hidden]{display:none!important}.theme-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 11px!important;border:1px solid rgba(255,255,255,.28)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.theme-knob{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#174e9b;font-size:13px}.extension-check{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;border:1px solid rgba(255,255,255,.35)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.extension-check.ok{background:#e5f7ee!important;border-color:#9cdeba!important;color:#08704a!important}.extension-check.error{background:#fff1f2!important;border-color:#f3b7be!important;color:#a61b2b!important}.theme-dark{--bg:#101928;--ink:#e5edf7;--muted:#9fb3c8;--line:#30445e;--navy:#e5edf7}.theme-dark .panel,.theme-dark .admin-drawer,.theme-dark .auth-chip{background:#182437;border-color:#30445e;box-shadow:0 10px 28px rgba(0,0,0,.22)}.theme-dark .audit-command-center{background:linear-gradient(135deg,#19283d,#15243a 64%,#123456)!important;border-color:#31527a!important}.theme-dark .command-title h2,.theme-dark .edition-card h3,.theme-dark .install-card h3,.theme-dark .table-head h2{color:#f4f8ff}.theme-dark .worker-console,.theme-dark .worker-progress,.theme-dark .queue-feedback{background:#132033;border-color:#345574;color:#cbdcf2}.theme-dark .progress-track{background:#2a405d}.theme-dark .drawer-link{background:#182437;color:#e5edf7}.theme-dark .drawer-link:hover,.theme-dark .drawer-link.active{background:#213955;color:#fff}.theme-dark .extension-compare .panel,.theme-dark .install-card,.theme-dark .update-note{background:#182437}.theme-dark .edition-card p,.theme-dark .install-card p,.theme-dark .update-note p{color:#b7c9df}
+  </style>`);
 
   function setMessage(text,type="ok"){$("message").textContent=text;$("message").className=`message ${type}`;}
   function setQueueMessage(text,type="ok"){$("queueMessage").textContent=text;$("queueMessage").className=`message ${type}`;}
@@ -123,6 +126,25 @@
     }catch(error){stopWorker(error.message||String(error));$("workerMessage").className="message error";}
   }
 
+  function setupExperience(){
+    const nav=document.querySelector(".topbar .nav");
+    const theme=document.createElement("button");theme.type="button";theme.className="theme-toggle";
+    const saved=localStorage.getItem("ooe-auditor-theme");
+    const applyTheme=dark=>{document.body.classList.toggle("theme-dark",dark);theme.innerHTML=`<span class="theme-knob">${dark?"☀":"☾"}</span>${dark?"โหมดสว่าง":"โหมดมืด"}`;};
+    applyTheme(saved==="dark");theme.addEventListener("click",()=>{const dark=!document.body.classList.contains("theme-dark");localStorage.setItem("ooe-auditor-theme",dark?"dark":"light");applyTheme(dark);});nav.prepend(theme);
+    document.querySelector('[data-admin-view="audit"] .menu-icon').textContent="⌕";
+    document.querySelector('[data-admin-view="reports"] .menu-icon').textContent="▤";
+    document.querySelector('[data-admin-view="extension"] .menu-icon').textContent="⇩";
+    const hero=document.querySelector(".extension-hero");
+    if(hero){
+      const copy=hero.querySelector("p");if(copy)copy.textContent="เครื่องมือตรวจรายวิชาออนไลน์ ช่วยรวบรวมผลตรวจและหลักฐานให้ทีมงานนำไปติดตามต่อได้อย่างเป็นระบบ";
+      const downloads=hero.querySelector(".extension-downloads");if(downloads){const links=downloads.querySelectorAll("a");if(links[0])links[0].innerHTML="⇩ ดาวน์โหลดสำหรับระบบกลาง";if(links[1])links[1].innerHTML="⇩ ดาวน์โหลดไว้ใช้บนเครื่อง";}
+      const note=hero.querySelector(".small");if(note)note.textContent="เลือกดาวน์โหลดตามรูปแบบการทำงานของคุณ แล้วติดตั้งตามคู่มือด้านล่าง";
+      const check=document.createElement("button");check.type="button";check.className="extension-check";check.innerHTML="⌕ ตรวจหา Extension บน Chrome เครื่องนี้";hero.querySelector(".extension-status").append(check);
+      check.addEventListener("click",async()=>{check.disabled=true;check.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ…';try{const ping=await AuditWorker.ping();check.className="extension-check ok";check.textContent=`✓ พบ Extension เวอร์ชัน ${ping.version||"พร้อมใช้งาน"}`;}catch(error){check.className="extension-check error";check.textContent="ไม่พบ Extension · ติดตั้งแล้วกดตรวจอีกครั้ง";}finally{check.disabled=false;}});
+    }
+  }
+
   function render(){
     for(const status of AuditBridge.INTERNAL)$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass").textContent=records.filter(record=>record.internalStatus===status).length.toLocaleString("th-TH");
     const query=$("search").value.trim().toLowerCase(),filter=$("filter").value;
@@ -206,6 +228,7 @@
   });
   $("menuToggle").addEventListener("click",openMenu);$("menuClose").addEventListener("click",closeMenu);$("adminScrim").addEventListener("click",closeMenu);
   document.querySelectorAll("[data-admin-view]").forEach(button=>button.addEventListener("click",()=>showAdminView(button.dataset.adminView)));
+  setupExperience();
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
   loadResults().catch(error=>setMessage(`โหลดผลจากระบบกลางไม่สำเร็จ: ${error.message||error}`,"error"));
