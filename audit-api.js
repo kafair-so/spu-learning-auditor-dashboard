@@ -74,7 +74,7 @@
     adminResults:()=>request("/v1/admin/results"),
     adminCourseHistory:courseId=>request(`/v1/admin/courses/${encodeURIComponent(courseId)}/history`),
     adminEvidence,
-    decideResult:(runId,decision)=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({decision})}),
+    decideResult:(runId,decision,confirmedScore,note="")=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({decision,confirmedScore,note})}),
     accessUsers:()=>request("/v1/admin/access-users"),
     saveAccessUser:(email,displayName="")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName})}),
     setAccessUserStatus:(email,active)=>request(`/v1/admin/access-users/${encodeURIComponent(email)}/status`,{method:"POST",body:JSON.stringify({active})}),
