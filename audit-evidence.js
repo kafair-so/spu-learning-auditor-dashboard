@@ -53,14 +53,14 @@
         return `<li><strong>${esc(item.section||"ไม่ระบุครั้ง")} — ${esc(item.title||item.kind||"หลักฐาน")}</strong>${destination}<div class="muted">${esc(item.accessNote||item.linkStatus||"")}</div></li>`;
       }).join("");
       const reviewKeys=new Set(reviewCandidates(run).filter(item=>item.kind==="criterion").map(item=>item.key));
-      const reviewChoice=(key,label)=>admin&&index===0&&reviewKeys.has(key)?`<label class="review-choice">ผลยืนยัน<select data-review-item data-review-key="${esc(key)}" aria-label="ยืนยัน ${esc(label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ให้คะแนน +1</option><option value="fail">ไม่ให้คะแนน</option></select></label>`:"";
+      const reviewChoice=(key,label,eligible=reviewKeys.has(key))=>admin&&index===0&&eligible?`<div class="review-choice" data-review-control><span>ยืนยันผลรายการนี้</span><div class="review-buttons" role="group" aria-label="ยืนยัน ${esc(label)}"><button type="button" class="review-pass" data-review-pick="pass" data-review-key="${esc(key)}">ผ่าน</button><button type="button" class="review-fail" data-review-pick="fail" data-review-key="${esc(key)}">ไม่ผ่าน</button></div><label class="review-edit">แก้ไขผล<select data-review-item data-review-key="${esc(key)}" aria-label="แก้ไขผล ${esc(label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label></div>`:"";
       const weekRows=weeks.map((week,weekIndex)=>{
         const criteria=Array.isArray(week.criteria)?week.criteria:[];
         const items=criteria.map((item,criterionIndex)=>{const label=item.label||`หัวข้อที่ ${item.criterion||"—"}`,key=`criterion:${week.session||weekIndex+1}:${item.criterion||criterionIndex+1}`;return `<li class="criterion ${esc(item.status||"")}"><strong>${esc(label)}</strong><span class="criterion-badge">${esc(criterionStatus(item.status))}</span><div class="muted">${esc(item.detail||"")}</div>${reviewChoice(key,label)}</li>`;}).join("");
         return `<section class="week-evidence"><h4>${esc(week.section||`ครั้งที่ ${week.session||"—"}`)}</h4><ol>${items}</ol></section>`;
       }).join("");
       const manualCandidates=reviewCandidates(run).filter(item=>item.kind==="manual");
-      const manualRows=admin&&index===0&&manualCandidates.length?`<section class="manual-review"><h3>ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน</h3><p class="muted">ข้อละ 1 คะแนน และระบบจะรวมคะแนนจากตัวเลือกนี้ทันที</p><ol>${manualCandidates.map(item=>`<li><strong>${esc(item.label)}</strong><div class="muted">${esc(item.detail)}</div><label class="review-choice">ผลยืนยัน<select data-review-item data-review-key="${esc(item.key)}" aria-label="ยืนยัน ${esc(item.label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ให้คะแนน +1</option><option value="fail">ไม่ให้คะแนน</option></select></label></li>`).join("")}</ol></section>`:"";
+      const manualRows=admin&&index===0&&manualCandidates.length?`<section class="manual-review"><h3>ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน</h3><p class="muted">ข้อละ 1 คะแนน และระบบจะรวมคะแนนจากตัวเลือกนี้ทันที</p><ol>${manualCandidates.map(item=>`<li><strong>${esc(item.label)}</strong><div class="muted">${esc(item.detail)}</div>${reviewChoice(item.key,item.label,true)}</li>`).join("")}</ol></section>`:"";
       const status=run.publicStatus||run.internalStatus;
       const maximum=Number.isFinite(Number(run.maxScore))?Number(run.maxScore):110;
       const possible=Number.isFinite(Number(run.possibleScore))?Math.min(maximum,Number(run.possibleScore)):null;
@@ -95,8 +95,15 @@
     if(result)result.textContent=done===picks.length?(total>=threshold?"ระบบคำนวณผล: ผ่าน":"ระบบคำนวณผล: มีเนื้อหา แต่ยังไม่ถึงเกณฑ์"):`เลือกแล้ว ${done.toLocaleString("th-TH")} / ${picks.length.toLocaleString("th-TH")} หัวข้อ`;
     if(button)button.disabled=done!==picks.length;
   };
-  $("runs").addEventListener("change",event=>{if(!event.target.matches("select[data-review-item]"))return;updateReviewTotal($("runs").querySelector("[data-review-run]"));});
+  const setReviewChoice=(control,value)=>{
+    const select=control?.querySelector("select[data-review-item]");if(!select)return;
+    select.value=value;control.classList.toggle("is-selected",Boolean(value));control.dataset.reviewValue=value;
+    control.querySelectorAll("button[data-review-pick]").forEach(button=>button.classList.toggle("selected",button.dataset.reviewPick===value));
+    updateReviewTotal($("runs").querySelector("[data-review-run]"));
+  };
+  $("runs").addEventListener("change",event=>{if(!event.target.matches("select[data-review-item]"))return;setReviewChoice(event.target.closest("[data-review-control]"),event.target.value);});
   $("runs").addEventListener("click",async event=>{
+    const pick=event.target.closest("button[data-review-pick]");if(pick){setReviewChoice(pick.closest("[data-review-control]"),pick.dataset.reviewPick);return;}
     const button=event.target.closest("button[data-review-save]");if(!button)return;
     const panel=button.closest("[data-review-run]"),error=panel?.querySelector("[data-review-error]");
     const note=panel?.querySelector("[data-review-note]")?.value||"";
