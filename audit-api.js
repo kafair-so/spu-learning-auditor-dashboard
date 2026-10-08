@@ -76,7 +76,7 @@
     adminEvidence,
     decideResult:(runId,reviewDecisions,note="")=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({reviewDecisions,note})}),
     accessUsers:()=>request("/v1/admin/access-users"),
-    saveAccessUser:(email,displayName="")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName})}),
+    saveAccessUser:(email,displayName="",role="admin")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName,role})}),
     setAccessUserStatus:(email,active)=>request(`/v1/admin/access-users/${encodeURIComponent(email)}/status`,{method:"POST",body:JSON.stringify({active})}),
     queueMissing:catalogVersion=>request("/v1/admin/jobs/missing",{method:"POST",body:JSON.stringify({catalogVersion})}),
     refreshAll:()=>request("/v1/admin/jobs/refresh",{method:"POST",body:"{}"}),

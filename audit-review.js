@@ -11,6 +11,18 @@
   function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
   let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[];
 
+  function showAdminView(view){
+    document.querySelectorAll("[data-admin-panel]").forEach(panel=>panel.hidden=panel.dataset.adminPanel!==view);
+    document.querySelectorAll("[data-admin-view]").forEach(button=>button.classList.toggle("active",button.dataset.adminView===view));
+    closeMenu();
+  }
+  function openMenu(){
+    $("adminDrawer").classList.add("open");$("adminScrim").hidden=false;$("menuToggle").setAttribute("aria-expanded","true");
+  }
+  function closeMenu(){
+    $("adminDrawer").classList.remove("open");$("adminScrim").hidden=true;$("menuToggle").setAttribute("aria-expanded","false");
+  }
+
   async function loadResults(message=""){
     const result=await AuditApi.adminResults();
     records=result.records||[];
@@ -30,7 +42,7 @@
 
   async function setupAccessManagement(){
     if(window.OOEReviewer?.role!=="super_admin")return;
-    $("accessPanel").hidden=false;
+    document.querySelectorAll("[data-super-admin-only]").forEach(item=>item.hidden=false);
     try{await loadAccessUsers();}catch(error){setAccessMessage(error.message||String(error),"error");}
   }
 
@@ -163,11 +175,11 @@
     event.preventDefault();
     try{
       const email=$("adminEmail").value.trim().toLowerCase();
-      const displayName=$("adminName").value.trim();
-      await AuditApi.saveAccessUser(email,displayName);
+      const displayName=$("adminName").value.trim(),role=$("adminRole").value;
+      await AuditApi.saveAccessUser(email,displayName,role);
       $("accessForm").reset();
       await loadAccessUsers();
-      setAccessMessage(`เพิ่มสิทธิ์ Admin ให้ ${email} แล้ว`);
+      setAccessMessage(`เพิ่มสิทธิ์ ${role==="super_admin"?"Super Admin":"Admin"} ให้ ${email} แล้ว`);
     }catch(error){setAccessMessage(error.message||String(error),"error");}
   });
   $("accessList").addEventListener("click",async event=>{
@@ -176,6 +188,8 @@
     try{button.disabled=true;await AuditApi.setAccessUserStatus(email,active);await loadAccessUsers();setAccessMessage(`${active?"เปิด":"ปิด"}สิทธิ์ ${email} แล้ว`);}
     catch(error){button.disabled=false;setAccessMessage(error.message||String(error),"error");}
   });
+  $("menuToggle").addEventListener("click",openMenu);$("menuClose").addEventListener("click",closeMenu);$("adminScrim").addEventListener("click",closeMenu);
+  document.querySelectorAll("[data-admin-view]").forEach(button=>button.addEventListener("click",()=>showAdminView(button.dataset.adminView)));
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
   loadResults().catch(error=>setMessage(`โหลดผลจากระบบกลางไม่สำเร็จ: ${error.message||error}`,"error"));
