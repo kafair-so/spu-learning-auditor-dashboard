@@ -9,6 +9,17 @@
   function setQueueMessage(text,type="ok"){$("queueMessage").textContent=text;$("queueMessage").className=`message ${type}`;}
   function setWorkerMessage(text,type="ok"){$("workerMessage").textContent=text;$("workerMessage").className=`message ${type}`;}
   function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
+  function setQueueBusy(busy,text="กำลังเตรียมคิวตรวจ…"){
+    $("queueFeedback").hidden=!busy;$("queueFeedbackText").textContent=text;
+    ["queueMissing","refreshAll"].forEach(id=>$(id).disabled=busy);
+  }
+  function setWorkerProgress(percent,label="กำลังเตรียมเครื่องตรวจ",visible=true){
+    const safe=Math.max(0,Math.min(100,Number(percent)||0));
+    $("workerProgress").hidden=!visible;$("workerProgressLabel").textContent=label;
+    $("workerProgressValue").textContent=`${Math.round(safe)}%`;$("workerProgressBar").style.width=`${Math.max(safe,visible?8:0)}%`;
+    $("workerChip").textContent=visible?"กำลังทำงาน":"พร้อมเชื่อมต่อ";
+    $("workerChip").classList.toggle("running",visible);
+  }
   let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[];
 
   function showAdminView(view){
@@ -58,6 +69,8 @@
       const state=await refreshWorkerStatus();
       if(state?.status==="running"||state?.status==="starting"){
         const progress=state.progress?.label?` · ${state.progress.label}`:"";
+        const value=Number.isFinite(Number(state.progress?.percent))?Number(state.progress.percent):45;
+        setWorkerProgress(value,`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress}`);
         setWorkerMessage(`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress} · ปิดหน้า Dashboard ได้ แต่ต้องเปิด Chrome ไว้`);
         scheduleWorker();return;
       }
@@ -66,6 +79,7 @@
         await AuditApi.submitResult(state.job.jobId,state.result);
         await AuditWorker.acknowledge(state.job.jobId);
         processedThisSession++;await loadResults();
+        setWorkerProgress(92,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`);
         setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
       }
@@ -73,6 +87,7 @@
       const claimed=await AuditApi.claimJob();
       if(!claimed.job){stopWorker(`คิวว่าง · รอบนี้ตรวจเสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);return;}
       await AuditWorker.start(claimed.job);
+      setWorkerProgress(12,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
       scheduleWorker();
     }catch(error){
@@ -91,7 +106,7 @@
   }
   function stopWorker(message="หยุดรับงานใหม่แล้ว"){
     workerRunning=false;workerStopRequested=false;clearTimeout(workerTimer);workerTimer=null;
-    $("workerStart").disabled=false;$("workerStop").disabled=true;setWorkerMessage(message);
+    $("workerStart").disabled=false;$("workerStop").disabled=true;setWorkerProgress(100,message,false);setWorkerMessage(message);
   }
   async function startWorker(){
     if(workerRunning)return;
@@ -101,6 +116,7 @@
       if(enabled?.granted===false)throw new Error("ยังไม่ได้อนุญาตให้ Extension เปิดผู้ให้บริการสื่อที่ต้องตรวจ");
       workerRunning=true;workerStopRequested=false;processedThisSession=0;
       $("workerStart").disabled=true;$("workerStop").disabled=false;
+      setWorkerProgress(5,"กำลังตรวจสอบ Extension และอ่านคิวกลาง");
       $("workerStatus").textContent=`Extension ${ping.version||""} พร้อมใช้งาน`;
       setWorkerMessage("เปิดเครื่องตรวจแล้ว · กำลังอ่านคิวกลาง");
       await runWorkerStep();
@@ -162,12 +178,12 @@
   $("reloadResults").addEventListener("click",()=>loadResults("โหลดผลล่าสุดจากระบบกลางแล้ว").catch(error=>setMessage(error.message||String(error),"error")));
   $("filter").addEventListener("change",render);$("search").addEventListener("input",render);render();
   $("queueMissing").addEventListener("click",async()=>{
-    try{if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueMissing("current");setQueueMessage(`สร้างคิวรายวิชาที่ยังไม่มีผล ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
-    catch(error){setQueueMessage(error.message||String(error),"error");}
+    try{setQueueBusy(true,"กำลังอ่านรายวิชาจากข้อมูลล่าสุดและสร้างคิว…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueMissing("current");setQueueMessage(`สร้างคิวรายวิชาที่ยังไม่มีผล ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
+    catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("refreshAll").addEventListener("click",async()=>{
-    try{if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.refreshAll();setQueueMessage(`สร้างชุดอัปเดต ${Number(result.total||0).toLocaleString("th-TH")} วิชา · รหัสชุด ${result.batchId}`);if(workerRunning)scheduleWorker(0);}
-    catch(error){setQueueMessage(error.message||String(error),"error");}
+    try{setQueueBusy(true,"กำลังสร้างคิวอัปเดตผลตรวจทั้งหมด…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.refreshAll();setQueueMessage(`สร้างชุดอัปเดต ${Number(result.total||0).toLocaleString("th-TH")} วิชา · รหัสชุด ${result.batchId}`);if(workerRunning)scheduleWorker(0);}
+    catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("workerStart").addEventListener("click",startWorker);
   $("workerStop").addEventListener("click",()=>{workerStopRequested=true;$("workerStop").disabled=true;setWorkerMessage("รับคำสั่งแล้ว · จะหยุดหลังวิชาปัจจุบันเสร็จ");});
