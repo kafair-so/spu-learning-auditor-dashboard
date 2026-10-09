@@ -68,6 +68,44 @@
     $("workerChip").classList.toggle("running",visible);
   }
   let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[];
+  let resultsState="loading",hasLoadedResults=false;
+  document.head.insertAdjacentHTML("beforeend",`<style>
+    @keyframes ooeShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+    @keyframes ooeEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ooeSpin{to{transform:rotate(360deg)}}
+    .ooe-skeleton{display:inline-block!important;width:65px;height:31px;border-radius:9px;background:linear-gradient(95deg,#dce7f5 20%,#f3f8ff 45%,#dce7f5 70%);background-size:220% 100%;animation:ooeShimmer 1.45s linear infinite;color:transparent!important}
+    .ooe-load-state{display:flex;align-items:center;gap:10px;margin:10px 0 14px;padding:12px 15px;background:#edf5ff;border:1px solid #bad5f5;border-radius:12px;color:#244e80;font-weight:700}
+    .ooe-load-state.is-error{background:#fff3f2;border-color:#ebaeaa;color:#a33636}
+    .ooe-loader{width:17px;height:17px;border:2px solid #b6d3f5;border-top-color:#2464c6;border-radius:50%;animation:ooeSpin .85s linear infinite;flex:none}
+    .ooe-load-state.is-error .ooe-loader{display:none}
+    .ooe-report-skeleton td{padding:17px!important}
+    .ooe-report-skeleton span{display:block;height:13px;width:75%;border-radius:6px;background:linear-gradient(95deg,#dce7f5,#f3f8ff,#dce7f5);background-size:220% 100%;animation:ooeShimmer 1.45s linear infinite}
+    .kpi,.table-panel,.audit-command-center,.admin-intro{animation:ooeEnter .5s ease-out both}
+    .kpi{transition:transform .22s ease,box-shadow .22s ease}
+    .kpi:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(25,57,101,.13)}
+    button:not(:disabled){transition:transform .18s ease,box-shadow .18s ease}
+    button:not(:disabled):active{transform:scale(.975)}
+    .theme-dark .ooe-load-state{background:#152e4b;border-color:#35608b;color:#d4eaff}
+    .theme-dark .ooe-load-state.is-error{background:#411f2b;border-color:#935364;color:#ffe0e0}
+    @media(prefers-reduced-motion:reduce){.ooe-skeleton,.ooe-report-skeleton span,.ooe-loader,.kpi,.table-panel,.audit-command-center,.admin-intro{animation:none!important}.kpi,button{transition:none!important}.kpi:hover{transform:none}}
+  </style>`);
+  function showResultState(state,detail=""){
+    resultsState=state;
+    let banner=$("ooeResultsState");
+    if(!banner){banner=document.createElement("div");banner.id="ooeResultsState";banner.className="ooe-load-state";banner.setAttribute("role","status");banner.setAttribute("aria-live","polite");document.querySelector('[data-admin-panel="reports"] .kpis')?.before(banner);}
+    banner.hidden=state==="ready";
+    banner.classList.toggle("is-error",state==="error");
+    banner.innerHTML='<span class="ooe-loader" aria-hidden="true"></span><span>'+esc(detail||(state==="loading"?"กำลังโหลดผลตรวจจากระบบกลาง…":state==="error"?"ไม่สามารถโหลดผลตรวจได้ กรุณาลองอีกครั้ง":""))+'</span>';
+    if(state==="loading"&&!hasLoadedResults){
+      for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}
+      $("count").textContent="กำลังโหลดข้อมูล…";
+      $("rows").innerHTML=Array.from({length:4},()=>'<tr class="ooe-report-skeleton"><td colspan="10"><span></span></td></tr>').join("");
+    }else if(state==="error"&&!hasLoadedResults){
+      for(const id of ["pass","review","content","none","failed"]){$(id).classList.remove("ooe-skeleton");$(id).textContent="—";}
+      $("count").textContent="ไม่สามารถโหลดข้อมูล";
+      $("rows").innerHTML='<tr><td colspan="10" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>';
+    }
+  }
 
   function showAdminView(view){
     document.querySelectorAll("[data-admin-panel]").forEach(panel=>panel.hidden=panel.dataset.adminPanel!==view);
@@ -83,14 +121,20 @@
   }
 
   async function loadResults(message=""){
+    showResultState("loading",hasLoadedResults?"กำลังอัปเดตผลตรวจล่าสุด…":"กำลังโหลดผลตรวจจากระบบกลาง…");
     const [result,catalogResult]=await Promise.allSettled([AuditApi.adminResults(),loadCourseCatalog()]);
-    if(result.status==="rejected")throw result.reason;
+    if(result.status==="rejected"){
+      showResultState("error",hasLoadedResults?"อัปเดตไม่สำเร็จ กำลังแสดงข้อมูลที่โหลดไว้ก่อนหน้า":"โหลดผลตรวจไม่สำเร็จ: "+String(result.reason?.message||result.reason));
+      throw result.reason;
+    }
     records=result.value.records||[];
+    hasLoadedResults=true;
     if(catalogResult.status==="rejected"){
       courseCatalog=[];
       setMessage("โหลดผลตรวจได้ แต่ยังโหลดบัญชีรายวิชากลางไม่ได้ จึงยังไม่ยืนยันจำนวน 160 รายวิชา","error");
     }
     render();
+    showResultState("ready");
     if(message)setMessage(message);
   }
 
@@ -286,6 +330,8 @@
   }
 
   function render(){
+    if(!hasLoadedResults){showResultState(resultsState);return;}
+    for(const id of ["pass","review","content","none","failed"])$(id).classList.remove("ooe-skeleton");
     const query=$("search").value.trim().toLowerCase(),filter=$("filter").value,group=$("filterGroup")?.value||"";
     const catalogRecords=currentCatalogRecords();
     const scoped=catalogRecords.filter(record=>!group||String(record.group||"").toUpperCase()===group);
