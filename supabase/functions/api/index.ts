@@ -194,11 +194,21 @@ function historyRunRecord(row) {
   };
 }
 
+// Only the current, validated catalog can enter reporting or worker queues.
+async function activeCatalogIds() {
+  const { data, error } = await db.from("courses").select("course_id")
+    .eq("active", true).in("course_group", ["GR", "GS"]).limit(5000);
+  if (error) throw error;
+  return (data || []).map(course => course.course_id);
+}
+
 async function listAdminResults(request) {
   await reviewer(request);
+  const activeIds = await activeCatalogIds();
+  if (!activeIds.length) return { records: [] };
   const { data, error } = await db.from("audit_runs").select(
     "run_id,external_audit_id,course_id,internal_status,public_status,score,passing_score,reviewable_points,has_content,audited_at,auditor_version,evidence_object_path,source_payload,internal_note,created_at,courses!audit_runs_course_id_fkey(course_code,course_title,course_group,faculty,instructor_names,course_url)"
-  ).order("audited_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
+  ).in("course_id", activeIds).order("audited_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
   if (error) throw error;
   const latest = new Map();
   for (const row of data || []) if (!latest.has(row.course_id)) latest.set(row.course_id, adminResultRecord(row));
@@ -370,19 +380,41 @@ async function syncCatalog() {
   if (!COURSE_CSV_URL) throw Object.assign(new Error("course_csv_url_not_configured"), { status: 500 });
   const response = await fetch(`${COURSE_CSV_URL}${COURSE_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`);
   if (!response.ok) throw new Error(`catalog_http_${response.status}`);
+  const rawRows = parseCsv(await response.text()).filter(row =>
+    ["GR", "GS"].includes(String(row.group || "").trim().toUpperCase()));
+  // Reject incomplete catalogs. Do not deactivate any courses on a broken CSV.
+  if (!rawRows.length || rawRows.some(row => !courseId(row))) {
+    throw Object.assign(new Error("invalid_or_incomplete_course_catalog"), { status: 422 });
+  }
+  const byId = new Map();
   const now = new Date().toISOString();
-  const courses = parseCsv(await response.text()).map(row => ({
-    course_id: courseId(row),
-    course_code: row.courseCode || null,
-    course_title: row.courseName || row.courseProfile || row.courseCode || "ไม่ระบุชื่อรายวิชา",
-    course_group: row.group || null,
-    faculty: row.faculty || null,
-    instructor_names: String(row.instructors || "").split(",").map(value => value.trim()).filter(Boolean),
-    course_url: row.courseLink || null,
-    active: true,
-    last_seen_at: now,
-    updated_at: now
-  })).filter(row => row.course_id);
+  for (const row of rawRows) {
+    const id = courseId(row);
+    const group = String(row.group || "").trim().toUpperCase();
+    if (byId.has(id) && (byId.get(id).course_code !== (row.courseCode || null) || byId.get(id).course_group !== group)) {
+      throw Object.assign(new Error("conflicting_duplicate_course_id"), { status: 422 });
+    }
+    byId.set(id, {
+      course_id: id,
+      course_code: row.courseCode || null,
+      course_title: row.courseName || row.courseProfile || row.courseCode || "ไม่ระบุชื่อรายวิชา",
+      course_group: group,
+      faculty: row.faculty || null,
+      instructor_names: String(row.instructors || "").split(",").map(value => value.trim()).filter(Boolean),
+      course_url: row.courseLink || null,
+      active: true,
+      last_seen_at: now,
+      updated_at: now
+    });
+  }
+  const courses = [...byId.values()];
+  // A sudden large shrink is more likely a partial CSV than a semester change.
+  const { count: previousCount, error: previousError } = await db.from("courses")
+    .select("course_id", { count: "exact", head: true }).eq("active", true).in("course_group", ["GR", "GS"]);
+  if (previousError) throw previousError;
+  if (previousCount && courses.length < previousCount * 0.8) {
+    throw Object.assign(new Error("catalog_shrink_requires_manual_review"), { status: 409 });
+  }
   // The old timestamp-based version changed on every button click.  That
   // made an unchanged Google Sheet look like a new catalog and produced
   // duplicate queue rows.  Fingerprint only the audit-relevant catalog data.
@@ -401,13 +433,31 @@ async function syncCatalog() {
     const { error } = await db.from("courses").upsert(courses.slice(offset, offset + 500), { onConflict: "course_id" });
     if (error) throw error;
   }
+  // Deactivate courses absent from this successfully saved snapshot.
+  const { data: stale, error: staleError } = await db.from("courses")
+    .select("course_id").eq("active", true).in("course_group", ["GR", "GS"])
+    .neq("catalog_version", version).limit(5000);
+  if (staleError) throw staleError;
+  const staleIds = (stale || []).map(item => item.course_id);
+  if (staleIds.length) {
+    const { error: disableError } = await db.from("courses")
+      .update({ active: false, updated_at: now }).in("course_id", staleIds);
+    if (disableError) throw disableError;
+    // Prevent already-queued jobs from starting for removed courses.
+    const { error: cancelError } = await db.from("audit_jobs")
+      .update({ status: "cancelled", last_error: "course_removed_from_active_catalog", updated_at: now })
+      .in("course_id", staleIds).eq("status", "queued");
+    if (cancelError) throw cancelError;
+  }
   return { version, count: courses.length };
 }
 
 async function publicResults() {
+  const activeIds = await activeCatalogIds();
+  if (!activeIds.length) return [];
   const { data, error } = await db.from("public_course_results")
     .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,status,score,audited_at,published_run_id,evidence_available,published_at")
-    .order("course_code", { ascending: true }).limit(5000);
+    .in("course_id", activeIds).order("course_code", { ascending: true }).limit(5000);
   if (error) throw error;
   return data || [];
 }
@@ -617,9 +667,16 @@ Deno.serve(async request => {
       if (error) throw error;
       if (!data?.job_id) return respond(request, 200, { job:null });
       const { data:course, error:courseError } = await db.from("courses")
-        .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
+        .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names,active")
         .eq("course_id", data.course_id).single();
       if (courseError) throw courseError;
+      if (!course.active || !["GR", "GS"].includes(String(course.course_group || "").toUpperCase())) {
+        const { error: cancelError } = await db.from("audit_jobs")
+          .update({ status:"cancelled", last_error:"course_not_in_active_catalog", updated_at:new Date().toISOString() })
+          .eq("job_id", data.job_id);
+        if (cancelError) throw cancelError;
+        return respond(request, 200, { job:null });
+      }
       return respond(request, 200, { job:{...data,course} });
     }
     if (request.method === "POST" && parts[0] === "v1" && parts[1] === "worker" && parts[2] === "jobs" && parts[4] === "result") {
