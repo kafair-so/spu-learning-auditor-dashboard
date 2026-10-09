@@ -18,6 +18,10 @@
     [hidden]{display:none!important}.theme-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 11px!important;border:1px solid rgba(255,255,255,.28)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.theme-knob{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#174e9b;font-size:13px}.extension-check{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;border:1px solid rgba(255,255,255,.35)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.extension-check.ok{background:#e5f7ee!important;border-color:#9cdeba!important;color:#08704a!important}.extension-check.error{background:#fff1f2!important;border-color:#f3b7be!important;color:#a61b2b!important}.theme-dark{--bg:#101928;--ink:#e5edf7;--muted:#9fb3c8;--line:#30445e;--navy:#e5edf7}.theme-dark .panel,.theme-dark .admin-drawer,.theme-dark .auth-chip{background:#182437;border-color:#30445e;box-shadow:0 10px 28px rgba(0,0,0,.22)}.theme-dark .audit-command-center{background:linear-gradient(135deg,#19283d,#15243a 64%,#123456)!important;border-color:#31527a!important}.theme-dark .command-title h2,.theme-dark .edition-card h3,.theme-dark .install-card h3,.theme-dark .table-head h2{color:#f4f8ff}.theme-dark .worker-console,.theme-dark .worker-progress,.theme-dark .queue-feedback{background:#132033;border-color:#345574;color:#cbdcf2}.theme-dark .progress-track{background:#2a405d}.theme-dark .drawer-link{background:#182437;color:#e5edf7}.theme-dark .drawer-link:hover,.theme-dark .drawer-link.active{background:#213955;color:#fff}.theme-dark .extension-compare .panel,.theme-dark .install-card,.theme-dark .update-note{background:#182437}.theme-dark .edition-card p,.theme-dark .install-card p,.theme-dark .update-note p{color:#b7c9df}
   </style>`);
   document.head.insertAdjacentHTML("beforeend",`<style>
+    .queue-overview{display:grid;grid-template-columns:minmax(180px,.8fr) minmax(0,1.5fr);gap:18px;margin:22px 0 0;position:relative;z-index:1}.queue-orbit{display:grid;place-items:center;min-height:190px;border:1px solid #d7e5f6;border-radius:18px;background:linear-gradient(145deg,#fff,#eef6ff)}.queue-orbit-ring{display:grid;place-items:center;width:126px;height:126px;border:10px solid #dceafb;border-top-color:#2d70ce;border-right-color:#5c9bea;border-radius:50%;text-align:center;box-shadow:inset 0 0 0 1px #c7d9ef}.queue-orbit-ring strong{display:block;color:#113b6a;font-size:28px;line-height:1}.queue-orbit-ring span{font-size:11px;color:#557493}.queue-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.queue-stat{padding:14px;border:1px solid #d9e6f5;border-radius:14px;background:#fff}.queue-stat span{display:block;color:#67809b;font-size:12px;font-weight:700}.queue-stat strong{display:block;margin-top:5px;color:#163d69;font-size:25px}.queue-stat.queue-stat-running{border-color:#b7d9ca;background:#edfaf4}.queue-stat.queue-stat-failed{border-color:#f1ccd0;background:#fff6f7}.queue-now{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding:13px 15px;border-left:4px solid #2a67c7;border-radius:12px;background:#f1f6fd;color:#214e80}.queue-now .pulse-dot{width:10px;height:10px;border-radius:50%;background:#2db47d;box-shadow:0 0 0 5px rgba(45,180,125,.12)}.queue-now small{display:block;margin-top:2px;color:#63809c}.monitor-board{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:18px}.monitor-feed{display:grid;gap:10px}.monitor-event{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:13px;border:1px solid #dbe7f5;border-radius:12px;background:#fff}.monitor-event .event-dot{width:10px;height:10px;margin-top:5px;border-radius:50%;background:#7d93aa}.monitor-event.completed .event-dot{background:#2aaf77}.monitor-event.running .event-dot{background:#347bd6}.monitor-event.failed .event-dot{background:#df5d70}.monitor-event small{color:#6d849d}.monitor-note{margin:0;padding:16px;border-radius:14px;background:#f5f9ff;border:1px solid #d5e4f7;color:#244d78;line-height:1.6}.preflight-card{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin:20px 0;padding:18px;border:1px solid #bcd8f4;border-radius:16px;background:linear-gradient(135deg,#edf6ff,#fbfdff);color:#143d69}.preflight-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#d7e9ff;color:#1d5eb4;font-size:21px}.preflight-card h3{margin:0 0 5px}.preflight-card p{margin:0;color:#506e8d;line-height:1.55}.preflight-list{grid-column:1/-1;display:grid;gap:8px;margin:2px 0 0;padding:0;list-style:none}.preflight-list li{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.8)}.preflight-list input{margin-top:3px;accent-color:#2265c7}.preflight-state{font-size:12px;font-weight:800;color:#8a6218}.preflight-list input:checked+span .preflight-state{color:#087650}.preflight-list label{cursor:pointer}.theme-dark .queue-orbit,.theme-dark .queue-stat,.theme-dark .monitor-event{background:#122238;border-color:#304c6a}.theme-dark .queue-orbit-ring{border-color:#315275;border-top-color:#61a6ff;border-right-color:#4187dc}.theme-dark .queue-orbit-ring strong,.theme-dark .queue-stat strong{color:#edf6ff}.theme-dark .queue-now,.theme-dark .monitor-note{background:#10243b;border-color:#315675;color:#d5e9ff}.theme-dark .preflight-card{background:linear-gradient(135deg,#102944,#142238);border-color:#315978;color:#edf6ff}.theme-dark .preflight-card p{color:#b6cce4}.theme-dark .preflight-list li{background:#0d1b2d}
+    @media(max-width:850px){.queue-overview,.monitor-board{grid-template-columns:1fr}.queue-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.queue-summary-grid{grid-template-columns:1fr 1fr}.queue-now{align-items:flex-start}}
+  </style>`);
+  document.head.insertAdjacentHTML("beforeend",`<style>
     /* A complete dark palette: every interactive surface keeps visible text and a clear action state. */
     body.theme-dark{--bg:#0b1322;--ink:#edf5ff;--muted:#aec0d5;--line:#2b4059;--navy:#edf5ff;background:radial-gradient(circle at 78% -15%,#173861 0,transparent 31%),#0b1322;color:var(--ink)}
     .theme-dark .topbar{background:linear-gradient(110deg,#0b1d35,#143c67)}
@@ -65,6 +69,7 @@
   function showAdminView(view){
     document.querySelectorAll("[data-admin-panel]").forEach(panel=>panel.hidden=panel.dataset.adminPanel!==view);
     document.querySelectorAll("[data-admin-view]").forEach(button=>button.classList.toggle("active",button.dataset.adminView===view));
+    if(view==="audit"||view==="monitor")loadQueueOverview().catch(error=>{if(view==="monitor"&&$("monitorFeed"))$("monitorFeed").innerHTML=`<div class="empty">โหลดสถานะระบบไม่สำเร็จ: ${esc(error.message||error)}</div>`;});
     closeMenu();
   }
   function openMenu(){
@@ -118,7 +123,7 @@
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
         await AuditApi.submitResult(state.job.jobId,state.result);
         await AuditWorker.acknowledge(state.job.jobId);
-        processedThisSession++;await loadResults();
+        processedThisSession++;await loadResults();await loadQueueOverview();
         setWorkerProgress(92,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`);
         setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
@@ -126,7 +131,7 @@
       if(workerStopRequested){stopWorker("หยุดแล้ว");return;}
       const claimed=await AuditApi.claimJob();
       if(!claimed.job){stopWorker(`คิวว่าง · รอบนี้ตรวจเสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);return;}
-      await AuditWorker.start(claimed.job);
+      await AuditWorker.start(claimed.job);await loadQueueOverview();
       setWorkerProgress(12,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
       scheduleWorker();
@@ -163,7 +168,61 @@
     }catch(error){stopWorker(error.message||String(error));$("workerMessage").className="message error";}
   }
 
+  let queueOverviewData=null;
+  const jobLabel=kind=>({missing:"คิวรายวิชาที่ยังไม่มีผล",refresh:"คิวอัปเดตผล",retry:"คิวตรวจใหม่"}[kind]||"คิวตรวจ");
+  const jobStatusLabel=status=>({queued:"รอเริ่มตรวจ",running:"กำลังตรวจ",completed:"ตรวจเสร็จ",failed:"ตรวจไม่สำเร็จ",cancelled:"ยกเลิก"}[status]||status||"ไม่ทราบสถานะ");
+  function operationalTime(value){return auditTime(value);}
+  function ensureOperationalViews(){
+    const auditPanel=document.querySelector('[data-admin-panel="audit"]');
+    const reportPanel=document.querySelector('[data-admin-panel="reports"]');
+    const reportMenu=document.querySelector('[data-admin-view="reports"]');
+    if(auditPanel&&!$("queueOverview")){
+      const host=$("queueMessage");
+      host.insertAdjacentHTML("afterend",`<section class="queue-overview" id="queueOverview" aria-live="polite"><div class="queue-orbit"><div class="queue-orbit-ring"><div><strong id="queueOutstanding">—</strong><span>งานคงเหลือ</span></div></div></div><div class="queue-summary-grid"><article class="queue-stat"><span>รอเริ่มตรวจ</span><strong id="queueQueued">—</strong></article><article class="queue-stat queue-stat-running"><span>กำลังตรวจ</span><strong id="queueRunning">—</strong></article><article class="queue-stat"><span>ตรวจเสร็จ</span><strong id="queueCompleted">—</strong></article><article class="queue-stat queue-stat-failed"><span>ตรวจไม่สำเร็จ</span><strong id="queueFailed">—</strong></article><div class="queue-now" id="queueNow"><span class="pulse-dot"></span><div><strong>กำลังอ่านสถานะคิวจากระบบกลาง…</strong><small>ข้อมูลนี้อัปเดตอัตโนมัติขณะเปิดหน้า</small></div></div></div></section>`);
+    }
+    if(reportMenu&&!document.querySelector('[data-admin-view="monitor"]')){
+      reportMenu.insertAdjacentHTML("afterend",`<button class="drawer-link" type="button" data-admin-view="monitor"><span class="menu-icon">◉</span><span>ติดตามระบบ</span><small>คิว ข้อผิดพลาด และประวัติ</small></button>`);
+    }
+    if(reportPanel&&!document.querySelector('[data-admin-panel="monitor"]')){
+      reportPanel.insertAdjacentHTML("afterend",`<section data-admin-panel="monitor" hidden><section class="admin-intro"><span class="section-icon indigo">◉</span><div><h2>ติดตามระบบ</h2><p>ดูงานที่กำลังทำ คิวคงเหลือ และเหตุขัดข้องล่าสุดจากระบบตรวจ</p></div></section><section class="monitor-board"><section class="panel"><div class="table-head"><div><h2>กิจกรรมล่าสุด</h2><p>แสดงคิวล่าสุดและสถานะที่เกิดขึ้นจริงจาก Supabase</p></div><button id="refreshMonitor" type="button">↻ อัปเดตสถานะ</button></div><div class="monitor-feed" id="monitorFeed"><div class="empty">กำลังโหลดสถานะระบบ…</div></div></section><aside class="panel"><h3>แนวทางเมื่อพบปัญหา</h3><p class="monitor-note">หากพบ “ตรวจไม่สำเร็จ” ให้เปิดรายงานข้อผิดพลาด ตรวจสาเหตุ แล้วเลือกสร้างคิว “ตรวจใหม่” เฉพาะรายวิชานั้น เพื่อลดการตรวจซ้ำที่ไม่จำเป็น</p></aside></section></section>`);
+    }
+    const extension=document.querySelector('[data-admin-panel="extension"]');
+    const hero=document.querySelector(".extension-hero");
+    if(extension&&hero&&!$("preflightCard")){
+      hero.insertAdjacentHTML("afterend",`<section class="preflight-card" id="preflightCard"><span class="preflight-icon">✓</span><div><h3>ก่อนเริ่มตรวจ ต้องเข้าสู่ระบบให้พร้อม</h3><p>Extension จะอ่านข้อมูลได้ตามสิทธิ์ของบัญชีที่ล็อกอินในแต่ละระบบเท่านั้น หากยังไม่เข้าสู่ระบบ การตรวจอาจหยุดหรือบันทึกเป็น “ตรวจไม่สำเร็จ”</p></div><ul class="preflight-list"><li><label><input type="checkbox" data-preflight="d-learning"> <span><b>เข้าสู่ระบบ d-Learning แล้ว</b><br><small>เปิดรายวิชาที่ต้องตรวจได้ด้วยบัญชีปัจจุบัน · <em class="preflight-state">รอการยืนยัน</em></small></span></label></li><li><label><input type="checkbox" data-preflight="i-learning"> <span><b>เข้าสู่ระบบ i-Learning แล้ว</b><br><small>เปิดเนื้อหา/ทรัพยากร i-Learning ที่เกี่ยวข้องได้ · <em class="preflight-state">รอการยืนยัน</em></small></span></label></li><li><label><input type="checkbox" data-preflight="extension"> <span><b>ติดตั้ง Extension และตรวจพบใน Chrome แล้ว</b><br><small>กดปุ่ม “ตรวจหา Extension” ด้านบนเพื่อทดสอบ · <em class="preflight-state">รอการยืนยัน</em></small></span></label></li></ul></section>`);
+      const saved=JSON.parse(localStorage.getItem("ooe-auditor-preflight")||"{}");
+      document.querySelectorAll("[data-preflight]").forEach(input=>{input.checked=Boolean(saved[input.dataset.preflight]);input.addEventListener("change",()=>{const next=JSON.parse(localStorage.getItem("ooe-auditor-preflight")||"{}");next[input.dataset.preflight]=input.checked;localStorage.setItem("ooe-auditor-preflight",JSON.stringify(next));renderPreflight();});});
+      renderPreflight();
+    }
+    document.querySelector('[data-admin-view="monitor"]')?.addEventListener("click",()=>showAdminView("monitor"));
+    $("refreshMonitor")?.addEventListener("click",()=>loadQueueOverview().catch(error=>{$("monitorFeed").innerHTML=`<div class="empty">โหลดสถานะระบบไม่สำเร็จ: ${esc(error.message||error)}</div>`;}));
+  }
+  function renderPreflight(){
+    document.querySelectorAll("[data-preflight]").forEach(input=>{const label=input.parentElement.querySelector(".preflight-state");if(label)label.textContent=input.checked?"ยืนยันแล้ว":"รอการยืนยัน";});
+  }
+  function renderQueueOverview(){
+    if(!queueOverviewData||!$("queueOverview"))return;
+    const overview=queueOverviewData;
+    $("queueOutstanding").textContent=Number(overview.outstanding||0).toLocaleString("th-TH");
+    $("queueQueued").textContent=Number(overview.queued||0).toLocaleString("th-TH");
+    $("queueRunning").textContent=Number(overview.running||0).toLocaleString("th-TH");
+    $("queueCompleted").textContent=Number(overview.completed||0).toLocaleString("th-TH");
+    $("queueFailed").textContent=Number(overview.failed||0).toLocaleString("th-TH");
+    const current=overview.current;
+    $("queueNow").innerHTML=current?`<span class="pulse-dot"></span><div><strong>กำลังตรวจ ${esc(current.courseCode||current.courseId)}</strong><small>${esc(current.courseTitle||jobLabel(current.kind))} · เริ่มเมื่อ ${esc(operationalTime(current.startedAt||current.createdAt))}</small></div>`:`<span class="pulse-dot" style="background:#94a7ba;box-shadow:none"></span><div><strong>${Number(overview.outstanding||0)?"มีงานรอเครื่องตรวจ":"ไม่มีงานรอในคิว"}</strong><small>อัปเดตล่าสุด ${esc(operationalTime(overview.generatedAt))}</small></div>`;
+    if($("monitorFeed")){
+      const recent=overview.recent||[];
+      $("monitorFeed").innerHTML=recent.length?recent.map(job=>`<article class="monitor-event ${esc(job.status)}"><span class="event-dot"></span><div><strong>${esc(job.courseCode||job.courseId)}</strong><div class="muted">${esc(job.courseTitle||jobLabel(job.kind))}${job.error?` · ${esc(job.error)}`:""}</div></div><small>${esc(jobStatusLabel(job.status))}<br>${esc(operationalTime(job.finishedAt||job.startedAt||job.createdAt))}</small></article>`).join(""):'<div class="empty">ยังไม่มีประวัติคิวตรวจ</div>';
+    }
+  }
+  async function loadQueueOverview(){
+    if(!AuditApi.enabled())return;
+    queueOverviewData=await AuditApi.queueOverview();
+    renderQueueOverview();
+  }
+
   function setupExperience(){
+    ensureOperationalViews();
     const commandActions=document.querySelector(".command-actions");
     if(commandActions&&!document.getElementById("queueScope")){
       commandActions.insertAdjacentHTML("beforebegin",`<div class="queue-picker"><div><span class="queue-picker-label">เลือกชุดรายวิชาที่ต้องการตรวจ</span><small>สร้างคิวเฉพาะรายการที่เลือก โดยไม่กระทบรายวิชาอื่น</small></div><select id="queueScope" aria-label="ชุดรายวิชาที่ต้องการตรวจ"><option value="missing">รายวิชาที่ยังไม่มีผลตรวจ</option><option value="gr">เฉพาะรายวิชา GR</option><option value="gs">เฉพาะรายวิชา GS</option><option value="failed">เฉพาะรายวิชาที่ตรวจไม่สำเร็จ</option><option value="retry">เฉพาะรายวิชาที่ต้องตรวจใหม่</option></select></div>`);
@@ -179,13 +238,15 @@
     document.querySelector('[data-admin-view="audit"] .menu-icon').textContent="⌕";
     document.querySelector('[data-admin-view="reports"] .menu-icon').textContent="▤";
     document.querySelector('[data-admin-view="extension"] .menu-icon').textContent="⇩";
+    const reportLink=document.querySelector('[data-admin-view="reports"]');
+    if(reportLink){const labels=reportLink.querySelectorAll("span");if(labels[1])labels[1].textContent="ผลตรวจรายวิชา";const hint=reportLink.querySelector("small");if(hint)hint.textContent="คะแนน หลักฐาน และสิ่งที่ต้องแก้";}
     const hero=document.querySelector(".extension-hero");
     if(hero){
       const copy=hero.querySelector("p");if(copy)copy.textContent="เครื่องมือตรวจรายวิชาออนไลน์ ช่วยรวบรวมผลตรวจและหลักฐานให้ทีมงานนำไปติดตามต่อได้อย่างเป็นระบบ";
       const downloads=hero.querySelector(".extension-downloads");if(downloads){const links=downloads.querySelectorAll("a");if(links[0])links[0].innerHTML="⇩ ดาวน์โหลดสำหรับระบบกลาง";if(links[1])links[1].innerHTML="⇩ ดาวน์โหลดไว้ใช้บนเครื่อง";}
       const note=hero.querySelector(".small");if(note)note.textContent="เลือกดาวน์โหลดตามรูปแบบการทำงานของคุณ แล้วติดตั้งตามคู่มือด้านล่าง";
       const check=document.createElement("button");check.type="button";check.className="extension-check";check.innerHTML="⌕ ตรวจหา Extension บน Chrome เครื่องนี้";hero.querySelector(".extension-status").append(check);
-      check.addEventListener("click",async()=>{check.disabled=true;check.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ…';try{const ping=await AuditWorker.ping();check.className="extension-check ok";check.textContent=`✓ พบ Extension เวอร์ชัน ${ping.version||"พร้อมใช้งาน"}`;}catch(error){check.className="extension-check error";check.textContent="ไม่พบ Extension · ติดตั้งแล้วกดตรวจอีกครั้ง";}finally{check.disabled=false;}});
+      check.addEventListener("click",async()=>{check.disabled=true;check.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ…';try{const ping=await AuditWorker.ping();check.className="extension-check ok";check.textContent=`✓ พบ Extension เวอร์ชัน ${ping.version||"พร้อมใช้งาน"}`;const input=document.querySelector('[data-preflight="extension"]');if(input){input.checked=true;input.dispatchEvent(new Event("change"));}}catch(error){check.className="extension-check error";check.textContent="ไม่พบ Extension · ติดตั้งแล้วกดตรวจอีกครั้ง";}finally{check.disabled=false;}});
     }
   }
 
@@ -264,11 +325,11 @@
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
-    try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("refreshAll").addEventListener("click",async()=>{
-    try{setQueueBusy(true,"กำลังสร้างคิวอัปเดตผลตรวจทั้งหมด…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.refreshAll();setQueueMessage(`สร้างชุดอัปเดต ${Number(result.total||0).toLocaleString("th-TH")} วิชา · รหัสชุด ${result.batchId}`);if(workerRunning)scheduleWorker(0);}
+    try{setQueueBusy(true,"กำลังสร้างคิวอัปเดตผลตรวจทั้งหมด…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.refreshAll();setQueueMessage(`สร้างชุดอัปเดต ${Number(result.total||0).toLocaleString("th-TH")} วิชา · รหัสชุด ${result.batchId}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("workerStart").addEventListener("click",startWorker);
@@ -296,4 +357,6 @@
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
   loadResults().catch(error=>setMessage(`โหลดผลจากระบบกลางไม่สำเร็จ: ${error.message||error}`,"error"));
+  loadQueueOverview().catch(()=>{});
+  setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();

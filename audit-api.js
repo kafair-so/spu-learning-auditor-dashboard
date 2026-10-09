@@ -72,6 +72,7 @@
     evidence,
     session:()=>request("/v1/admin/session"),
     adminResults:()=>request("/v1/admin/results"),
+    queueOverview:()=>request("/v1/admin/jobs/overview"),
     adminCourseHistory:courseId=>request(`/v1/admin/courses/${encodeURIComponent(courseId)}/history`),
     adminEvidence,
     decideResult:(runId,reviewDecisions,note="")=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({reviewDecisions,note})}),
