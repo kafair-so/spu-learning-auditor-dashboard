@@ -3,6 +3,7 @@
   const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const badge=status=>status?`<span class="status ${AuditBridge.COLORS[status]}">${AuditBridge.LABELS[status]}</span>`:"—";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
+  const CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
   const auditTime=value=>{const time=new Date(value||"");return Number.isNaN(time.valueOf())?"—":time.toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"});};
   const errorDetail=record=>{
@@ -57,10 +58,12 @@
     $("queueFeedback").hidden=!busy;$("queueFeedbackText").textContent=text;
     ["queueMissing","refreshAll","queueScope"].forEach(id=>{const element=$(id);if(element)element.disabled=busy;});
   }
-  function setWorkerProgress(percent,label="กำลังเตรียมเครื่องตรวจ",visible=true){
+  function setWorkerProgress(percent,label="กำลังเตรียมเครื่องตรวจ",visible=true,detail="",determinate=true){
     const safe=Math.max(0,Math.min(100,Number(percent)||0));
     $("workerProgress").hidden=!visible;$("workerProgressLabel").textContent=label;
-    $("workerProgressValue").textContent=`${Math.round(safe)}%`;$("workerProgressBar").style.width=`${Math.max(safe,visible?8:0)}%`;
+    $("workerProgressValue").textContent=detail||`${Math.round(safe)}%`;
+    $("workerProgressBar").classList.toggle("indeterminate",visible&&!determinate);
+    $("workerProgressBar").style.width=determinate?`${safe}%`:"100%";
     $("workerChip").textContent=visible?"กำลังทำงาน":"พร้อมเชื่อมต่อ";
     $("workerChip").classList.toggle("running",visible);
   }
@@ -80,8 +83,13 @@
   }
 
   async function loadResults(message=""){
-    const result=await AuditApi.adminResults();
-    records=result.records||[];
+    const [result,catalogResult]=await Promise.allSettled([AuditApi.adminResults(),loadCourseCatalog()]);
+    if(result.status==="rejected")throw result.reason;
+    records=result.value.records||[];
+    if(catalogResult.status==="rejected"){
+      courseCatalog=[];
+      setMessage("โหลดผลตรวจได้ แต่ยังโหลดบัญชีรายวิชากลางไม่ได้ จึงยังไม่ยืนยันจำนวน 160 รายวิชา","error");
+    }
     render();
     if(message)setMessage(message);
   }
@@ -114,8 +122,12 @@
       const state=await refreshWorkerStatus();
       if(state?.status==="running"||state?.status==="starting"){
         const progress=state.progress?.label?` · ${state.progress.label}`:"";
-        const value=Number.isFinite(Number(state.progress?.percent))?Number(state.progress.percent):45;
-        setWorkerProgress(value,`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress}`);
+        const completed=Number(state.progress?.current??state.progress?.completed??state.progress?.completedItems);
+        const total=Number(state.progress?.total??state.progress?.totalItems??state.progress?.elementTotal);
+        const hasElementProgress=Number.isFinite(completed)&&Number.isFinite(total)&&total>0;
+        const value=hasElementProgress?(completed/total)*100:0;
+        const detail=hasElementProgress?`ตรวจแล้ว ${Math.min(completed,total).toLocaleString("th-TH")} / ${total.toLocaleString("th-TH")} องค์ประกอบ`:"กำลังเตรียมข้อมูล";
+        setWorkerProgress(value,`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress}`,true,detail,hasElementProgress);
         setWorkerMessage(`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress} · ปิดหน้า Dashboard ได้ แต่ต้องเปิด Chrome ไว้`);
         scheduleWorker();return;
       }
@@ -124,7 +136,7 @@
         await AuditApi.submitResult(state.job.jobId,state.result);
         await AuditWorker.acknowledge(state.job.jobId);
         processedThisSession++;await loadResults();await loadQueueOverview();
-        setWorkerProgress(92,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`);
+        setWorkerProgress(100,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`,true,"ตรวจครบทุกองค์ประกอบแล้ว");
         setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
       }
@@ -132,7 +144,7 @@
       const claimed=await AuditApi.claimJob();
       if(!claimed.job){stopWorker(`คิวว่าง · รอบนี้ตรวจเสร็จ ${processedThisSession.toLocaleString("th-TH")} วิชา`);return;}
       await AuditWorker.start(claimed.job);await loadQueueOverview();
-      setWorkerProgress(12,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`);
+      setWorkerProgress(0,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`,true,"กำลังเปิดรายวิชาและอ่านองค์ประกอบ…",false);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
       scheduleWorker();
     }catch(error){
@@ -161,14 +173,43 @@
       if(enabled?.granted===false)throw new Error("ยังไม่ได้อนุญาตให้ Extension เปิดผู้ให้บริการสื่อที่ต้องตรวจ");
       workerRunning=true;workerStopRequested=false;processedThisSession=0;
       $("workerStart").disabled=true;$("workerStop").disabled=false;
-      setWorkerProgress(5,"กำลังตรวจสอบ Extension และอ่านคิวกลาง");
+      setWorkerProgress(0,"กำลังตรวจสอบ Extension และอ่านคิวกลาง",true,"กำลังเตรียมเครื่องตรวจ…",false);
       $("workerStatus").textContent=`Extension ${ping.version||""} พร้อมใช้งาน`;
       setWorkerMessage("เปิดเครื่องตรวจแล้ว · กำลังอ่านคิวกลาง");
       await runWorkerStep();
     }catch(error){stopWorker(error.message||String(error));$("workerMessage").className="message error";}
   }
 
-  let queueOverviewData=null;
+  let queueOverviewData=null,courseCatalog=[];
+  // Course Profile is the stable cross-system identity used by the Sheet and
+  // by the audit payload. Prefer it over an incidental Moodle URL/id.
+  const catalogKey=value=>AuditBridge.identityKeys(value).find(key=>key.startsWith("profile:"))||AuditBridge.identityKeys(value)[0]||"";
+  const courseFromCatalogRow=row=>({
+    group:String(row.group||"").trim().toUpperCase(),courseCode:String(row.courseCode||"").trim().toUpperCase(),
+    courseProfile:String(row.courseProfile||"").trim(),courseId:String(row.courseProfile||"").trim(),courseUrl:String(row.courseLink||"").trim()
+  });
+  async function loadCourseCatalog(){
+    const url=CATALOG_URL+(CATALOG_URL.includes("?")?"&":"?")+"_="+Date.now();
+    const response=await fetch(url,{cache:"no-store"});
+    if(!response.ok)throw new Error(`โหลดบัญชีรายวิชาไม่สำเร็จ (HTTP ${response.status})`);
+    const rows=AuditBridge.parseCSV(await response.text()).map(courseFromCatalogRow)
+      .filter(course=>course.group==="GR"||course.group==="GS");
+    const unique=new Map();
+    rows.forEach(course=>{const key=catalogKey(course);if(key)unique.set(key,course);});
+    courseCatalog=[...unique.values()];
+  }
+  function currentCatalogRecords(){
+    if(!courseCatalog.length)return records;
+    const catalogByKey=new Map(courseCatalog.map(course=>[catalogKey(course),course]));
+    const latest=new Map();
+    for(const record of records){
+      const key=AuditBridge.identityKeys(record).find(identity=>catalogByKey.has(identity));
+      if(!key)continue;
+      const previous=latest.get(key);
+      if(!previous||String(record.auditedAt||"").localeCompare(String(previous.auditedAt||""))>0)latest.set(key,{...record,group:catalogByKey.get(key).group||record.group});
+    }
+    return [...latest.values()];
+  }
   const jobLabel=kind=>({missing:"คิวรายวิชาที่ยังไม่มีผล",refresh:"คิวอัปเดตผล",retry:"คิวตรวจใหม่"}[kind]||"คิวตรวจ");
   const jobStatusLabel=status=>({queued:"รอเริ่มตรวจ",running:"กำลังตรวจ",completed:"ตรวจเสร็จ",failed:"ตรวจไม่สำเร็จ",cancelled:"ยกเลิก"}[status]||status||"ไม่ทราบสถานะ");
   function operationalTime(value){return auditTime(value);}
@@ -251,10 +292,13 @@
   }
 
   function render(){
-    for(const status of AuditBridge.INTERNAL)$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass").textContent=records.filter(record=>record.internalStatus===status).length.toLocaleString("th-TH");
-    const query=$("search").value.trim().toLowerCase(),filter=$("filter").value;
-    const rows=records.filter(record=>(!filter||record.internalStatus===filter)&&(!query||[record.courseCode,record.courseProfile,record.courseTitle,record.courseId].join(" ").toLowerCase().includes(query))).sort((a,b)=>String(b.auditedAt||"").localeCompare(String(a.auditedAt||"")));
-    $("count").textContent=`${rows.length.toLocaleString("th-TH")} รายการ`;
+    const query=$("search").value.trim().toLowerCase(),filter=$("filter").value,group=$("filterGroup")?.value||"";
+    const catalogRecords=currentCatalogRecords();
+    const scoped=catalogRecords.filter(record=>!group||String(record.group||"").toUpperCase()===group);
+    for(const status of AuditBridge.INTERNAL)$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass").textContent=scoped.filter(record=>record.internalStatus===status).length.toLocaleString("th-TH");
+    const rows=scoped.filter(record=>(!filter||record.internalStatus===filter)&&(!query||[record.courseCode,record.courseProfile,record.courseTitle,record.courseId].join(" ").toLowerCase().includes(query))).sort((a,b)=>String(b.auditedAt||"").localeCompare(String(a.auditedAt||"")));
+    const scopeLabel=group?` · ${group}`:"";
+    $("count").textContent=courseCatalog.length?`${rows.length.toLocaleString("th-TH")} ผลตรวจ จาก ${courseCatalog.length.toLocaleString("th-TH")} รายวิชา${scopeLabel}`:`${rows.length.toLocaleString("th-TH")} รายการ${scopeLabel}`;
     $("rows").innerHTML=rows.length?rows.map(record=>{
       const runId=esc(record.runId||"");
       const courseId=encodeURIComponent(record.courseId||"");
@@ -269,7 +313,7 @@
   }
 
   function failedRecords(){
-    return records.filter(record=>record.internalStatus==="audit_failed").sort((left,right)=>String(right.auditedAt||"").localeCompare(String(left.auditedAt||"")));
+    return currentCatalogRecords().filter(record=>record.internalStatus==="audit_failed").sort((left,right)=>String(right.auditedAt||"").localeCompare(String(left.auditedAt||"")));
   }
   function renderErrorReport(){
     const failed=failedRecords();
@@ -320,7 +364,7 @@
   });
 
   $("reloadResults").addEventListener("click",()=>loadResults("โหลดผลล่าสุดจากระบบกลางแล้ว").catch(error=>setMessage(error.message||String(error),"error")));
-  $("filter").addEventListener("change",render);$("search").addEventListener("input",render);render();
+  $("filter").addEventListener("change",render);$("filterGroup")?.addEventListener("change",render);$("search").addEventListener("input",render);render();
   $("openErrorReport").addEventListener("click",()=>{$("errorReport").hidden=false;renderErrorReport();$("errorReport").scrollIntoView({behavior:"smooth",block:"start"});});
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
