@@ -210,14 +210,27 @@ async function listAdminResults(request) {
 // as work that is still waiting to be checked.
 async function queueOverview(request) {
   await reviewer(request);
+  const { data: catalog, error: catalogError } = await db.from("courses")
+    .select("course_id").eq("active", true).limit(5000);
+  if (catalogError) throw catalogError;
+  const activeCourseIds = new Set((catalog || []).map(course => course.course_id));
   const { data, error } = await db.from("audit_jobs").select(
     "job_id,course_id,kind,status,priority,attempts,created_at,claimed_at,completed_at,last_error,batch_id,courses!audit_jobs_course_id_fkey(course_code,course_title,course_group)"
-  ).order("created_at", { ascending:false }).limit(1000);
+  ).order("created_at", { ascending:false }).limit(5000);
   if (error) throw error;
-  const jobs = data || [];
-  const count = status => jobs.filter(job => job.status === status).length;
-  const current = jobs.find(job => job.status === "running") || null;
-  const recent = jobs.slice(0, 8).map(job => ({
+  // A course can have historical jobs from previous audit rounds.  The
+  // operational board must show one current state per active course, never
+  // the accumulated number of old job rows.
+  const jobs = (data || []).filter(job => activeCourseIds.has(job.course_id));
+  const seenCourses = new Set();
+  const currentJobs = jobs.filter(job => {
+    if (seenCourses.has(job.course_id)) return false;
+    seenCourses.add(job.course_id);
+    return true;
+  });
+  const count = status => currentJobs.filter(job => job.status === status).length;
+  const current = currentJobs.find(job => job.status === "running") || null;
+  const recent = currentJobs.slice(0, 8).map(job => ({
     jobId: job.job_id,
     courseId: job.course_id,
     courseCode: job.courses?.course_code || job.course_id,
@@ -357,7 +370,7 @@ async function syncCatalog() {
   if (!COURSE_CSV_URL) throw Object.assign(new Error("course_csv_url_not_configured"), { status: 500 });
   const response = await fetch(`${COURSE_CSV_URL}${COURSE_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`);
   if (!response.ok) throw new Error(`catalog_http_${response.status}`);
-  const version = new Date().toISOString();
+  const now = new Date().toISOString();
   const courses = parseCsv(await response.text()).map(row => ({
     course_id: courseId(row),
     course_code: row.courseCode || null,
@@ -366,11 +379,24 @@ async function syncCatalog() {
     faculty: row.faculty || null,
     instructor_names: String(row.instructors || "").split(",").map(value => value.trim()).filter(Boolean),
     course_url: row.courseLink || null,
-    catalog_version: version,
     active: true,
-    last_seen_at: version,
-    updated_at: version
+    last_seen_at: now,
+    updated_at: now
   })).filter(row => row.course_id);
+  // The old timestamp-based version changed on every button click.  That
+  // made an unchanged Google Sheet look like a new catalog and produced
+  // duplicate queue rows.  Fingerprint only the audit-relevant catalog data.
+  const fingerprint = courses.map(course => ({
+    course_id: course.course_id,
+    course_code: course.course_code,
+    course_title: course.course_title,
+    course_group: course.course_group,
+    faculty: course.faculty,
+    course_url: course.course_url
+  })).sort((a, b) => a.course_id.localeCompare(b.course_id));
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(fingerprint)));
+  const version = `sheet-${Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 20)}`;
+  courses.forEach(course => { course.catalog_version = version; });
   for (let offset = 0; offset < courses.length; offset += 500) {
     const { error } = await db.from("courses").upsert(courses.slice(offset, offset + 500), { onConflict: "course_id" });
     if (error) throw error;
