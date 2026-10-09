@@ -4,6 +4,16 @@
   const badge=status=>status?`<span class="status ${AuditBridge.COLORS[status]}">${AuditBridge.LABELS[status]}</span>`:"—";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
+  const auditTime=value=>{const time=new Date(value||"");return Number.isNaN(time.valueOf())?"—":time.toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"});};
+  const errorDetail=record=>{
+    const source=record||{};
+    const detail=source.errorReport||source.errorDetails||source.errorMessage||source.error||source.failureReason||source.reason||source.internalNote||"";
+    if(typeof detail==="string"&&detail.trim())return detail.trim();
+    if(detail&&typeof detail==="object")return JSON.stringify(detail,null,2);
+    const quality=source.qualityGate?.failures;
+    return Array.isArray(quality)&&quality.length?quality.join(" · "):"ระบบไม่ได้บันทึกรายละเอียดสาเหตุไว้ กรุณาตรวจสอบการเชื่อมต่อและสั่งตรวจใหม่";
+  };
+  const csvCell=value=>`"${String(value??"").replace(/"/g,'""')}"`;
   document.head.insertAdjacentHTML("beforeend",`<style>
     [hidden]{display:none!important}.theme-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 11px!important;border:1px solid rgba(255,255,255,.28)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.theme-knob{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#174e9b;font-size:13px}.extension-check{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;border:1px solid rgba(255,255,255,.35)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.extension-check.ok{background:#e5f7ee!important;border-color:#9cdeba!important;color:#08704a!important}.extension-check.error{background:#fff1f2!important;border-color:#f3b7be!important;color:#a61b2b!important}.theme-dark{--bg:#101928;--ink:#e5edf7;--muted:#9fb3c8;--line:#30445e;--navy:#e5edf7}.theme-dark .panel,.theme-dark .admin-drawer,.theme-dark .auth-chip{background:#182437;border-color:#30445e;box-shadow:0 10px 28px rgba(0,0,0,.22)}.theme-dark .audit-command-center{background:linear-gradient(135deg,#19283d,#15243a 64%,#123456)!important;border-color:#31527a!important}.theme-dark .command-title h2,.theme-dark .edition-card h3,.theme-dark .install-card h3,.theme-dark .table-head h2{color:#f4f8ff}.theme-dark .worker-console,.theme-dark .worker-progress,.theme-dark .queue-feedback{background:#132033;border-color:#345574;color:#cbdcf2}.theme-dark .progress-track{background:#2a405d}.theme-dark .drawer-link{background:#182437;color:#e5edf7}.theme-dark .drawer-link:hover,.theme-dark .drawer-link.active{background:#213955;color:#fff}.theme-dark .extension-compare .panel,.theme-dark .install-card,.theme-dark .update-note{background:#182437}.theme-dark .edition-card p,.theme-dark .install-card p,.theme-dark .update-note p{color:#b7c9df}
   </style>`);
@@ -192,8 +202,25 @@
       const possible=Number.isFinite(Number(record.possibleScore))?Math.min(maxScore(record),Number(record.possibleScore)):null;
       const qualityWarning=record.qualityGate?.failures?.length?`ข้อควรระวังคุณภาพข้อมูล: ${record.qualityGate.failures.join(", ")}`:"";
       const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":record.reason||qualityWarning||"—";
-      return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td></tr>`;
-    }).join(""):'<tr><td colspan="9" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>';
+      return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td></tr>`;
+    }).join(""):'<tr><td colspan="10" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>';
+    if(!$("errorReport").hidden)renderErrorReport();
+  }
+
+  function failedRecords(){
+    return records.filter(record=>record.internalStatus==="audit_failed").sort((left,right)=>String(right.auditedAt||"").localeCompare(String(left.auditedAt||"")));
+  }
+  function renderErrorReport(){
+    const failed=failedRecords();
+    $("errorReportList").innerHTML=failed.length?failed.map(record=>`<article class="error-log-item"><div class="error-log-meta">${badge("audit_failed")}<strong>${esc(record.courseCode||record.courseId||"ไม่ทราบรายวิชา")}</strong><span class="error-log-time">ตรวจเมื่อ ${esc(auditTime(record.auditedAt))}</span></div><p class="error-log-detail">${esc(errorDetail(record))}</p><div class="muted">รหัสงาน: ${esc(record.runId||"—")} · Extension: ${esc(record.auditorVersion||"—")}</div></article>`).join(""):'<div class="empty">ยังไม่มีรายวิชาที่ตรวจไม่สำเร็จ</div>';
+  }
+  function downloadErrorReport(){
+    const header=["วันเวลาตรวจ","รหัสวิชา","กลุ่มรายวิชา","Course ID","สถานะ","รายละเอียดข้อผิดพลาด","รหัสงาน","เวอร์ชัน Extension"];
+    const csv=[header,...failedRecords().map(record=>[record.auditedAt||"",record.courseCode||"",record.group||"",record.courseId||"",AuditBridge.LABELS[record.internalStatus]||record.internalStatus||"",errorDetail(record),record.runId||"",record.auditorVersion||""])]
+      .map(row=>row.map(csvCell).join(",")).join("\r\n");
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
+    const link=document.createElement("a");link.href=url;link.download=`OOE-Auditor-Error-Report-${new Date().toISOString().slice(0,10)}.csv`;link.click();URL.revokeObjectURL(url);
+    setMessage(`ดาวน์โหลดรายงานข้อผิดพลาด ${failedRecords().length.toLocaleString("th-TH")} รายการแล้ว`);
   }
 
   async function readFiles(files){
@@ -233,6 +260,9 @@
 
   $("reloadResults").addEventListener("click",()=>loadResults("โหลดผลล่าสุดจากระบบกลางแล้ว").catch(error=>setMessage(error.message||String(error),"error")));
   $("filter").addEventListener("change",render);$("search").addEventListener("input",render);render();
+  $("openErrorReport").addEventListener("click",()=>{$("errorReport").hidden=false;renderErrorReport();$("errorReport").scrollIntoView({behavior:"smooth",block:"start"});});
+  $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
+  $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
     try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
