@@ -200,13 +200,18 @@
   }
   function currentCatalogRecords(){
     if(!courseCatalog.length)return records;
-    const catalogByKey=new Map(courseCatalog.map(course=>[catalogKey(course),course]));
+    // The worker can identify a course by Moodle ID, Course Profile, or
+    // group+course code. Keep every catalog identity so valid stored results
+    // are not hidden when their identifier format differs from the Sheet.
+    const catalogByIdentity=new Map();
+    for(const course of courseCatalog)for(const identity of AuditBridge.identityKeys(course))catalogByIdentity.set(identity,course);
     const latest=new Map();
     for(const record of records){
-      const key=AuditBridge.identityKeys(record).find(identity=>catalogByKey.has(identity));
-      if(!key)continue;
+      const identity=AuditBridge.identityKeys(record).find(key=>catalogByIdentity.has(key));
+      if(!identity)continue;
+      const course=catalogByIdentity.get(identity),key=catalogKey(course);
       const previous=latest.get(key);
-      if(!previous||String(record.auditedAt||"").localeCompare(String(previous.auditedAt||""))>0)latest.set(key,{...record,group:catalogByKey.get(key).group||record.group});
+      if(!previous||String(record.auditedAt||"").localeCompare(String(previous.auditedAt||""))>0)latest.set(key,{...record,group:course.group||record.group});
     }
     return [...latest.values()];
   }
