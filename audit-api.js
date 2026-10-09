@@ -79,6 +79,7 @@
     saveAccessUser:(email,displayName="",role="admin")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName,role})}),
     setAccessUserStatus:(email,active)=>request(`/v1/admin/access-users/${encodeURIComponent(email)}/status`,{method:"POST",body:JSON.stringify({active})}),
     queueMissing:catalogVersion=>request("/v1/admin/jobs/missing",{method:"POST",body:JSON.stringify({catalogVersion})}),
+    queueSelected:scope=>request("/v1/admin/jobs/selected",{method:"POST",body:JSON.stringify({scope})}),
     refreshAll:()=>request("/v1/admin/jobs/refresh",{method:"POST",body:"{}"}),
     uploadResult:result=>request("/v1/admin/results",{method:"POST",body:JSON.stringify(result)}),
     claimJob:()=>request("/v1/worker/jobs/claim",{method:"POST",body:"{}"}),

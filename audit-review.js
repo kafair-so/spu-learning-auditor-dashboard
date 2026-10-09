@@ -41,7 +41,7 @@
   function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
   function setQueueBusy(busy,text="กำลังเตรียมคิวตรวจ…"){
     $("queueFeedback").hidden=!busy;$("queueFeedbackText").textContent=text;
-    ["queueMissing","refreshAll"].forEach(id=>$(id).disabled=busy);
+    ["queueMissing","refreshAll","queueScope"].forEach(id=>{const element=$(id);if(element)element.disabled=busy;});
   }
   function setWorkerProgress(percent,label="กำลังเตรียมเครื่องตรวจ",visible=true){
     const safe=Math.max(0,Math.min(100,Number(percent)||0));
@@ -154,6 +154,13 @@
   }
 
   function setupExperience(){
+    const commandActions=document.querySelector(".command-actions");
+    if(commandActions&&!document.getElementById("queueScope")){
+      commandActions.insertAdjacentHTML("beforebegin",`<div class="queue-picker"><div><span class="queue-picker-label">เลือกชุดรายวิชาที่ต้องการตรวจ</span><small>สร้างคิวเฉพาะรายการที่เลือก โดยไม่กระทบรายวิชาอื่น</small></div><select id="queueScope" aria-label="ชุดรายวิชาที่ต้องการตรวจ"><option value="missing">รายวิชาที่ยังไม่มีผลตรวจ</option><option value="gr">เฉพาะรายวิชา GR</option><option value="gs">เฉพาะรายวิชา GS</option><option value="failed">เฉพาะรายวิชาที่ตรวจไม่สำเร็จ</option><option value="retry">เฉพาะรายวิชาที่ต้องตรวจใหม่</option></select></div>`);
+      const queueButton=$("queueMissing"),queueScope=$("queueScope");
+      const labels={missing:"ตรวจวิชาที่ยังไม่มีผล",gr:"ตรวจเฉพาะรายวิชา GR",gs:"ตรวจเฉพาะรายวิชา GS",failed:"ตรวจวิชาที่ตรวจไม่สำเร็จ",retry:"ตรวจวิชาที่ต้องตรวจใหม่"};
+      queueScope.addEventListener("change",()=>{queueButton.innerHTML=`<span>⌕</span> ${labels[queueScope.value]}`;});
+    }
     const nav=document.querySelector(".topbar .nav");
     const theme=document.createElement("button");theme.type="button";theme.className="theme-toggle";
     const saved=localStorage.getItem("ooe-auditor-theme");
@@ -227,7 +234,7 @@
   $("reloadResults").addEventListener("click",()=>loadResults("โหลดผลล่าสุดจากระบบกลางแล้ว").catch(error=>setMessage(error.message||String(error),"error")));
   $("filter").addEventListener("change",render);$("search").addEventListener("input",render);render();
   $("queueMissing").addEventListener("click",async()=>{
-    try{setQueueBusy(true,"กำลังอ่านรายวิชาจากข้อมูลล่าสุดและสร้างคิว…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueMissing("current");setQueueMessage(`สร้างคิวรายวิชาที่ยังไม่มีผล ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("refreshAll").addEventListener("click",async()=>{
