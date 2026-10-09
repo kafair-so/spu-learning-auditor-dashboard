@@ -184,9 +184,10 @@
   // Course Profile is the stable cross-system identity used by the Sheet and
   // by the audit payload. Prefer it over an incidental Moodle URL/id.
   const catalogKey=value=>AuditBridge.identityKeys(value).find(key=>key.startsWith("profile:"))||AuditBridge.identityKeys(value)[0]||"";
+  const catalogCourseId=url=>{try{return new URL(String(url||"")).searchParams.get("id")||"";}catch(_){return "";}};
   const courseFromCatalogRow=row=>({
     group:String(row.group||"").trim().toUpperCase(),courseCode:String(row.courseCode||"").trim().toUpperCase(),
-    courseProfile:String(row.courseProfile||"").trim(),courseId:String(row.courseProfile||"").trim(),courseUrl:String(row.courseLink||"").trim()
+    courseProfile:String(row.courseProfile||"").trim(),courseId:catalogCourseId(row.courseLink),courseUrl:String(row.courseLink||"").trim()
   });
   async function loadCourseCatalog(){
     const url=CATALOG_URL+(CATALOG_URL.includes("?")?"&":"?")+"_="+Date.now();
