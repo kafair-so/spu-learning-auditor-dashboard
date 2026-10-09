@@ -199,22 +199,10 @@
     rows.forEach(course=>{const key=catalogKey(course);if(key)unique.set(key,course);});
     courseCatalog=[...unique.values()];
   }
+  // The backend /v1/admin/results already limits records to active courses.
+  // Avoid hiding valid results through a second Google Sheets identity match.
   function currentCatalogRecords(){
-    if(!courseCatalog.length)return records;
-    // The worker can identify a course by Moodle ID, Course Profile, or
-    // group+course code. Keep every catalog identity so valid stored results
-    // are not hidden when their identifier format differs from the Sheet.
-    const catalogByIdentity=new Map();
-    for(const course of courseCatalog)for(const identity of AuditBridge.identityKeys(course))catalogByIdentity.set(identity,course);
-    const latest=new Map();
-    for(const record of records){
-      const identity=AuditBridge.identityKeys(record).find(key=>catalogByIdentity.has(key));
-      if(!identity)continue;
-      const course=catalogByIdentity.get(identity),key=catalogKey(course);
-      const previous=latest.get(key);
-      if(!previous||String(record.auditedAt||"").localeCompare(String(previous.auditedAt||""))>0)latest.set(key,{...record,group:course.group||record.group});
-    }
-    return [...latest.values()];
+    return records;
   }
   const jobLabel=kind=>({missing:"คิวรายวิชาที่ยังไม่มีผล",refresh:"คิวอัปเดตผล",retry:"คิวตรวจใหม่"}[kind]||"คิวตรวจ");
   const jobStatusLabel=status=>({queued:"รอเริ่มตรวจ",running:"กำลังตรวจ",completed:"ตรวจเสร็จ",failed:"ตรวจไม่สำเร็จ",cancelled:"ยกเลิก"}[status]||status||"ไม่ทราบสถานะ");
