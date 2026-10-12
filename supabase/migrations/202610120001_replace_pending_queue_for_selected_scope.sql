@@ -76,3 +76,9 @@ begin
 end;
 $$;
 
+-- The Edge Function calls this RPC with the service-role client after it has
+-- authenticated a reviewer. Do not expose this queue-changing function as a
+-- directly callable public RPC.
+revoke execute on function public.enqueue_selected_audits(text, text) from public, anon, authenticated;
+grant execute on function public.enqueue_selected_audits(text, text) to service_role;
+
