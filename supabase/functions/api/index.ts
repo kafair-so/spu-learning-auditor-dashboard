@@ -194,6 +194,31 @@ function historyRunRecord(row) {
   };
 }
 
+// Public report links expose only published scoring fields. The full source
+// payload and reviewer-only notes stay behind the admin endpoints.
+function publicHistoryRunRecord(row) {
+  const source = row.source_payload || {};
+  const score = row.score == null ? null : Number(row.score);
+  const reviewable = Number(row.reviewable_points || 0);
+  const scoreModel = String(source.scoreModel || "");
+  const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
+  return {
+    runId: row.run_id,
+    auditedAt: row.audited_at,
+    auditorVersion: row.auditor_version || "",
+    internalStatus: row.internal_status,
+    publicStatus: row.public_status || "",
+    confirmedScore: score,
+    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(AUDIT_MAX_SCORE, score + reviewable),
+    maxScore: AUDIT_MAX_SCORE,
+    scoreModel,
+    scoreNeedsRefresh,
+    threshold: row.passing_score == null ? null : Number(row.passing_score),
+    evidenceAvailable: Boolean(row.evidence_object_path),
+    qualityGate: source.qualityGate || null
+  };
+}
+
 // Only the current, validated catalog can enter reporting or worker queues.
 async function activeCatalogIds() {
   const { data, error } = await db.from("courses").select("course_id")
@@ -481,11 +506,10 @@ async function publicHistory(courseId) {
     .eq("course_id", courseId).not("public_status", "is", null)
     .order("audited_at", { ascending: false }).limit(3);
   if (error) throw error;
-  return { ...publicRow, runs: (runs || []).map(historyRunRecord) };
+  return { ...publicRow, runs: (runs || []).map(publicHistoryRunRecord) };
 }
 
 async function evidence(request, courseId, runId) {
-  await identity(request);
   const { data: run, error } = await db.from("audit_runs")
     .select("evidence_object_path,public_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
@@ -614,8 +638,8 @@ Deno.serve(async request => {
       return respond(request, 200, { courses: await publicResults() }, "public, max-age=60, stale-while-revalidate=300");
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "public" && parts[2] === "courses" && parts[4] === "history") {
-      await identity(request); const result = await publicHistory(parts[3]);
-      return result ? respond(request, 200, result, "private, max-age=60") : respond(request, 404, { error: "course_not_found" });
+      const result = await publicHistory(parts[3]);
+      return result ? respond(request, 200, result, "public, max-age=60, stale-while-revalidate=300") : respond(request, 404, { error: "course_not_found" });
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "evidence" && parts.length === 4) {
       const result = await evidence(request, parts[2], parts[3]);
