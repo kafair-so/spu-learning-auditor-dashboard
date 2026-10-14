@@ -207,7 +207,7 @@ function publicHistoryRunRecord(row) {
     auditedAt: row.audited_at,
     auditorVersion: row.auditor_version || "",
     internalStatus: row.internal_status,
-    publicStatus: row.public_status || "",
+    publicStatus: row.public_status || row.internal_status || "",
     confirmedScore: score,
     possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(AUDIT_MAX_SCORE, score + reviewable),
     maxScore: AUDIT_MAX_SCORE,
@@ -498,22 +498,37 @@ async function publicResults() {
 }
 
 async function publicHistory(courseId) {
-  const { data: publicRow, error: publicError } = await db.from("public_course_results").select("*").eq("course_id", courseId).maybeSingle();
-  if (publicError) throw publicError;
-  if (!publicRow) return null;
+  const { data: course, error: courseError } = await db.from("courses")
+    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
+    .eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+  if (courseError) throw courseError;
+  if (!course) return null;
   const { data: runs, error } = await db.from("audit_runs")
     .select("run_id,audited_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
-    .eq("course_id", courseId).not("public_status", "is", null)
+    .eq("course_id", courseId)
     .order("audited_at", { ascending: false }).limit(3);
   if (error) throw error;
-  return { ...publicRow, runs: (runs || []).map(publicHistoryRunRecord) };
+  return {
+    courseId: course.course_id,
+    courseCode: course.course_code || "",
+    courseTitle: course.course_title || "",
+    group: course.course_group || "",
+    faculty: course.faculty || "",
+    instructors: course.instructor_names || [],
+    courseUrl: course.course_url || "",
+    runs: (runs || []).map(publicHistoryRunRecord)
+  };
 }
 
 async function evidence(request, courseId, runId) {
+  const { data: course, error: courseError } = await db.from("courses")
+    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+  if (courseError) throw courseError;
+  if (!course) return null;
   const { data: run, error } = await db.from("audit_runs")
     .select("evidence_object_path,public_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
-  if (!run || !run.public_status || !run.evidence_object_path) return null;
+  if (!run?.evidence_object_path) return null;
   const { data, error: signError } = await db.storage.from("audit-evidence").createSignedUrl(run.evidence_object_path, 300);
   if (signError) throw signError;
   return data;
