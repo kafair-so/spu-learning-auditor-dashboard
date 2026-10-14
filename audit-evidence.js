@@ -52,6 +52,7 @@
   function render(selected,history,admin=false){
     $("course").textContent=[selected.courseCode,selected.courseProfile,selected.courseTitle].filter(Boolean).join(" · ")||selected.courseId;
     if(selected.courseUrl)$("courseLink").innerHTML=`<a href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`;
+    if(!history.length){$("runs").innerHTML='<section class="panel empty-note">รายวิชานี้ยังไม่มีผลการตรวจในระบบ</section>';return;}
     $("runs").innerHTML=history.map((run,index)=>{
       const snapshot=run.evidenceSnapshot||{};
       const activities=Array.isArray(snapshot.activities)?snapshot.activities:[];
@@ -127,3 +128,4 @@
   });
   load();
 })();
+
