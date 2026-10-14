@@ -45,11 +45,11 @@
     return {...payload,courses:(payload.courses||[]).map(normalizeRecord)};
   }
   async function courseHistory(courseId){
-    const payload=await request(`/v1/public/courses/${encodeURIComponent(courseId)}/history`);
+    const payload=await request(`/v1/public/courses/${encodeURIComponent(courseId)}/history`,{auth:false});
     return {...normalizeRecord(payload),runs:(payload.runs||[]).map(normalizeRecord)};
   }
   async function evidence(courseId,runId){
-    const payload=await request(`/v1/evidence/${encodeURIComponent(courseId)}/${encodeURIComponent(runId)}`);
+    const payload=await request(`/v1/evidence/${encodeURIComponent(courseId)}/${encodeURIComponent(runId)}`,{auth:false});
     const signedUrl=payload.signedUrl||payload.signedURL||payload.signed_url;
     if(!signedUrl)throw new Error("ไม่พบไฟล์หลักฐาน");
     const response=await fetch(signedUrl,{cache:"no-store"});
@@ -87,3 +87,4 @@
     submitResult:(jobId,result)=>request(`/v1/worker/jobs/${encodeURIComponent(jobId)}/result`,{method:"POST",body:JSON.stringify(result)})
   };
 })();
+
