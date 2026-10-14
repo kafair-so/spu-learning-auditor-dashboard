@@ -210,6 +210,13 @@ const typeRows=()=>DATA.filter(d=>d['ประเภท']===activeType);
 const unique=(rows,key)=>[...new Set(rows.map(d=>d[key]).filter(Boolean))].sort(natural);
 const count=(rows,value)=>rows.filter(d=>d['ความคืบหน้าการทำ']===value).length;
 const pendingCount=rows=>rows.filter(d=>!String(d['ความคืบหน้าการทำ']||'').trim()).length;
+const soloSpecialInstructor=row=>{
+  const type=String(row.teacherType||'').replace(/\s+/g,' ').trim();
+  const declared=Number(String(row.teacherCount||'').replace(/,/g,''));
+  const instructors=String(row.instructors||'').split(/[,;|\n]+/).map(value=>value.trim()).filter(Boolean);
+  const teacherCount=Number.isFinite(declared)&&declared>0?declared:instructors.length;
+  return teacherCount===1&&/^อาจารย์พิเศษ(?:\s*\([^)]*\))?$/.test(type);
+};
 
 function parseCSV(text){
   const rows=[];
@@ -269,7 +276,7 @@ async function loadData(){
     const response=await fetch(url,{cache:'no-store'});
     if(!response.ok) throw new Error('HTTP '+response.status);
     const csv=await response.text();
-    DATA=parseCSV(csv).map(mapRow).filter(d=>d['ประเภท']==='GR'||d['ประเภท']==='GS');
+    DATA=parseCSV(csv).filter(row=>!soloSpecialInstructor(row)).map(mapRow).filter(d=>d['ประเภท']==='GR'||d['ประเภท']==='GS');
     let auditRecords=[];
     if(AuditApi.enabled()){
       try{
@@ -503,3 +510,4 @@ bindFacultyChartFilter();
 loadData();
 </script><div class="auth-chip" aria-label="บัญชีผู้ใช้"><span id="authUserEmail"></span><button type="button" onclick="OOEAuth.logout()">ออกจากระบบ</button></div>
 </body></html>
+
