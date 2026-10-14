@@ -229,15 +229,22 @@
   // by the audit payload. Prefer it over an incidental Moodle URL/id.
   const catalogKey=value=>AuditBridge.identityKeys(value).find(key=>key.startsWith("profile:"))||AuditBridge.identityKeys(value)[0]||"";
   const catalogCourseId=url=>{try{return new URL(String(url||"")).searchParams.get("id")||"";}catch(_){return "";}};
+  const soloSpecialInstructor=row=>{
+    const type=String(row.teacherType||"").replace(/\s+/g," ").trim();
+    const declared=Number(String(row.teacherCount||"").replace(/,/g,""));
+    const count=Number.isFinite(declared)&&declared>0?declared:String(row.instructors||"").split(/[,;|\n]+/).map(value=>value.trim()).filter(Boolean).length;
+    return count===1&&/^อาจารย์พิเศษ(?:\s*\([^)]*\))?$/.test(type);
+  };
   const courseFromCatalogRow=row=>({
     group:String(row.group||"").trim().toUpperCase(),courseCode:String(row.courseCode||"").trim().toUpperCase(),
-    courseProfile:String(row.courseProfile||"").trim(),courseId:catalogCourseId(row.courseLink),courseUrl:String(row.courseLink||"").trim()
+    courseProfile:String(row.courseProfile||"").trim(),courseId:catalogCourseId(row.courseLink),courseUrl:String(row.courseLink||"").trim(),
+    teacherType:String(row.teacherType||"").trim(),teacherCount:String(row.teacherCount||"").trim(),instructors:String(row.instructors||"").trim()
   });
   async function loadCourseCatalog(){
     const url=CATALOG_URL+(CATALOG_URL.includes("?")?"&":"?")+"_="+Date.now();
     const response=await fetch(url,{cache:"no-store"});
     if(!response.ok)throw new Error(`โหลดบัญชีรายวิชาไม่สำเร็จ (HTTP ${response.status})`);
-    const rows=AuditBridge.parseCSV(await response.text()).map(courseFromCatalogRow)
+    const rows=AuditBridge.parseCSV(await response.text()).filter(row=>!soloSpecialInstructor(row)).map(courseFromCatalogRow)
       .filter(course=>course.group==="GR"||course.group==="GS");
     const unique=new Map();
     rows.forEach(course=>{const key=catalogKey(course);if(key)unique.set(key,course);});
@@ -444,3 +451,4 @@
   loadQueueOverview().catch(()=>{});
   setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();
+
