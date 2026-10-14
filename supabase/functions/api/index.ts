@@ -376,12 +376,22 @@ function courseId(row) {
   catch { return ""; }
 }
 
+function isSoloSpecialInstructorCourse(row) {
+  const teacherType = String(row.teacherType || "").replace(/\s+/g, " ").trim();
+  const declaredCount = Number(String(row.teacherCount || "").replace(/,/g, ""));
+  const instructorCount = Number.isFinite(declaredCount) && declaredCount > 0
+    ? declaredCount
+    : String(row.instructors || "").split(/[,;|\n]+/).map(value => value.trim()).filter(Boolean).length;
+  return instructorCount === 1 && /^อาจารย์พิเศษ(?:\s*\([^)]*\))?$/.test(teacherType);
+}
+
 async function syncCatalog() {
   if (!COURSE_CSV_URL) throw Object.assign(new Error("course_csv_url_not_configured"), { status: 500 });
   const response = await fetch(`${COURSE_CSV_URL}${COURSE_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`);
   if (!response.ok) throw new Error(`catalog_http_${response.status}`);
   const rawRows = parseCsv(await response.text()).filter(row =>
-    ["GR", "GS"].includes(String(row.group || "").trim().toUpperCase()));
+    ["GR", "GS"].includes(String(row.group || "").trim().toUpperCase())
+    && !isSoloSpecialInstructorCourse(row));
   // Reject incomplete catalogs. Do not deactivate any courses on a broken CSV.
   if (!rawRows.length || rawRows.some(row => !courseId(row))) {
     throw Object.assign(new Error("invalid_or_incomplete_course_catalog"), { status: 422 });
@@ -687,3 +697,4 @@ Deno.serve(async request => {
     console.error(error); return respond(request, Number(error.status || 400), { error: error.message || "request_failed" });
   }
 });
+
