@@ -129,8 +129,13 @@
       if(!selected)throw new Error("ไม่พบหลักฐานของรายวิชานี้");
       render(selected,AuditBridge.historyForCourse(selected),false);
     }catch(error){
-      $("course").textContent=error.message||"โหลดหลักฐานไม่สำเร็จ";
-      $("runs").innerHTML='<section class="panel empty-note">ผลตรวจอาจถูกย้าย ยังไม่ได้เผยแพร่ หรือบัญชีนี้ไม่มีสิทธิ์เข้าถึง</section>';
+      const code=String(error?.message||"");
+      $("course").textContent=code==="course_not_found"
+        ?"ไม่พบรายวิชานี้ในรายการภาคเรียนปัจจุบัน"
+        :(code||"โหลดหลักฐานไม่สำเร็จ");
+      $("runs").innerHTML=`<section class="panel empty-note">${code==="course_not_found"
+        ?"ลิงก์นี้อาจเป็นของรายวิชาที่ถูกนำออกจากรายการตรวจ หรือรายการรายวิชายังไม่ได้ซิงก์เข้าระบบ"
+        :"ผลตรวจอาจถูกย้าย ยังไม่ได้เผยแพร่ หรือบัญชีนี้ไม่มีสิทธิ์เข้าถึง"}</section>`;
     }
   }
   const updateReviewTotal=panel=>{
@@ -164,3 +169,4 @@
   });
   load();
 })();
+
