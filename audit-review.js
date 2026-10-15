@@ -321,6 +321,8 @@
 
   function setupExperience(){
     ensureOperationalViews();
+    const queueDescription=document.querySelector(".audit-command-center .command-title .muted");if(queueDescription)queueDescription.textContent="เลือกขอบเขตที่ต้องการ คิวปัจจุบันจะไม่เปลี่ยนจนกว่าจะกดสร้างคิวตรวจ";
+    const contentKpi=$("content")?.previousElementSibling;if(contentKpi)contentKpi.textContent="ไม่ผ่านเกณฑ์";
     const reportHeader=document.querySelector('[data-admin-panel="reports"] table thead tr');
     if(reportHeader&&!reportHeader.querySelector(".queue-column"))reportHeader.insertAdjacentHTML("beforeend",'<th class="queue-column">คิวตรวจ</th>');
     const commandActions=document.querySelector(".command-actions");
@@ -334,6 +336,14 @@
       commandActions.insertAdjacentHTML("afterend",`<section class="course-queue-picker" aria-label="เลือกตรวจเฉพาะรายวิชา"><div><strong>เลือกตรวจเฉพาะรายวิชา</strong><p class="muted">ค้นหาด้วยรหัสวิชา ชื่อวิชา หรือ Course Profile แล้วเพิ่มเพียงวิชานั้นเข้าคิว</p></div><div class="course-queue-controls"><input id="queueCourseSearch" list="queueCourseOptions" type="search" autocomplete="off" placeholder="เช่น GEC10367 หรือชื่อรายวิชา"><datalist id="queueCourseOptions"></datalist><button id="queueCourseAdd" type="button">＋ เพิ่มเข้าคิว</button></div></section>`);
       populateCoursePicker();
     }
+    const queueScope=$("queueScope"),courseScope=$("courseScope"),queueActionLabel=$("queueActionLabel");
+    const syncQueueScope=()=>{if(!queueScope)return;const labels={course:"ตรวจเฉพาะรายวิชา",gr:"ตรวจรายวิชา GR",gs:"ตรวจรายวิชา GS",all:"ตรวจรายวิชาทั้งหมด"};if(courseScope)courseScope.hidden=queueScope.value!=="course";if(queueActionLabel)queueActionLabel.textContent=labels[queueScope.value]||labels.course;$("queueMissing").hidden=queueScope.value==="course";};
+    queueScope?.addEventListener("change",syncQueueScope);syncQueueScope();
+    const fileInput=$("files"),fileDrop=$("fileDrop"),fileStatus=$("fileDropStatus");
+    const showFiles=()=>{const count=fileInput?.files?.length||0;if(fileStatus)fileStatus.textContent=count?`เลือกแล้ว ${count.toLocaleString("th-TH")} ไฟล์ · ${[...fileInput.files].map(file=>file.name).join(", ")}`:"รองรับไฟล์ JSON หลายไฟล์พร้อมกัน";};
+    fileInput?.addEventListener("change",showFiles);
+    ["dragenter","dragover"].forEach(type=>fileDrop?.addEventListener(type,event=>{event.preventDefault();fileDrop.classList.add("dragover");}));
+    ["dragleave","drop"].forEach(type=>fileDrop?.addEventListener(type,event=>{event.preventDefault();fileDrop.classList.remove("dragover");if(type==="drop"&&event.dataTransfer?.files?.length){fileInput.files=event.dataTransfer.files;showFiles();}}));
     const nav=document.querySelector(".topbar .nav");
     const theme=document.createElement("button");theme.type="button";theme.className="theme-toggle";
     const saved=localStorage.getItem("ooe-auditor-theme");
@@ -349,6 +359,7 @@
       const copy=hero.querySelector("p");if(copy)copy.textContent="เครื่องมือตรวจรายวิชาออนไลน์ ช่วยรวบรวมผลตรวจและหลักฐานให้ทีมงานนำไปติดตามต่อได้อย่างเป็นระบบ";
       const downloads=hero.querySelector(".extension-downloads");if(downloads){const link=downloads.querySelector("a");if(link)link.innerHTML="⇩ ดาวน์โหลด Dashboard 0.13.12";}
       const note=hero.querySelector(".small");if(note)note.textContent="ใช้รุ่น Dashboard เพื่อส่งผลตรวจและหลักฐานเข้าสู่ระบบกลาง แล้วติดตั้งตามคู่มือด้านล่าง";
+      const comparison=document.querySelector(".extension-compare");if(comparison){comparison.classList.add("capability-grid");comparison.innerHTML=`<article class="panel edition-card"><span class="edition-icon">⌁</span><h3>ตรวจโครงสร้างรายวิชา</h3><p>อ่านการจัดครั้งเรียน เอกสาร และกิจกรรมตามเกณฑ์ที่กำหนด</p></article><article class="panel edition-card"><span class="edition-icon">▶</span><h3>ตรวจสื่อและกิจกรรม</h3><p>ตรวจวิดีโอ Podcast แบบทดสอบ และกิจกรรมท้ายบทพร้อมหลักฐาน</p></article><article class="panel edition-card"><span class="edition-icon">✓</span><h3>สรุปเพื่อดำเนินการ</h3><p>แสดงคะแนน สถานะ และสรุปสิ่งที่ผู้สอนต้องแก้ไขอย่างอ่านง่าย</p></article>`;}
       const check=document.createElement("button");check.type="button";check.className="extension-check";check.innerHTML="⌕ ตรวจหา Extension บน Chrome เครื่องนี้";hero.querySelector(".extension-status").append(check);
       check.addEventListener("click",async()=>{check.disabled=true;check.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ…';try{const ping=await AuditWorker.ping();check.className="extension-check ok";check.textContent=`✓ พบ Extension เวอร์ชัน ${ping.version||"พร้อมใช้งาน"}`;const input=document.querySelector('[data-preflight="extension"]');if(input){input.checked=true;input.dispatchEvent(new Event("change"));}}catch(error){check.className="extension-check error";check.textContent="ไม่พบ Extension · ติดตั้งแล้วกดตรวจอีกครั้ง";}finally{check.disabled=false;}});
     }
@@ -415,7 +426,7 @@
       const payloads=await readFiles(files);
       let uploaded=0;
       for(const payload of payloads){await AuditApi.uploadResult(payload);uploaded++;}
-      $("files").value="";
+      $("files").value="";if($("fileDropStatus"))$("fileDropStatus").textContent="รองรับไฟล์ JSON หลายไฟล์พร้อมกัน";
       await loadResults(`นำเข้าและบันทึกฐานข้อมูลกลาง ${uploaded.toLocaleString("th-TH")} รายการแล้ว`);
     }catch(error){setMessage(error.message||String(error),"error");}
   });
@@ -447,7 +458,7 @@
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
-    try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"gr";const labels={gr:"รายวิชา GR",gs:"รายวิชา GS",all:"รายวิชาทั้งหมด"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=scope==="all"?await AuditApi.refreshAll():await AuditApi.queueSelected(scope);setQueueMessage(scope==="all"?`สร้างคิวตรวจรายวิชาทั้งหมดแล้ว · รหัสชุด ${result.batchId||"—"}`:`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชาแล้ว`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("queueCourseAdd")?.addEventListener("click",async()=>{
@@ -495,4 +506,3 @@
   loadQueueOverview().catch(()=>{});
   setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();
-

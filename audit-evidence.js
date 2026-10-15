@@ -110,6 +110,8 @@
       const possibleFact=superAdmin?`<div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div>`:"";
       return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts"><div class="fact"><span>คะแนนที่ระบบยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div>${possibleFact}<div class="fact"><span>คะแนนเกณฑ์ผ่าน</span><strong>${score(run.threshold)} / ${score(maximum)}</strong></div><div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString("th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.11</div>'}${manualRows}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
     }).join("");
+    document.querySelectorAll(".run>h3").forEach(heading=>{const content=heading.nextElementSibling;if(!content||!["ผลตรวจตามครั้ง/สัปดาห์","หลักฐานที่ตรวจพบ"].includes(heading.textContent.trim()))return;const details=document.createElement("details");details.className="evidence-details";const summary=document.createElement("summary");summary.textContent=heading.textContent;heading.replaceWith(details);details.append(summary,content);});
+    window.OOEI18n?.translate(document);
   }
 
   async function load(){
@@ -162,4 +164,3 @@
   });
   load();
 })();
-
