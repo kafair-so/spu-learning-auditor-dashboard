@@ -468,9 +468,19 @@
   $("rows").addEventListener("click",async event=>{
     const requeue=event.target.closest("button[data-queue-course]");
     if(requeue){
-      try{requeue.disabled=true;const result=await AuditApi.queueCourse(requeue.dataset.queueCourse);setMessage(result.queued?`เพิ่ม ${requeue.dataset.queueCourse} เข้าคิวตรวจแล้ว`:`ยังไม่เพิ่มคิว: ${result.reason||"รายวิชานี้กำลังอยู่ในคิว"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
-      catch(error){setMessage(error.message||String(error),"error");}
-      finally{requeue.disabled=false;}
+      const originalLabel=requeue.textContent,courseId=requeue.dataset.queueCourse;
+      try{
+        requeue.disabled=true;requeue.textContent="กำลังเพิ่มคิว…";
+        const result=await AuditApi.queueCourse(courseId);
+        const reason={course_is_running:"กำลังตรวจอยู่",course_already_queued:"อยู่ในคิวแล้ว",course_not_available:"ไม่พบในบัญชีรายวิชา"}[result.reason]||result.reason||"อยู่ในคิวแล้ว";
+        requeue.textContent=result.queued?"✓ เพิ่มเข้าคิวแล้ว":reason;
+        requeue.classList.toggle("primary",Boolean(result.queued));
+        requeue.title=result.queued?`เพิ่มรายวิชา ${courseId} เข้าคิวตรวจแล้ว`:reason;
+        setQueueMessage(result.queued?`เพิ่ม ${courseId} เข้าคิวตรวจแล้ว`:`ยังไม่เพิ่มคิว: ${reason}`,result.queued?"ok":"error");
+        await loadQueueOverview();if(workerRunning)scheduleWorker(0);
+      }
+      catch(error){requeue.textContent="ลองใหม่";requeue.title=error.message||String(error);setQueueMessage(error.message||String(error),"error");}
+      finally{if(requeue.textContent==="กำลังเพิ่มคิว…")requeue.textContent=originalLabel;requeue.disabled=false;}
       return;
     }
     const button=event.target.closest("button[data-decision]");if(!button)return;
@@ -545,4 +555,5 @@
   loadQueueOverview().catch(()=>{});
   setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();
+
 
