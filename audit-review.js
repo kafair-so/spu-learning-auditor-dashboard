@@ -5,6 +5,7 @@
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
   const CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
+  const isSuperAdmin=()=>window.OOEReviewer?.role==="super_admin";
   const auditTime=value=>{const time=new Date(value||"");return Number.isNaN(time.valueOf())?"—":time.toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"});};
   const errorDetail=record=>{
     const source=record||{};
@@ -56,7 +57,7 @@
   function setAccessMessage(text,type="ok"){$("accessMessage").textContent=text;$("accessMessage").className=`message ${type}`;}
   function setQueueBusy(busy,text="กำลังเตรียมคิวตรวจ…"){
     $("queueFeedback").hidden=!busy;$("queueFeedbackText").textContent=text;
-    ["queueMissing","refreshAll","queueScope"].forEach(id=>{const element=$(id);if(element)element.disabled=busy;});
+    ["queueMissing","refreshAll","queueScope","queueCourseSearch","queueCourseAdd"].forEach(id=>{const element=$(id);if(element)element.disabled=busy;});
   }
   function setWorkerProgress(percent,label="กำลังเตรียมเครื่องตรวจ",visible=true,detail="",determinate=true){
     const safe=Math.max(0,Math.min(100,Number(percent)||0));
@@ -78,33 +79,18 @@
     .ooe-load-state.is-error{background:#fff3f2;border-color:#ebaeaa;color:#a33636}
     .ooe-loader{width:17px;height:17px;border:2px solid #b6d3f5;border-top-color:#2464c6;border-radius:50%;animation:ooeSpin .85s linear infinite;flex:none}
     .ooe-load-state.is-error .ooe-loader{display:none}
-    .ooe-report-skeleton td{padding:17px!important}
-    .ooe-report-skeleton span{display:block;height:13px;width:75%;border-radius:6px;background:linear-gradient(95deg,#dce7f5,#f3f8ff,#dce7f5);background-size:220% 100%;animation:ooeShimmer 1.45s linear infinite}
+    .ooe-report-skeleton td{padding:17px!important}.ooe-report-skeleton span{display:block;height:13px;width:75%;border-radius:6px;background:linear-gradient(95deg,#dce7f5,#f3f8ff,#dce7f5);background-size:220% 100%;animation:ooeShimmer 1.45s linear infinite}
     .kpi,.table-panel,.audit-command-center,.admin-intro{animation:ooeEnter .5s ease-out both}
-    .kpi{transition:transform .22s ease,box-shadow .22s ease}
-    .kpi:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(25,57,101,.13)}
-    button:not(:disabled){transition:transform .18s ease,box-shadow .18s ease}
-    button:not(:disabled):active{transform:scale(.975)}
-    .theme-dark .ooe-load-state{background:#152e4b;border-color:#35608b;color:#d4eaff}
-    .theme-dark .ooe-load-state.is-error{background:#411f2b;border-color:#935364;color:#ffe0e0}
-    @media(prefers-reduced-motion:reduce){.ooe-skeleton,.ooe-report-skeleton span,.ooe-loader,.kpi,.table-panel,.audit-command-center,.admin-intro{animation:none!important}.kpi,button{transition:none!important}.kpi:hover{transform:none}}
+    @media(prefers-reduced-motion:reduce){.ooe-skeleton,.ooe-report-skeleton span,.ooe-loader,.kpi,.table-panel,.audit-command-center,.admin-intro{animation:none!important}}
   </style>`);
   function showResultState(state,detail=""){
     resultsState=state;
     let banner=$("ooeResultsState");
     if(!banner){banner=document.createElement("div");banner.id="ooeResultsState";banner.className="ooe-load-state";banner.setAttribute("role","status");banner.setAttribute("aria-live","polite");document.querySelector('[data-admin-panel="reports"] .kpis')?.before(banner);}
-    banner.hidden=state==="ready";
-    banner.classList.toggle("is-error",state==="error");
+    banner.hidden=state==="ready";banner.classList.toggle("is-error",state==="error");
     banner.innerHTML='<span class="ooe-loader" aria-hidden="true"></span><span>'+esc(detail||(state==="loading"?"กำลังโหลดผลตรวจจากระบบกลาง…":state==="error"?"ไม่สามารถโหลดผลตรวจได้ กรุณาลองอีกครั้ง":""))+'</span>';
-    if(state==="loading"&&!hasLoadedResults){
-      for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}
-      $("count").textContent="กำลังโหลดข้อมูล…";
-      $("rows").innerHTML=Array.from({length:4},()=>'<tr class="ooe-report-skeleton"><td colspan="10"><span></span></td></tr>').join("");
-    }else if(state==="error"&&!hasLoadedResults){
-      for(const id of ["pass","review","content","none","failed"]){$(id).classList.remove("ooe-skeleton");$(id).textContent="—";}
-      $("count").textContent="ไม่สามารถโหลดข้อมูล";
-      $("rows").innerHTML='<tr><td colspan="10" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>';
-    }
+    if(state==="loading"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}$("count").textContent="กำลังโหลดข้อมูล…";$("rows").innerHTML=Array.from({length:4},()=>'<tr class="ooe-report-skeleton"><td colspan="12"><span></span></td></tr>').join("");}
+    else if(state==="error"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.classList.remove("ooe-skeleton");element.textContent="—";}}$("count").textContent="ไม่สามารถโหลดข้อมูล";$("rows").innerHTML='<tr><td colspan="12" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>';}
   }
 
   function showAdminView(view){
@@ -123,10 +109,7 @@
   async function loadResults(message=""){
     showResultState("loading",hasLoadedResults?"กำลังอัปเดตผลตรวจล่าสุด…":"กำลังโหลดผลตรวจจากระบบกลาง…");
     const [result,catalogResult]=await Promise.allSettled([AuditApi.adminResults(),loadCourseCatalog()]);
-    if(result.status==="rejected"){
-      showResultState("error",hasLoadedResults?"อัปเดตไม่สำเร็จ กำลังแสดงข้อมูลที่โหลดไว้ก่อนหน้า":"โหลดผลตรวจไม่สำเร็จ: "+String(result.reason?.message||result.reason));
-      throw result.reason;
-    }
+    if(result.status==="rejected"){showResultState("error",hasLoadedResults?"อัปเดตไม่สำเร็จ กำลังแสดงข้อมูลที่โหลดไว้ก่อนหน้า":"โหลดผลตรวจไม่สำเร็จ: "+String(result.reason?.message||result.reason));throw result.reason;}
     records=result.value.records||[];
     hasLoadedResults=true;
     if(catalogResult.status==="rejected"){
@@ -152,6 +135,18 @@
     if(window.OOEReviewer?.role!=="super_admin")return;
     document.querySelectorAll("[data-super-admin-only]").forEach(item=>item.hidden=false);
     try{await loadAccessUsers();}catch(error){setAccessMessage(error.message||String(error),"error");}
+  }
+
+  function setupReportAccess(){
+    const contentCard=$("content")?.parentElement;
+    if(contentCard){contentCard.classList.remove("yellow");contentCard.classList.add("orange");const label=contentCard.querySelector("span");if(label)label.textContent="ไม่ผ่านเกณฑ์";}
+    const contentOption=[...$("filter").options].find(option=>option.value==="has_content");
+    if(contentOption)contentOption.textContent="ไม่ผ่านเกณฑ์";
+    if(isSuperAdmin())return;
+    ["review","failed"].forEach(id=>{const node=$(id);if(node?.parentElement)node.parentElement.hidden=true;});
+    document.querySelectorAll(".report-actions").forEach(node=>node.hidden=true);
+    if($("errorReport"))$("errorReport").hidden=true;
+    [...$("filter").options].forEach(option=>{if(["needs_review","audit_failed"].includes(option.value))option.remove();});
   }
 
   const workerStateLabel=state=>state?.status==="running"?`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}`:state?.status==="result_ready"?"มีผลตรวจรอส่งเข้าฐานข้อมูล":state?.status==="idle"?"พร้อมรับงาน":"กำลังเริ่มเครื่องตรวจ";
@@ -249,10 +244,27 @@
     const unique=new Map();
     rows.forEach(course=>{const key=catalogKey(course);if(key)unique.set(key,course);});
     courseCatalog=[...unique.values()];
+    populateCoursePicker();
   }
-  // The backend /v1/admin/results already limits records to active courses.
-  // Avoid hiding valid results through a second Google Sheets identity match.
+  const coursePickerLabel=course=>[course.courseCode,course.courseProfile,course.courseTitle].filter(Boolean).join(" · ");
+  function populateCoursePicker(){
+    const options=$("queueCourseOptions");
+    if(!options)return;
+    options.innerHTML=courseCatalog.map(course=>`<option value="${esc(coursePickerLabel(course))}">${esc(`${course.group||""} · ${course.courseId||""}`)}</option>`).join("");
+  }
+  function selectedCourseFromPicker(){
+    const value=$("queueCourseSearch")?.value.trim().toLowerCase()||"";
+    if(!value)throw new Error("กรุณาเลือกรายวิชาที่ต้องการตรวจ");
+    const course=courseCatalog.find(item=>[
+      coursePickerLabel(item),item.courseId,item.courseCode,item.courseProfile,item.courseTitle
+    ].filter(Boolean).some(candidate=>String(candidate).trim().toLowerCase()===value));
+    if(!course?.courseId)throw new Error("ไม่พบรายวิชาในบัญชีกลาง กรุณาเลือกจากรายการที่แสดง");
+    return course;
+  }
   function currentCatalogRecords(){
+    // The API already returns the canonical 160-course scope. Filtering a
+    // second time in the browser can hide valid results when Moodle and the
+    // Sheet use different identifiers for the same course.
     return records;
   }
   const jobLabel=kind=>({missing:"คิวรายวิชาที่ยังไม่มีผล",refresh:"คิวอัปเดตผล",retry:"คิวตรวจใหม่"}[kind]||"คิวตรวจ");
@@ -309,12 +321,18 @@
 
   function setupExperience(){
     ensureOperationalViews();
+    const reportHeader=document.querySelector('[data-admin-panel="reports"] table thead tr');
+    if(reportHeader&&!reportHeader.querySelector(".queue-column"))reportHeader.insertAdjacentHTML("beforeend",'<th class="queue-column">คิวตรวจ</th>');
     const commandActions=document.querySelector(".command-actions");
     if(commandActions&&!document.getElementById("queueScope")){
       commandActions.insertAdjacentHTML("beforebegin",`<div class="queue-picker"><div><span class="queue-picker-label">เลือกชุดรายวิชาที่ต้องการตรวจ</span><small>สร้างคิวเฉพาะรายการที่เลือก โดยไม่กระทบรายวิชาอื่น</small></div><select id="queueScope" aria-label="ชุดรายวิชาที่ต้องการตรวจ"><option value="missing">รายวิชาที่ยังไม่มีผลตรวจ</option><option value="gr">เฉพาะรายวิชา GR</option><option value="gs">เฉพาะรายวิชา GS</option><option value="failed">เฉพาะรายวิชาที่ตรวจไม่สำเร็จ</option><option value="retry">เฉพาะรายวิชาที่ต้องตรวจใหม่</option></select></div>`);
       const queueButton=$("queueMissing"),queueScope=$("queueScope");
       const labels={missing:"ตรวจวิชาที่ยังไม่มีผล",gr:"ตรวจเฉพาะรายวิชา GR",gs:"ตรวจเฉพาะรายวิชา GS",failed:"ตรวจวิชาที่ตรวจไม่สำเร็จ",retry:"ตรวจวิชาที่ต้องตรวจใหม่"};
       queueScope.addEventListener("change",()=>{queueButton.innerHTML=`<span>⌕</span> ${labels[queueScope.value]}`;});
+    }
+    if(commandActions&&!$("queueCourseSearch")){
+      commandActions.insertAdjacentHTML("afterend",`<section class="course-queue-picker" aria-label="เลือกตรวจเฉพาะรายวิชา"><div><strong>เลือกตรวจเฉพาะรายวิชา</strong><p class="muted">ค้นหาด้วยรหัสวิชา ชื่อวิชา หรือ Course Profile แล้วเพิ่มเพียงวิชานั้นเข้าคิว</p></div><div class="course-queue-controls"><input id="queueCourseSearch" list="queueCourseOptions" type="search" autocomplete="off" placeholder="เช่น GEC10367 หรือชื่อรายวิชา"><datalist id="queueCourseOptions"></datalist><button id="queueCourseAdd" type="button">＋ เพิ่มเข้าคิว</button></div></section>`);
+      populateCoursePicker();
     }
     const nav=document.querySelector(".topbar .nav");
     const theme=document.createElement("button");theme.type="button";theme.className="theme-toggle";
@@ -329,8 +347,8 @@
     const hero=document.querySelector(".extension-hero");
     if(hero){
       const copy=hero.querySelector("p");if(copy)copy.textContent="เครื่องมือตรวจรายวิชาออนไลน์ ช่วยรวบรวมผลตรวจและหลักฐานให้ทีมงานนำไปติดตามต่อได้อย่างเป็นระบบ";
-      const downloads=hero.querySelector(".extension-downloads");if(downloads){const links=downloads.querySelectorAll("a");if(links[0])links[0].innerHTML="⇩ ดาวน์โหลดสำหรับระบบกลาง";if(links[1])links[1].innerHTML="⇩ ดาวน์โหลดไว้ใช้บนเครื่อง";}
-      const note=hero.querySelector(".small");if(note)note.textContent="เลือกดาวน์โหลดตามรูปแบบการทำงานของคุณ แล้วติดตั้งตามคู่มือด้านล่าง";
+      const downloads=hero.querySelector(".extension-downloads");if(downloads){const link=downloads.querySelector("a");if(link)link.innerHTML="⇩ ดาวน์โหลด Dashboard 0.13.12";}
+      const note=hero.querySelector(".small");if(note)note.textContent="ใช้รุ่น Dashboard เพื่อส่งผลตรวจและหลักฐานเข้าสู่ระบบกลาง แล้วติดตั้งตามคู่มือด้านล่าง";
       const check=document.createElement("button");check.type="button";check.className="extension-check";check.innerHTML="⌕ ตรวจหา Extension บน Chrome เครื่องนี้";hero.querySelector(".extension-status").append(check);
       check.addEventListener("click",async()=>{check.disabled=true;check.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ…';try{const ping=await AuditWorker.ping();check.className="extension-check ok";check.textContent=`✓ พบ Extension เวอร์ชัน ${ping.version||"พร้อมใช้งาน"}`;const input=document.querySelector('[data-preflight="extension"]');if(input){input.checked=true;input.dispatchEvent(new Event("change"));}}catch(error){check.className="extension-check error";check.textContent="ไม่พบ Extension · ติดตั้งแล้วกดตรวจอีกครั้ง";}finally{check.disabled=false;}});
     }
@@ -338,24 +356,30 @@
 
   function render(){
     if(!hasLoadedResults){showResultState(resultsState);return;}
-    for(const id of ["pass","review","content","none","failed"])$(id).classList.remove("ooe-skeleton");
+    for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element)element.classList.remove("ooe-skeleton");}
     const query=$("search").value.trim().toLowerCase(),filter=$("filter").value,group=$("filterGroup")?.value||"";
     const catalogRecords=currentCatalogRecords();
     const scoped=catalogRecords.filter(record=>!group||String(record.group||"").toUpperCase()===group);
-    for(const status of AuditBridge.INTERNAL)$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass").textContent=scoped.filter(record=>record.internalStatus===status).length.toLocaleString("th-TH");
-    const rows=scoped.filter(record=>(!filter||record.internalStatus===filter)&&(!query||[record.courseCode,record.courseProfile,record.courseTitle,record.courseId].join(" ").toLowerCase().includes(query))).sort((a,b)=>String(b.auditedAt||"").localeCompare(String(a.auditedAt||"")));
+    const superAdmin=isSuperAdmin(),statusOf=record=>superAdmin?record.internalStatus:record.publicStatus;
+    for(const status of AuditBridge.INTERNAL){const target=$(status==="needs_review"?"review":status==="has_content"?"content":status==="no_content"?"none":status==="audit_failed"?"failed":"pass");if(target)target.textContent=scoped.filter(record=>statusOf(record)===status).length.toLocaleString("th-TH");}
+    const rows=scoped.filter(record=>(!filter||statusOf(record)===filter)&&(!query||[record.courseCode,record.courseProfile,record.courseTitle,record.courseId].join(" ").toLowerCase().includes(query))).sort((a,b)=>String(b.auditedAt||"").localeCompare(String(a.auditedAt||"")));
     const scopeLabel=group?` · ${group}`:"";
     $("count").textContent=courseCatalog.length?`${rows.length.toLocaleString("th-TH")} ผลตรวจ จาก ${courseCatalog.length.toLocaleString("th-TH")} รายวิชา${scopeLabel}`:`${rows.length.toLocaleString("th-TH")} รายการ${scopeLabel}`;
+    const head=document.querySelector('[data-admin-panel="reports"] table thead');
+    if(head)head.innerHTML=superAdmin?'<tr><th>รายวิชา</th><th>ตรวจล่าสุด</th><th>คะแนนยืนยัน</th><th>คะแนนที่อาจได้</th><th>เกณฑ์ผ่าน</th><th>จำนวนหลักฐาน</th><th>สถานะภายใน</th><th>สถานะที่เผยแพร่</th><th>เหตุผล</th><th>การตรวจสอบ</th><th>การตัดสิน</th><th>ตรวจซ้ำ</th></tr>':'<tr><th>รายวิชา</th><th>ตรวจล่าสุด</th><th>คะแนนที่ระบบยืนยัน</th><th>คะแนนเกณฑ์ผ่าน</th><th>จำนวนหลักฐาน</th><th>ผลตรวจรายวิชา</th><th>หลักฐานการตรวจ</th><th>ตรวจซ้ำ</th></tr>';
     $("rows").innerHTML=rows.length?rows.map(record=>{
       const runId=esc(record.runId||"");
       const courseId=encodeURIComponent(record.courseId||"");
       const evidence=record.runId&&record.courseId?`<a href="audit-evidence.html?admin=1&amp;courseId=${courseId}" target="_blank" rel="noopener">ดูผลตรวจ ↗</a>`:'<span class="muted">—</span>';
-      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.10 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">มีเนื้อหา</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
+      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.10 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">ไม่ผ่านเกณฑ์</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':'<span class="muted">ตัดสินอัตโนมัติแล้ว</span>';
       const possible=Number.isFinite(Number(record.possibleScore))?Math.min(maxScore(record),Number(record.possibleScore)):null;
       const qualityWarning=record.qualityGate?.failures?.length?`ข้อควรระวังคุณภาพข้อมูล: ${record.qualityGate.failures.join(", ")}`:"";
       const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":record.reason||qualityWarning||"—";
-      return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td></tr>`;
-    }).join(""):'<tr><td colspan="10" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>';
+      const requeue=record.courseId?`<button class="requeue-course" type="button" data-queue-course="${esc(record.courseId)}">↻ ตรวจซ้ำ</button>`:'<span class="muted">—</span>';
+      const evidenceCount=Number.isFinite(Number(record.evidenceCount))?Number(record.evidenceCount).toLocaleString("th-TH"):"—";
+      if(!superAdmin)return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${score(record.threshold)} / ${score(maxScore(record))}</td><td>${evidenceCount}</td><td>${badge(record.publicStatus)}</td><td>${evidence}</td><td>${requeue}</td></tr>`;
+      return `<tr><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${evidenceCount}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td><td>${requeue}</td></tr>`;
+    }).join(""):`<tr><td colspan="${superAdmin?12:8}" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>`;
     if(!$("errorReport").hidden)renderErrorReport();
   }
 
@@ -397,6 +421,13 @@
   });
 
   $("rows").addEventListener("click",async event=>{
+    const requeue=event.target.closest("button[data-queue-course]");
+    if(requeue){
+      try{requeue.disabled=true;const result=await AuditApi.queueCourse(requeue.dataset.queueCourse);setMessage(result.queued?`เพิ่ม ${requeue.dataset.queueCourse} เข้าคิวตรวจแล้ว`:`ยังไม่เพิ่มคิว: ${result.reason||"รายวิชานี้กำลังอยู่ในคิว"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
+      catch(error){setMessage(error.message||String(error),"error");}
+      finally{requeue.disabled=false;}
+      return;
+    }
     const button=event.target.closest("button[data-decision]");if(!button)return;
     const runId=button.dataset.runId,decision=button.dataset.decision;
     try{button.disabled=true;await AuditApi.decideResult(runId,decision);await loadResults(`บันทึกผล “${AuditBridge.LABELS[decision]}” ลงระบบกลางแล้ว`);}
@@ -418,6 +449,18 @@
   $("queueMissing").addEventListener("click",async()=>{
     try{const scope=$("queueScope")?.value||"missing";const labels={missing:"รายวิชาที่ยังไม่มีผลตรวจ",gr:"รายวิชา GR",gs:"รายวิชา GS",failed:"รายวิชาที่ตรวจไม่สำเร็จ",retry:"รายวิชาที่ต้องตรวจใหม่"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString("th-TH")} วิชา จากข้อมูลล่าสุด ${Number(result.catalogCount||0).toLocaleString("th-TH")} วิชา`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
+  });
+  $("queueCourseAdd")?.addEventListener("click",async()=>{
+    try{
+      const course=selectedCourseFromPicker();
+      setQueueBusy(true,`กำลังเพิ่ม ${course.courseCode||course.courseId} เข้าคิวตรวจ…`);
+      if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");
+      const result=await AuditApi.queueCourse(course.courseId);
+      setQueueMessage(result.queued?`เพิ่ม ${course.courseCode||course.courseId} เข้าคิวตรวจแล้ว`:`ยังไม่เพิ่มคิว: ${result.reason||"รายวิชานี้กำลังอยู่ในคิว"}`);
+      if(result.queued)$("queueCourseSearch").value="";
+      await loadQueueOverview();if(workerRunning)scheduleWorker(0);
+    }catch(error){setQueueMessage(error.message||String(error),"error");}
+    finally{setQueueBusy(false);}
   });
   $("refreshAll").addEventListener("click",async()=>{
     try{setQueueBusy(true,"กำลังสร้างคิวอัปเดตผลตรวจทั้งหมด…");if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.refreshAll();setQueueMessage(`สร้างชุดอัปเดต ${Number(result.total||0).toLocaleString("th-TH")} วิชา · รหัสชุด ${result.batchId}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
@@ -445,6 +488,7 @@
   $("menuToggle").addEventListener("click",openMenu);$("menuClose").addEventListener("click",closeMenu);$("adminScrim").addEventListener("click",closeMenu);
   document.querySelectorAll("[data-admin-view]").forEach(button=>button.addEventListener("click",()=>showAdminView(button.dataset.adminView)));
   setupExperience();
+  setupReportAccess();
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
   loadResults().catch(error=>setMessage(`โหลดผลจากระบบกลางไม่สำเร็จ: ${error.message||error}`,"error"));

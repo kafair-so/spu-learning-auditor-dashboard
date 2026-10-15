@@ -6,11 +6,11 @@
   const LABELS = Object.freeze({
     pass:"ผ่าน",
     needs_review:"รอตรวจ",
-    has_content:"มีเนื้อหา",
+    has_content:"ไม่ผ่านเกณฑ์",
     no_content:"ไม่มีเนื้อหา",
     audit_failed:"ตรวจไม่สำเร็จ"
   });
-  const COLORS = Object.freeze({pass:"green",needs_review:"orange",has_content:"yellow",no_content:"red",audit_failed:"gray"});
+  const COLORS = Object.freeze({pass:"green",needs_review:"orange",has_content:"orange",no_content:"red",audit_failed:"gray"});
 
   const clean = value => String(value ?? "").trim();
   const normalized = value => clean(value).toLowerCase().replace(/\s+/g, "");
@@ -159,3 +159,4 @@
 
   window.AuditBridge={STORAGE_KEY,MAX_HISTORY,PUBLIC,INTERNAL,LABELS,COLORS,parseCSV,normalizeLegacyRow,identityKeys,recordKey,runKey,sameCourse,loadRecords,saveRecords,importPayload,latestRecords,historyForCourse,matchRecord,legacyPublicStatus,publicStatus,publishableRecord,toCSV,safeUrl};
 })();
+

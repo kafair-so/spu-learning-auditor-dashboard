@@ -138,6 +138,7 @@ async function setAccessUserStatus(request, emailPart) {
 
 function adminResultRecord(row) {
   const source = row.source_payload || {};
+  const snapshot = source.evidenceSnapshot || {};
   const course = row.courses || {};
   const score = row.score == null ? null : Number(row.score);
   const reviewable = Number(row.reviewable_points || 0);
@@ -167,6 +168,7 @@ function adminResultRecord(row) {
     auditedAt: row.audited_at,
     auditorVersion: row.auditor_version || "",
     evidenceAvailable: Boolean(row.evidence_object_path),
+    evidenceCount: Array.isArray(snapshot.activities) ? snapshot.activities.length : 0,
     reason: source.reason || row.internal_note || ""
   };
 }
@@ -194,28 +196,42 @@ function historyRunRecord(row) {
   };
 }
 
-// Public report links expose only published scoring fields. The full source
-// payload and reviewer-only notes stay behind the admin endpoints.
 function publicHistoryRunRecord(row) {
-  const source = row.source_payload || {};
-  const score = row.score == null ? null : Number(row.score);
-  const reviewable = Number(row.reviewable_points || 0);
-  const scoreModel = String(source.scoreModel || "");
-  const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
   return {
     runId: row.run_id,
     auditedAt: row.audited_at,
     auditorVersion: row.auditor_version || "",
-    internalStatus: row.internal_status,
-    publicStatus: row.public_status || row.internal_status || "",
-    confirmedScore: score,
-    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(AUDIT_MAX_SCORE, score + reviewable),
+    publicStatus: row.public_status || "",
+    confirmedScore: row.score == null ? null : Number(row.score),
     maxScore: AUDIT_MAX_SCORE,
-    scoreModel,
-    scoreNeedsRefresh,
     threshold: row.passing_score == null ? null : Number(row.passing_score),
-    evidenceAvailable: Boolean(row.evidence_object_path),
-    qualityGate: source.qualityGate || null
+    evidenceAvailable: Boolean(row.evidence_object_path)
+  };
+}
+
+function limitedAdminResultRecord(row) {
+  const source = row.source_payload || {};
+  const snapshot = source.evidenceSnapshot || {};
+  const activities = Array.isArray(snapshot.activities) ? snapshot.activities : [];
+  const course = row.courses || {};
+  return {
+    runId: row.run_id,
+    courseId: row.course_id,
+    courseCode: course.course_code || source.courseCode || "",
+    courseTitle: course.course_title || source.courseTitle || "",
+    courseProfile: source.courseProfile || course.course_title || "",
+    courseUrl: course.course_url || source.courseUrl || "",
+    group: course.course_group || source.group || "",
+    faculty: course.faculty || source.faculty || "",
+    instructors: course.instructor_names || source.instructors || [],
+    publicStatus: row.public_status || "",
+    confirmedScore: row.score == null ? null : Number(row.score),
+    maxScore: AUDIT_MAX_SCORE,
+    threshold: row.passing_score == null ? null : Number(row.passing_score),
+    evidenceCount: activities.length,
+    auditedAt: row.audited_at,
+    auditorVersion: row.auditor_version || "",
+    evidenceAvailable: Boolean(row.evidence_object_path)
   };
 }
 
@@ -228,16 +244,21 @@ async function activeCatalogIds() {
 }
 
 async function listAdminResults(request) {
-  await reviewer(request);
+  const user = await reviewer(request);
+  const canSeeInternalReview = user.role === "super_admin";
   const activeIds = await activeCatalogIds();
-  if (!activeIds.length) return { records: [] };
+  if (!activeIds.length) return { records:[], role:user.role, restricted:!canSeeInternalReview };
   const { data, error } = await db.from("audit_runs").select(
     "run_id,external_audit_id,course_id,internal_status,public_status,score,passing_score,reviewable_points,has_content,audited_at,auditor_version,evidence_object_path,source_payload,internal_note,created_at,courses!audit_runs_course_id_fkey(course_code,course_title,course_group,faculty,instructor_names,course_url)"
   ).in("course_id", activeIds).order("audited_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
   if (error) throw error;
   const latest = new Map();
-  for (const row of data || []) if (!latest.has(row.course_id)) latest.set(row.course_id, adminResultRecord(row));
-  return { records:[...latest.values()] };
+  for (const row of data || []) {
+    if (latest.has(row.course_id)) continue;
+    if (!canSeeInternalReview && !row.public_status) continue;
+    latest.set(row.course_id, canSeeInternalReview ? adminResultRecord(row) : limitedAdminResultRecord(row));
+  }
+  return { records:[...latest.values()], role:user.role, restricted:!canSeeInternalReview };
 }
 
 // The queue view is intentionally separate from the course-result view.  A
@@ -257,12 +278,18 @@ async function queueOverview(request) {
   // operational board must show one current state per active course, never
   // the accumulated number of old job rows.
   const jobs = (data || []).filter(job => activeCourseIds.has(job.course_id));
-  const seenCourses = new Set();
-  const currentJobs = jobs.filter(job => {
-    if (seenCourses.has(job.course_id)) return false;
-    seenCourses.add(job.course_id);
+  // Active work takes precedence over a later historical row such as a
+  // cancelled duplicate.  Otherwise the dashboard can show 0 available
+  // courses even while a queued job still exists for that course.
+  const activeJobs = jobs.filter(job => job.status === "queued" || job.status === "running");
+  const activeCourseIdsWithJobs = new Set(activeJobs.map(job => job.course_id));
+  const seenTerminalCourses = new Set();
+  const terminalJobs = jobs.filter(job => {
+    if (activeCourseIdsWithJobs.has(job.course_id) || seenTerminalCourses.has(job.course_id)) return false;
+    seenTerminalCourses.add(job.course_id);
     return true;
   });
+  const currentJobs = [...activeJobs, ...terminalJobs];
   const count = status => currentJobs.filter(job => job.status === status).length;
   const current = currentJobs.find(job => job.status === "running") || null;
   const recent = currentJobs.slice(0, 8).map(job => ({
@@ -293,7 +320,8 @@ async function queueOverview(request) {
 }
 
 async function adminHistory(request, courseId) {
-  await reviewer(request);
+  const user = await reviewer(request);
+  if (user.role !== "super_admin") return publicHistory(courseId);
   const { data: course, error: courseError } = await db.from("courses")
     .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
     .eq("course_id", courseId).maybeSingle();
@@ -314,7 +342,7 @@ async function adminHistory(request, courseId) {
 }
 
 async function decideAdminResult(request, runId) {
-  const actor = await reviewer(request);
+  const actor = await superAdmin(request);
   const payload = await request.json();
   const { data: currentRun, error: currentRunError } = await db.from("audit_runs")
     .select("run_id,course_id,internal_status,score,passing_score,reviewable_points,audited_at,evidence_object_path,source_payload")
@@ -417,7 +445,6 @@ async function syncCatalog() {
   const rawRows = parseCsv(await response.text()).filter(row =>
     ["GR", "GS"].includes(String(row.group || "").trim().toUpperCase())
     && !isSoloSpecialInstructorCourse(row));
-  // Reject incomplete catalogs. Do not deactivate any courses on a broken CSV.
   if (!rawRows.length || rawRows.some(row => !courseId(row))) {
     throw Object.assign(new Error("invalid_or_incomplete_course_catalog"), { status: 422 });
   }
@@ -443,7 +470,6 @@ async function syncCatalog() {
     });
   }
   const courses = [...byId.values()];
-  // A sudden large shrink is more likely a partial CSV than a semester change.
   const { count: previousCount, error: previousError } = await db.from("courses")
     .select("course_id", { count: "exact", head: true }).eq("active", true).in("course_group", ["GR", "GS"]);
   if (previousError) throw previousError;
@@ -468,7 +494,6 @@ async function syncCatalog() {
     const { error } = await db.from("courses").upsert(courses.slice(offset, offset + 500), { onConflict: "course_id" });
     if (error) throw error;
   }
-  // Deactivate courses absent from this successfully saved snapshot.
   const { data: stale, error: staleError } = await db.from("courses")
     .select("course_id").eq("active", true).in("course_group", ["GR", "GS"])
     .neq("catalog_version", version).limit(5000);
@@ -478,7 +503,6 @@ async function syncCatalog() {
     const { error: disableError } = await db.from("courses")
       .update({ active: false, updated_at: now }).in("course_id", staleIds);
     if (disableError) throw disableError;
-    // Prevent already-queued jobs from starting for removed courses.
     const { error: cancelError } = await db.from("audit_jobs")
       .update({ status: "cancelled", last_error: "course_removed_from_active_catalog", updated_at: now })
       .in("course_id", staleIds).eq("status", "queued");
@@ -498,44 +522,62 @@ async function publicResults() {
 }
 
 async function publicHistory(courseId) {
-  const { data: course, error: courseError } = await db.from("courses")
-    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
-    .eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
-  if (courseError) throw courseError;
-  if (!course) return null;
+  const { data: activeCourse, error: activeError } = await db.from("courses")
+    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+  if (activeError) throw activeError;
+  if (!activeCourse) return null;
+  const { data: publicRow, error: publicError } = await db.from("public_course_results").select("*").eq("course_id", courseId).maybeSingle();
+  if (publicError) throw publicError;
+  if (!publicRow) return null;
   const { data: runs, error } = await db.from("audit_runs")
     .select("run_id,audited_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
-    .eq("course_id", courseId)
+    .eq("course_id", courseId).not("public_status", "is", null)
     .order("audited_at", { ascending: false }).limit(3);
   if (error) throw error;
-  return {
-    courseId: course.course_id,
-    courseCode: course.course_code || "",
-    courseTitle: course.course_title || "",
-    group: course.course_group || "",
-    faculty: course.faculty || "",
-    instructors: course.instructor_names || [],
-    courseUrl: course.course_url || "",
-    runs: (runs || []).map(publicHistoryRunRecord)
-  };
+  return { ...publicRow, runs: (runs || []).map(publicHistoryRunRecord) };
+}
+
+function publicEvidenceSnapshot(snapshot) {
+  const source = snapshot && typeof snapshot === "object" ? snapshot : {};
+  const weeks = Array.isArray(source.weeks) ? source.weeks.map(week => ({
+    session: week.session,
+    section: week.section || "",
+    criteria: Array.isArray(week.criteria) ? week.criteria.map(item => ({
+      criterion: item.criterion,
+      label: item.label || "",
+      detail: item.detail || "",
+      status: item.status === "needs_review" ? "fail" : item.status
+    })) : []
+  })) : [];
+  const activities = Array.isArray(source.activities) ? source.activities.map(item => ({
+    section: item.section || "",
+    title: item.title || "",
+    kind: item.kind || "",
+    externalUrl: item.externalUrl || "",
+    href: item.href || "",
+    accessNote: item.accessNote || "",
+    linkStatus: item.linkStatus || ""
+  })) : [];
+  return { weeks, activities };
+}
+
+async function downloadEvidenceSnapshot(path) {
+  const { data, error } = await db.storage.from("audit-evidence").download(path);
+  if (error) throw error;
+  return JSON.parse(await data.text());
 }
 
 async function evidence(request, courseId, runId) {
-  const { data: course, error: courseError } = await db.from("courses")
-    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
-  if (courseError) throw courseError;
-  if (!course) return null;
   const { data: run, error } = await db.from("audit_runs")
     .select("evidence_object_path,public_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
-  if (!run?.evidence_object_path) return null;
-  const { data, error: signError } = await db.storage.from("audit-evidence").createSignedUrl(run.evidence_object_path, 300);
-  if (signError) throw signError;
-  return data;
+  if (!run || !run.public_status || !run.evidence_object_path) return null;
+  return { snapshot:publicEvidenceSnapshot(await downloadEvidenceSnapshot(run.evidence_object_path)) };
 }
 
 async function adminEvidence(request, courseId, runId) {
-  await reviewer(request);
+  const user = await reviewer(request);
+  if (user.role !== "super_admin") return evidence(request, courseId, runId);
   const { data: run, error } = await db.from("audit_runs")
     .select("evidence_object_path").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
@@ -594,6 +636,20 @@ async function ingestReviewerResult(request) {
     headers: request.headers,
     body: JSON.stringify(payload)
   }), job.job_id);
+}
+
+// An explicit recheck is intentionally one course at a time.  The catalog is
+// synchronized first, so a retired course can never be queued by an old row
+// in the browser report.
+async function queueOneCourse(request) {
+  await reviewer(request);
+  const body = await request.json().catch(() => ({}));
+  const courseId = String(body.courseId || "").trim();
+  if (!courseId) throw Object.assign(new Error("course_id_required"), { status:400 });
+  await syncCatalog();
+  const { data, error } = await db.rpc("enqueue_course_audit", { p_course_id:courseId });
+  if (error) throw error;
+  return data || { queued:false, reason:"course_not_available" };
 }
 
 async function purgeRetiredEvidence(limit = 20) {
@@ -704,6 +760,9 @@ Deno.serve(async request => {
       if (error) throw error;
       return respond(request, 202, { queued: data, catalogCount: catalog.count, catalogVersion: catalog.version, scope });
     }
+    if (request.method === "POST" && parts.join("/") === "v1/admin/jobs/course") {
+      return respond(request, 202, await queueOneCourse(request));
+    }
     if (request.method === "POST" && parts.join("/") === "v1/admin/jobs/refresh") {
       await reviewer(request); const { data, error } = await db.rpc("enqueue_refresh_audits");
       if (error) throw error; return respond(request, 202, { batchId: data });
@@ -716,16 +775,9 @@ Deno.serve(async request => {
       if (error) throw error;
       if (!data?.job_id) return respond(request, 200, { job:null });
       const { data:course, error:courseError } = await db.from("courses")
-        .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names,active")
+        .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
         .eq("course_id", data.course_id).single();
       if (courseError) throw courseError;
-      if (!course.active || !["GR", "GS"].includes(String(course.course_group || "").toUpperCase())) {
-        const { error: cancelError } = await db.from("audit_jobs")
-          .update({ status:"cancelled", last_error:"course_not_in_active_catalog", updated_at:new Date().toISOString() })
-          .eq("job_id", data.job_id);
-        if (cancelError) throw cancelError;
-        return respond(request, 200, { job:null });
-      }
       return respond(request, 200, { job:{...data,course} });
     }
     if (request.method === "POST" && parts[0] === "v1" && parts[1] === "worker" && parts[2] === "jobs" && parts[4] === "result") {

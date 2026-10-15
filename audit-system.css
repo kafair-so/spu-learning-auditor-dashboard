@@ -17,3 +17,10 @@
 
 /* Before the Extension reports item counts, this is an activity signal—not a made-up percentage. */
 .progress-fill.indeterminate{width:42%!important;background:linear-gradient(90deg,transparent,#2763c9,#57a3ef,transparent);animation:worker-indeterminate 1.25s ease-in-out infinite}@keyframes worker-indeterminate{0%{transform:translateX(-115%)}100%{transform:translateX(250%)}}
+
+.course-queue-picker{position:relative;z-index:1;display:flex;justify-content:space-between;gap:16px;align-items:end;margin:15px 0;padding:14px 16px;border:1px solid #c9dcf4;border-radius:14px;background:rgba(255,255,255,.7)}.course-queue-picker strong{color:#163d69}.course-queue-picker p{margin:3px 0 0;font-size:12px}.course-queue-controls{display:flex;gap:8px;min-width:min(100%,470px)}.course-queue-controls input{min-width:0;flex:1;padding:10px 12px;border:1px solid #b8d0ee;border-radius:10px;background:#fff;color:#183b62}.course-queue-controls button{white-space:nowrap}.requeue-course{font-size:12px;white-space:nowrap}@media(max-width:760px){.course-queue-picker{align-items:stretch;flex-direction:column}.course-queue-controls{min-width:0}}.theme-dark .course-queue-picker{background:#10243b;border-color:#315675}.theme-dark .course-queue-controls input{background:#0e1928;border-color:#3b5875;color:#edf5ff}
+
+/* Public/non-super-admin result state: amber means below threshold; red remains no content. */
+.result-summary.has_content{border-left-color:var(--orange);background:#fff8ed}
+.facts{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important}
+
