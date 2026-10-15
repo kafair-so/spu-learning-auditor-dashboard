@@ -581,12 +581,23 @@ async function publicResults() {
 
 async function publicHistory(courseId) {
   const { data: activeCourse, error: activeError } = await db.from("courses")
-    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
+    .eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
   if (activeError) throw activeError;
   if (!activeCourse) return null;
   const { data: publicRow, error: publicError } = await db.from("public_course_results").select("*").eq("course_id", courseId).maybeSingle();
   if (publicError) throw publicError;
-  if (!publicRow) return null;
+  if (!publicRow) return {
+    courseId: activeCourse.course_id,
+    courseCode: activeCourse.course_code || "",
+    courseTitle: activeCourse.course_title || "",
+    courseProfile: activeCourse.course_title || "",
+    courseUrl: activeCourse.course_url || "",
+    group: activeCourse.course_group || "",
+    faculty: activeCourse.faculty || "",
+    instructors: activeCourse.instructor_names || [],
+    runs: []
+  };
   const { data: runs, error } = await db.from("audit_runs")
     .select("run_id,audited_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
     .eq("course_id", courseId).not("public_status", "is", null)
@@ -704,10 +715,34 @@ async function queueOneCourse(request) {
   const body = await request.json().catch(() => ({}));
   const courseId = String(body.courseId || "").trim();
   if (!courseId) throw Object.assign(new Error("course_id_required"), { status:400 });
-  await syncCatalog();
-  const { data, error } = await db.rpc("enqueue_course_audit", { p_course_id:courseId });
-  if (error) throw error;
-  return data || { queued:false, reason:"course_not_available" };
+  const { data: course, error: courseError } = await db.from("courses")
+    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+  if (courseError) throw courseError;
+  if (!course) return { queued:false, reason:"course_not_available" };
+
+  const { data: activeJob, error: activeJobError } = await db.from("audit_jobs")
+    .select("job_id,status").eq("course_id", courseId).in("status", ["queued", "running"])
+    .order("created_at", { ascending:false }).limit(1).maybeSingle();
+  if (activeJobError) throw activeJobError;
+  if (activeJob) return {
+    queued:false,
+    reason:activeJob.status === "running" ? "course_is_running" : "course_already_queued",
+    jobId:activeJob.job_id,
+    courseId
+  };
+
+  const { data: job, error: insertError } = await db.from("audit_jobs").insert({
+    job_key:`manual:${courseId}:${crypto.randomUUID()}`,
+    course_id:courseId,
+    kind:"retry",
+    status:"queued",
+    priority:120
+  }).select("job_id").single();
+  if (insertError) {
+    if (insertError.code === "23505") return { queued:false, reason:"course_already_queued", courseId };
+    throw insertError;
+  }
+  return { queued:true, jobId:job.job_id, courseId };
 }
 
 async function purgeRetiredEvidence(limit = 20) {
@@ -847,4 +882,5 @@ Deno.serve(async request => {
     console.error(error); return respond(request, Number(error.status || 400), { error: error.message || "request_failed" });
   }
 });
+
 
