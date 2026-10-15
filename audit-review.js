@@ -5,7 +5,7 @@
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString("th-TH"):"—";
   const CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
-  const isSuperAdmin=()=>window.OOEReviewer?.role==="super_admin";
+  const isSuperAdmin=()=>["owner","super_admin"].includes(window.OOEReviewer?.role);
   const auditTime=value=>{const time=new Date(value||"");return Number.isNaN(time.valueOf())?"—":time.toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"});};
   const errorDetail=record=>{
     const source=record||{};
@@ -69,7 +69,7 @@
     $("workerChip").textContent=visible?"กำลังทำงาน":"พร้อมเชื่อมต่อ";
     $("workerChip").classList.toggle("running",visible);
   }
-  let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[];
+  let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[],accessUsers=[];
   let resultsState="loading",hasLoadedResults=false;
   document.head.insertAdjacentHTML("beforeend",`<style>
     @keyframes ooeShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
@@ -124,16 +124,33 @@
 
   async function loadAccessUsers(){
     const result=await AuditApi.accessUsers();
-    const users=result.users||[];
-    $("accessList").innerHTML=users.length?users.map(user=>{
-      const protectedRow=user.role==="super_admin";
-      const action=protectedRow?'<span class="muted">บัญชีหลักของระบบ</span>':`<button type="button" data-access-email="${esc(user.email)}" data-access-active="${user.active?"false":"true"}">${user.active?"ปิดสิทธิ์":"เปิดสิทธิ์"}</button>`;
-      return `<div class="access-item"><div><strong>${esc(user.display_name||user.email)}</strong><div class="muted">${esc(user.email)}</div></div><span class="role-badge ${protectedRow?"":"admin"}">${protectedRow?"SUPER ADMIN":"ADMIN"}</span><span class="access-state ${user.active?"active":"inactive"}">${user.active?"ใช้งาน":"ปิดสิทธิ์"}</span><div>${action}</div></div>`;
+    accessUsers=result.users||[];
+    if(result.actorRole)window.OOEReviewer.role=result.actorRole;
+    const ownerOption=document.querySelector("[data-owner-option]");if(ownerOption)ownerOption.hidden=result.actorRole!=="owner";
+    if($("currentRoleBadge"))$("currentRoleBadge").textContent=result.actorRole==="owner"?"OWNER":result.actorRole==="super_admin"?"SUPER ADMIN":"ADMIN";
+    const roleLabel=role=>role==="owner"?"OWNER":role==="super_admin"?"SUPER ADMIN":"ADMIN";
+    $("accessList").innerHTML=accessUsers.length?accessUsers.map(user=>{
+      const actions=[];
+      if(user.can_edit)actions.push(`<button type="button" data-access-edit="${esc(user.email)}">แก้ไข</button>`);
+      if(user.can_toggle)actions.push(`<button type="button" data-access-email="${esc(user.email)}" data-access-active="${user.active?"false":"true"}">${user.active?"ปิดสิทธิ์":"เปิดสิทธิ์"}</button>`);
+      if(!actions.length)actions.push(`<span class="muted">${user.role==="owner"?"Owner ปัจจุบัน":"บัญชีปัจจุบัน"}</span>`);
+      return `<div class="access-item"><div><strong>${esc(user.display_name||user.email)}</strong><div class="muted">${esc(user.email)}</div></div><span class="role-badge ${esc(user.role)}">${roleLabel(user.role)}</span><span class="access-state ${user.active?"active":"inactive"}">${user.active?"ใช้งาน":"ปิดสิทธิ์"}</span><div class="access-actions">${actions.join("")}</div></div>`;
     }).join(""):'<div class="empty">ยังไม่มีรายชื่อผู้ดูแล</div>';
   }
 
+  function resetAccessForm(){
+    $("accessForm").reset();$("adminEmail").readOnly=false;$("accessSubmit").textContent="เพิ่มสิทธิ์";$("accessCancel").hidden=true;
+  }
+
+  function editAccessUser(email){
+    const user=accessUsers.find(item=>item.email===email);if(!user)return;
+    $("adminEmail").value=user.email;$("adminEmail").readOnly=true;$("adminName").value=user.display_name||"";$("adminRole").value=user.role;
+    $("adminRole").disabled=user.is_current_user&&window.OOEReviewer?.role!=="owner";
+    $("accessSubmit").textContent="บันทึกการแก้ไข";$("accessCancel").hidden=false;$("adminName").focus();
+  }
+
   async function setupAccessManagement(){
-    if(window.OOEReviewer?.role!=="super_admin")return;
+    if(!["owner","super_admin"].includes(window.OOEReviewer?.role))return;
     document.querySelectorAll("[data-super-admin-only]").forEach(item=>item.hidden=false);
     try{await loadAccessUsers();}catch(error){setAccessMessage(error.message||String(error),"error");}
   }
@@ -487,18 +504,22 @@
     try{
       const email=$("adminEmail").value.trim().toLowerCase();
       const displayName=$("adminName").value.trim(),role=$("adminRole").value;
-      await AuditApi.saveAccessUser(email,displayName,role);
-      $("accessForm").reset();
+      if(role==="owner"&&email!==window.OOEReviewer?.email&&!confirm(`ยืนยันโอนสิทธิ์ Owner ให้ ${email}\nบัญชีของคุณจะเปลี่ยนเป็น Super Admin`))return;
+      const result=await AuditApi.saveAccessUser(email,displayName,role);
+      if(result.ownerTransferred)window.OOEReviewer.role="super_admin";
+      $("adminRole").disabled=false;resetAccessForm();
       await loadAccessUsers();
-      setAccessMessage(`เพิ่มสิทธิ์ ${role==="super_admin"?"Super Admin":"Admin"} ให้ ${email} แล้ว`);
+      setAccessMessage(result.ownerTransferred?`โอนสิทธิ์ Owner ให้ ${email} แล้ว`:`บันทึกข้อมูลและสิทธิ์ของ ${email} แล้ว`);
     }catch(error){setAccessMessage(error.message||String(error),"error");}
   });
   $("accessList").addEventListener("click",async event=>{
+    const edit=event.target.closest("button[data-access-edit]");if(edit){editAccessUser(edit.dataset.accessEdit);return;}
     const button=event.target.closest("button[data-access-email]");if(!button)return;
     const email=button.dataset.accessEmail,active=button.dataset.accessActive==="true";
     try{button.disabled=true;await AuditApi.setAccessUserStatus(email,active);await loadAccessUsers();setAccessMessage(`${active?"เปิด":"ปิด"}สิทธิ์ ${email} แล้ว`);}
     catch(error){button.disabled=false;setAccessMessage(error.message||String(error),"error");}
   });
+  $("accessCancel").addEventListener("click",()=>{$("adminRole").disabled=false;resetAccessForm();});
   $("menuToggle").addEventListener("click",openMenu);$("menuClose").addEventListener("click",closeMenu);$("adminScrim").addEventListener("click",closeMenu);
   document.querySelectorAll("[data-admin-view]").forEach(button=>button.addEventListener("click",()=>showAdminView(button.dataset.adminView)));
   setupExperience();
@@ -509,3 +530,4 @@
   loadQueueOverview().catch(()=>{});
   setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();
+

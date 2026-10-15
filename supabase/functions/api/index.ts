@@ -74,7 +74,7 @@ async function reviewer(request) {
 
 async function superAdmin(request) {
   const user = await reviewer(request);
-  if (user.role !== "super_admin") throw Object.assign(new Error("super_admin_required"), { status: 403 });
+  if (!["owner", "super_admin"].includes(user.role)) throw Object.assign(new Error("super_admin_required"), { status: 403 });
   return user;
 }
 
@@ -85,25 +85,49 @@ function normalizeAdminEmail(value) {
 }
 
 async function listAccessUsers(request) {
-  await superAdmin(request);
+  const actor = await superAdmin(request);
   const { data, error } = await db.from("reviewer_emails")
     .select("email,display_name,role,active,created_at,created_by,updated_at")
     .order("role", { ascending: false }).order("email", { ascending: true });
   if (error) throw error;
-  return { users: data || [] };
+  const rank = { owner: 0, super_admin: 1, admin: 2 };
+  const users = (data || []).sort((a, b) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9) || a.email.localeCompare(b.email))
+    .map(user => ({
+      ...user,
+      is_current_user: user.email === actor.email,
+      can_edit: actor.role === "owner" || (user.role === "admin" && actor.role === "super_admin") || user.email === actor.email,
+      can_toggle: user.email !== actor.email && user.role !== "owner" && (actor.role === "owner" || user.role === "admin")
+    }));
+  return { users, actorRole: actor.role, actorEmail: actor.email };
 }
 
 async function saveAccessUser(request) {
   const actor = await superAdmin(request);
   const payload = await request.json();
   const email = normalizeAdminEmail(payload.email);
-  const role = ["admin", "super_admin"].includes(String(payload.role || "admin")) ? String(payload.role || "admin") : null;
+  const role = ["admin", "super_admin", "owner"].includes(String(payload.role || "admin")) ? String(payload.role || "admin") : null;
   if (!role) throw Object.assign(new Error("invalid_reviewer_role"), { status: 400 });
   const now = new Date().toISOString();
   const { data: existing, error: lookupError } = await db.from("reviewer_emails")
     .select("email,role").eq("email", email).maybeSingle();
   if (lookupError) throw lookupError;
-  if (existing?.role === "super_admin") throw Object.assign(new Error("super_admin_record_protected"), { status: 409 });
+  if (role === "owner") {
+    if (actor.role !== "owner") throw Object.assign(new Error("owner_required"), { status: 403 });
+    const { data, error } = await db.rpc("transfer_reviewer_owner", {
+      p_from_email: actor.email,
+      p_to_email: email,
+      p_display_name: String(payload.displayName || "").trim() || null
+    });
+    if (error) throw error;
+    return { user: Array.isArray(data) ? data[0] : data, ownerTransferred: email !== actor.email };
+  }
+  if (existing?.role === "owner") throw Object.assign(new Error("owner_transfer_required"), { status: 409 });
+  if (actor.role !== "owner" && (role === "super_admin" || existing?.role === "super_admin") && email !== actor.email) {
+    throw Object.assign(new Error("owner_required"), { status: 403 });
+  }
+  if (actor.role !== "owner" && email === actor.email && role !== actor.role) {
+    throw Object.assign(new Error("cannot_change_own_role"), { status: 409 });
+  }
   const accessRecord = {
     email,
     display_name: String(payload.displayName || "").trim() || null,
@@ -128,7 +152,8 @@ async function setAccessUserStatus(request, emailPart) {
     .select("email,role").eq("email", email).maybeSingle();
   if (lookupError) throw lookupError;
   if (!existing) throw Object.assign(new Error("access_user_not_found"), { status: 404 });
-  if (existing.role === "super_admin") throw Object.assign(new Error("super_admin_record_protected"), { status: 409 });
+  if (existing.role === "owner") throw Object.assign(new Error("owner_record_protected"), { status: 409 });
+  if (existing.role === "super_admin" && actor.role !== "owner") throw Object.assign(new Error("owner_required"), { status: 403 });
   const { data, error } = await db.from("reviewer_emails")
     .update({ active: payload.active, updated_at: new Date().toISOString() })
     .eq("email", email).select("email,display_name,role,active,created_at,created_by,updated_at").single();
@@ -245,7 +270,7 @@ async function activeCatalogIds() {
 
 async function listAdminResults(request) {
   const user = await reviewer(request);
-  const canSeeInternalReview = user.role === "super_admin";
+  const canSeeInternalReview = ["owner", "super_admin"].includes(user.role);
   const activeIds = await activeCatalogIds();
   if (!activeIds.length) return { records:[], role:user.role, restricted:!canSeeInternalReview };
   const { data, error } = await db.from("audit_runs").select(
@@ -321,7 +346,7 @@ async function queueOverview(request) {
 
 async function adminHistory(request, courseId) {
   const user = await reviewer(request);
-  if (user.role !== "super_admin") return publicHistory(courseId);
+  if (!["owner", "super_admin"].includes(user.role)) return publicHistory(courseId);
   const { data: course, error: courseError } = await db.from("courses")
     .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
     .eq("course_id", courseId).maybeSingle();
@@ -577,7 +602,7 @@ async function evidence(request, courseId, runId) {
 
 async function adminEvidence(request, courseId, runId) {
   const user = await reviewer(request);
-  if (user.role !== "super_admin") return evidence(request, courseId, runId);
+  if (!["owner", "super_admin"].includes(user.role)) return evidence(request, courseId, runId);
   const { data: run, error } = await db.from("audit_runs")
     .select("evidence_object_path").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
