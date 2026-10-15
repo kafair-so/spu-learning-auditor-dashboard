@@ -7,6 +7,7 @@ const api = read("supabase/functions/api/index.ts");
 const script = read("google-apps-script/Code.gs");
 const page = read("audit-review.html");
 const review = read("audit-review.js");
+const evidence = read("audit-evidence.js");
 
 test("sheet status mapping follows the requested three values", () => {
   assert.match(api, /if \(status === "pass"\) return "ผ่าน"/);
@@ -35,6 +36,11 @@ test("an active course without a published result opens as not yet audited", () 
   assert.match(api, /if \(!publicRow\) return \{/);
   assert.match(api, /courseId: activeCourse\.course_id/);
   assert.match(api, /runs: \[\]/);
+});
+
+test("a retired or unsynced course shows a useful Thai message", () => {
+  assert.match(evidence, /ไม่พบรายวิชานี้ในรายการภาคเรียนปัจจุบัน/);
+  assert.match(evidence, /รายการรายวิชายังไม่ได้ซิงก์เข้าระบบ/);
 });
 
 test("single-course recheck queues directly and reports the result on its button", () => {
