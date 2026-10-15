@@ -41,7 +41,7 @@ test("review results are loaded and decided through the central API", () => {
   assert.doesNotMatch(review, /AuditBridge\.loadRecords\(\)/);
 });
 
-test("only super admins can inspect pending evidence and possible scores", () => {
+test("owners and super admins can inspect pending evidence and possible scores", () => {
   const evidence = read("audit-evidence.js");
   assert.match(api, /const AUDIT_MAX_SCORE = 110/);
   assert.match(api, /Math\.min\(AUDIT_MAX_SCORE, score \+ reviewable\)/);
@@ -54,7 +54,7 @@ test("only super admins can inspect pending evidence and possible scores", () =>
   assert.match(api, /user\.role !== "super_admin"/);
   assert.match(review, /audit-evidence\.html\?admin=1/);
   assert.match(evidence, /AuditApi\.adminCourseHistory/);
-  assert.match(evidence, /\(await AuditApi\.session\(\)\)\.role==="super_admin"/);
+  assert.match(evidence, /\["owner","super_admin"\]\.includes\(\(await AuditApi\.session\(\)\)\.role\)/);
   assert.match(evidence, /Math\.min\(maximum,Number\(run\.possibleScore\)\)/);
   assert.match(evidence, /ผลตรวจตามครั้ง\/สัปดาห์/);
   assert.match(evidence, /Extension รุ่น 0\.13\.11/);
@@ -105,4 +105,5 @@ test("the worker renews a session before expiry and pauses safely when Google re
   assert.match(review, /OOEAuth\.refreshCredential\(\{interactive:true\}\)/);
   assert.match(review, /กลับไปทำคิวเดิม/);
 });
+
 
