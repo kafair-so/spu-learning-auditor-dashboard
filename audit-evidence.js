@@ -34,14 +34,45 @@
     const labels={schema_outdated:"รูปแบบผลตรวจเป็นรุ่นเก่า",score_model_outdated:"โมเดลคะแนนเป็นรุ่นเก่า",auditor_version_outdated:"Extension เป็นรุ่นเก่า",scan_incomplete:"การอ่านข้อมูลยังไม่ครบ"};
     return `ข้อควรระวังคุณภาพข้อมูล: ${failures.map(value=>labels[value]||value).join(" · ")} — สถานะรายวิชายังคงอิงคะแนนและหลักฐานที่แสดงด้านล่าง`;
   };
+  const sessionLabel=values=>{
+    const numeric=[...new Set(values.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b),ranges=[];
+    for(let index=0;index<numeric.length;){let end=index;while(end+1<numeric.length&&numeric[end+1]===numeric[end]+1)end++;ranges.push(index===end?String(numeric[index]):`${numeric[index]}–${numeric[end]}`);index=end+1;}
+    const other=[...new Set(values.map(String).filter(value=>value&&!Number.isFinite(Number(value))))];
+    return [...ranges,...other].join(", ");
+  };
+  const actionableIssues=item=>{
+    const text=`${item.label||""} ${item.detail||""}`.toLowerCase(),issues=[];
+    const add=(key,label,action)=>issues.push({key,label,action,session:item.session});
+    const access=/ติดสิทธิ์|ไม่มีสิทธิ์|เข้าถึงไม่ได้|เปิดไม่ได้|ไม่สามารถเข้าถึง|ขอสิทธิ์/.test(text);
+    const duration=/เวลา|นาที|ชั่วโมง|\d+\s*:\s*\d+/.test(text);
+    if(/ข้อมูลผู้สอน|การติดต่อ/.test(text)&&!item.reviewerConfirmedMissing&&!item.confirmedByReviewer)return issues;
+    if(/แบบทดสอบก่อนเรียน|แบบทดสอบหลังเรียน|pre[ -]?test|post[ -]?test/.test(text)){add("quiz-name","แบบทดสอบก่อนและหลังเรียน","เปลี่ยนชื่อ Quiz ให้ระบุชัดเจนว่าเป็น Pre/Post-test หรือแบบทดสอบก่อน/หลังเรียน");return issues;}
+    if(/วิดีโอ|video|record/.test(text)){
+      if(access)add("video-access","สิทธิ์เข้าถึงวิดีโอ","แก้สิทธิ์ของลิงก์วิดีโอให้ผู้ตรวจเปิดดูได้");
+      if(duration)add("video-duration","เวลารวมของวิดีโอ","เพิ่มหรือปรับวิดีโอให้มีเวลารวมไม่น้อยกว่า 1 ชั่วโมง 30 นาที");
+      if(!access&&!duration)add("video-content","วิดีโอบันทึกการสอนล่วงหน้า","เพิ่มหรือปรับวิดีโอบันทึกการสอนล่วงหน้าให้ครบตามเกณฑ์");
+      return issues;
+    }
+    if(/podcast|คลิปเสียง/.test(text)){
+      if(access)add("podcast-access","สิทธิ์เข้าถึง Podcast","แก้สิทธิ์ของลิงก์ Podcast ให้เปิดฟังได้");
+      if(/ไม่ใช่.*คลิปเสียง|อัปโหลดไฟล์|ไฟล์โดยตรง|ลิงก์ภายนอก/.test(text))add("podcast-format","รูปแบบ Podcast","เปลี่ยน Podcast ให้เป็นคลิปเสียงและวางเป็นลิงก์จากผู้ให้บริการภายนอก");
+      if(!issues.length)add("podcast-content","Podcast","เพิ่มหรือแก้ไข Podcast ให้เป็นคลิปเสียงที่เปิดฟังได้");
+      return issues;
+    }
+    if(/ai\s*tutor/.test(text)){add("ai-tutor","AI Tutor","เพิ่ม AI Tutor ตามรูปแบบที่มหาวิทยาลัยกำหนด");return issues;}
+    if(/กิจกรรมท้ายบท|assignment/.test(text)){add("final-activity","กิจกรรมท้ายบท","เพิ่มกิจกรรมท้ายบทหรือ Assignment ให้ชัดเจนตามเกณฑ์");return issues;}
+    const label=item.label||`หัวข้อที่ ${item.criterion||"—"}`;
+    add(`general:${label}:${item.detail||""}`,label,item.detail||"เพิ่มหรือแก้ไของค์ประกอบให้ครบตามเกณฑ์");
+    return issues;
+  };
   const fixSummary=(status,weeks)=>{
     if(status==="pass")return"";
-    const failed=weeks.flatMap(week=>(week.criteria||[]).filter(item=>item.status==="fail").map(item=>({session:week.session,label:item.label||`หัวข้อที่ ${item.criterion||"—"}`,detail:item.detail||"เพิ่มหรือแก้ไของค์ประกอบให้ครบตามเกณฑ์"})));
-    const unique=failed.filter((item,index,all)=>all.findIndex(candidate=>candidate.label===item.label&&candidate.detail===item.detail)===index);
-    const heading=status==="needs_review"?"รายการที่ต้องให้ทีมตรวจยืนยัน":"สรุปสิ่งที่ต้องแก้ไข";
-    const intro=status==="needs_review"?"รายการสีส้มเป็นหลักฐานที่ต้องยืนยัน ส่วนรายการสีแดงด้านล่างยังต้องแก้ไขก่อนผลจะผ่านเกณฑ์":"แก้ไขหัวข้อสีแดงด้านล่าง แล้วรันตรวจอีกครั้งเพื่ออัปเดตคะแนน";
-    const rows=unique.length?unique.map(item=>`<li><strong>${esc(item.label)}</strong>${item.session?` <span class="fix-session">ครั้งที่ ${esc(item.session)}</span>`:""}<div>${esc(item.detail)}</div></li>`).join(""):`<li>ยังไม่มีรายละเอียดหัวข้อจากผลตรวจรุ่นนี้ กรุณาตรวจใหม่ด้วย Extension รุ่นล่าสุดเพื่อสร้างคำแนะนำแบบรายข้อ</li>`;
-    return `<section class="fix-summary ${esc(status)}"><h3>${heading}</h3><p>${intro}</p><ol>${rows}</ol></section>`;
+    const issues=weeks.flatMap(week=>(week.criteria||[]).filter(item=>item.status==="fail").flatMap(item=>actionableIssues({...item,session:week.session})));
+    const grouped=new Map();
+    issues.forEach(issue=>{const current=grouped.get(issue.key)||{...issue,sessions:[]};current.sessions.push(issue.session);grouped.set(issue.key,current);});
+    const rows=[...grouped.values()].map(issue=>{const sessions=sessionLabel(issue.sessions);return `<li class="fix-item"><div class="fix-item-head"><strong>${esc(issue.label)}</strong>${sessions?`<span class="fix-session">ครั้งที่ ${esc(sessions)}</span>`:""}</div><div class="fix-action">${esc(issue.action)}</div></li>`;}).join("");
+    if(!rows)return"";
+    return `<section class="fix-summary ${esc(status)}"><h3>สิ่งที่ผู้สอนต้องแก้ไขเพื่อให้ผ่านเกณฑ์</h3><p>รวมหัวข้อที่ต้องดำเนินการจากทุกครั้งไว้ในรายการเดียว</p><ol>${rows}</ol></section>`;
   };
   const reviewPanel=(run,index,admin)=>{
     if(!admin||index!==0||run.internalStatus!=="needs_review"||!run.runId)return"";
