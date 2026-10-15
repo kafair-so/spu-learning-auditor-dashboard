@@ -237,6 +237,20 @@
     }catch(error){stopWorker(error.message||String(error));$("workerMessage").className="message error";}
   }
 
+  async function resetWorkerPanel(){
+    workerRunning=false;workerStopRequested=false;clearTimeout(workerTimer);workerTimer=null;processedThisSession=0;
+    $("workerStart").disabled=false;$("workerStop").disabled=true;$("workerReset").disabled=true;
+    setWorkerProgress(0,"รีเซ็ตหน้าเว็บตรวจแล้ว",false);
+    setWorkerMessage("กำลังเชื่อมต่อ Extension และโหลดสถานะคิวใหม่");
+    try{
+      await Promise.all([loadResults(),loadQueueOverview()]);
+      await refreshWorkerStatus();
+      setWorkerMessage("Reset เว็บตรวจเรียบร้อย · คิวและผลตรวจเดิมยังอยู่ครบ");
+    }catch(error){
+      setWorkerMessage(`Reset หน้าเว็บแล้ว แต่เชื่อมต่อสถานะล่าสุดไม่สำเร็จ: ${error.message||error}`,"error");
+    }finally{$("workerReset").disabled=false;}
+  }
+
   let queueOverviewData=null,courseCatalog=[];
   // Course Profile is the stable cross-system identity used by the Sheet and
   // by the audit payload. Prefer it over an incidental Moodle URL/id.
@@ -499,6 +513,7 @@
   });
   $("workerStart").addEventListener("click",startWorker);
   $("workerStop").addEventListener("click",()=>{workerStopRequested=true;$("workerStop").disabled=true;setWorkerMessage("รับคำสั่งแล้ว · จะหยุดหลังวิชาปัจจุบันเสร็จ");});
+  $("workerReset").addEventListener("click",resetWorkerPanel);
   $("accessForm").addEventListener("submit",async event=>{
     event.preventDefault();
     try{

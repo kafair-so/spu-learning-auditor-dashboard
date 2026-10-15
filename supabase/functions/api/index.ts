@@ -7,6 +7,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
 const COURSE_CSV_URL = Deno.env.get("COURSE_CSV_URL") || "";
+const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
+const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
+const STATUS_SPREADSHEET_ID = "1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg";
 const AUDIT_MAX_SCORE = 110;
 const ALLOWED_ORIGINS = new Set((Deno.env.get("ALLOWED_ORIGINS") ||
   "http://127.0.0.1:8765,http://localhost:8765,https://donut204.github.io,https://kafair-so.github.io")
@@ -15,6 +18,35 @@ const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
+
+function sheetStatusLabel(status) {
+  if (status === "pass") return "ผ่าน";
+  if (status === "no_content") return "ไม่มีเนื้อหา";
+  return "ไม่ผ่าน";
+}
+
+async function syncSheetStatusSafely(courseId, status) {
+  if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
+  try {
+    const response = await fetch(SHEET_STATUS_WEBHOOK_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        secret:SHEET_STATUS_WEBHOOK_SECRET,
+        spreadsheetId:STATUS_SPREADSHEET_ID,
+        courseId:String(courseId || ""),
+        status:sheetStatusLabel(status)
+      })
+    });
+    if (!response.ok) throw new Error(`sheet_status_sync_http_${response.status}`);
+    const result = await response.json().catch(() => ({}));
+    if (result.ok !== true) throw new Error(result.error || "sheet_status_sync_failed");
+    return result;
+  } catch (error) {
+    console.warn("sheet_status_sync_failed", { courseId, status, error:String(error?.message || error) });
+    return { configured:true, ok:false, error:String(error?.message || error) };
+  }
+}
 
 function corsHeaders(request) {
   const origin = request.headers.get("origin") || "";
@@ -427,7 +459,8 @@ async function decideAdminResult(request, runId) {
     published_run_id:run.run_id, evidence_available:Boolean(run.evidence_object_path), published_at:now
   }, { onConflict:"course_id" });
   if (publishError) throw publishError;
-  return { runId:run.run_id, courseId:run.course_id, internalStatus:decision, publicStatus:decision };
+  const sheetSync = await syncSheetStatusSafely(run.course_id, decision);
+  return { runId:run.run_id, courseId:run.course_id, internalStatus:decision, publicStatus:decision, sheetSync };
 }
 
 function parseCsv(text) {
@@ -721,7 +754,8 @@ async function submitResult(request, jobId) {
   });
   if (error) throw error;
   await purgeRetiredEvidence().catch(error => console.warn("retired_evidence_cleanup_failed", error));
-  return { runId: data, courseId: course, automaticPublication: gate.approved, qualityFailures: gate.failures };
+  const sheetSync = await syncSheetStatusSafely(course, payload.internalStatus);
+  return { runId: data, courseId: course, automaticPublication: gate.approved, qualityFailures: gate.failures, sheetSync };
 }
 
 Deno.serve(async request => {
