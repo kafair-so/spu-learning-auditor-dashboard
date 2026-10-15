@@ -120,7 +120,7 @@
       if(AuditApi.enabled()){
         if(!courseId)throw new Error("ไม่พบรหัสรายวิชา");
         let superAdmin=false;
-        if(admin){try{superAdmin=(await AuditApi.session()).role==="super_admin";}catch{superAdmin=false;}}
+        if(admin){try{superAdmin=["owner","super_admin"].includes((await AuditApi.session()).role);}catch{superAdmin=false;}}
         const result=superAdmin?await AuditApi.adminCourseHistory(courseId):await AuditApi.courseHistory(courseId);
         const history=await Promise.all((result.runs||[]).map(async run=>({...run,evidenceSnapshot:await (superAdmin?AuditApi.adminEvidence(courseId,run.runId):AuditApi.evidence(courseId,run.runId))})));
         render(result,history,superAdmin);return;
