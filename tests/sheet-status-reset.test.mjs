@@ -30,3 +30,18 @@ test("the auditor reset preserves central queue and results", () => {
   assert.match(review, /async function resetWorkerPanel/);
   assert.match(review, /Promise\.all\(\[loadResults\(\),loadQueueOverview\(\)\]\)/);
 });
+
+test("an active course without a published result opens as not yet audited", () => {
+  assert.match(api, /if \(!publicRow\) return \{/);
+  assert.match(api, /courseId: activeCourse\.course_id/);
+  assert.match(api, /runs: \[\]/);
+});
+
+test("single-course recheck queues directly and reports the result on its button", () => {
+  assert.doesNotMatch(api, /db\.rpc\("enqueue_course_audit"/);
+  assert.match(api, /job_key:`manual:\$\{courseId\}:\$\{crypto\.randomUUID\(\)\}`/);
+  assert.match(api, /\.in\("status", \["queued", "running"\]\)/);
+  assert.match(review, /requeue\.textContent=result\.queued\?"✓ เพิ่มเข้าคิวแล้ว":reason/);
+  assert.match(review, /course_is_running:"กำลังตรวจอยู่"/);
+});
+
