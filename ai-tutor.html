@@ -497,10 +497,10 @@ function filtered(){
 }
 function setKpis(rows){const total=rows.length,all=DATA.length;const done=rows.filter(d=>normalizeStatus(d.aiStatus)==='ทำ').length;
   const notdone=rows.filter(d=>normalizeStatus(d.aiStatus)==='ไม่ทำ').length;
-  $('totalKpi').textContent=total.toLocaleString('th-TH');
-  $('doneKpi').textContent=done.toLocaleString('th-TH');
-  $('notdoneKpi').textContent=notdone.toLocaleString('th-TH');
-  $('totalNote').textContent=`จากทั้งหมด ${all.toLocaleString('th-TH')} รายวิชา`;
+  $('totalKpi').textContent=total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('doneKpi').textContent=done.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('notdoneKpi').textContent=notdone.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('totalNote').textContent=`จากทั้งหมด ${all.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชา`;
   $('doneNote').textContent=`${done} จาก ${total} รายวิชาที่แสดง`;
   $('notdoneNote').textContent=`${notdone} จาก ${total} รายวิชาที่แสดง`;}
 function renderChart(rows){
@@ -521,7 +521,7 @@ function renderDonut(rows){const total=rows.length;const item=(label,n,p,cls)=>`
   const pending=rows.filter(d=>normalizeStatus(d.aiStatus)==='รอข้อมูล').length;
   const dp=total?done/total*100:0,np=total?notdone/total*100:0,pp=total?pending/total*100:0;
   $('donutChart').style.background=total?`conic-gradient(var(--green) 0 ${dp}%,var(--red) ${dp}% ${dp+np}%,var(--gray) ${dp+np}% 100%)`:'#e8eef5';
-  $('donutTotal').textContent=total.toLocaleString('th-TH');
+  $('donutTotal').textContent=total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
   $('donutLegend').innerHTML=item('ทำ AI Tutor',done,dp,'green')+item('ไม่ทำ AI Tutor',notdone,np,'red');}
 const td=(v,c='')=>`<td class="${c}">${esc(v)}</td>`;
 function statusBadge(s){
@@ -545,7 +545,7 @@ function adviceCell(d){
 function renderTable(rows){
   const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));currentPage=Math.min(currentPage,pages);const start=(currentPage-1)*PAGE_SIZE;const p=rows.slice(start,start+PAGE_SIZE);
   $('courseRows').innerHTML=p.map((d,i)=>`<tr>${td(start+i+1,'num')}${td(d.courseCode,'course nowrap')}${td(d.courseProfile,'nowrap')}${td(d.courseType,'nowrap')}${td(d.faculty)}${td(d.instructors||'—')}${td(d.aiTutor||'0','center')}<td class="center">${statusBadge(d.aiStatus)}</td><td class="center">${adviceCell(d)}</td><td>${d.courseLink?`<a href="${esc(d.courseLink)}" target="_blank" rel="noopener">เปิด ↗</a>`:'—'}</td></tr>`).join('');
-  $('resultCount').textContent=`แสดง ${rows.length.toLocaleString('th-TH')} จาก ${DATA.length.toLocaleString('th-TH')} วิชา`;
+  $('resultCount').textContent=`แสดง ${rows.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} จาก ${DATA.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} วิชา`;
   $('pageInfo').textContent=rows.length?`แสดง ${start+1}–${Math.min(start+PAGE_SIZE,rows.length)} จาก ${rows.length} รายวิชา`:'ไม่พบข้อมูล';
   $('prevBtn').disabled=currentPage===1;$('nextBtn').disabled=currentPage===pages;
 }
@@ -566,7 +566,7 @@ function render(reset=true){if(reset)currentPage=1;const rows=filtered();setKpis
 async function loadData(){
   showLoadingSkeleton();
   $('sourceDate').textContent='กำลังโหลดข้อมูลออนไลน์...';$('refreshBtn').disabled=true;
-  try{const res=await fetch(CSV_URL+(CSV_URL.includes('?')?'&':'?')+'_='+Date.now(),{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);DATA=parseCSV(await res.text()).map(mapRow).filter(d=>d.courseProfile);refillFilters();const now=new Date();$('sourceDate').textContent=`ดึงข้อมูลเมื่อ ${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${DATA.length.toLocaleString('th-TH')} รายวิชา`;clearLoadingSkeleton();render();revealDashboardOnce();}
+  try{const res=await fetch(CSV_URL+(CSV_URL.includes('?')?'&':'?')+'_='+Date.now(),{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);DATA=parseCSV(await res.text()).map(mapRow).filter(d=>d.courseProfile);refillFilters();const now=new Date();$('sourceDate').textContent=`ดึงข้อมูลเมื่อ ${now.toLocaleDateString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} ${now.toLocaleTimeString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH",{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${DATA.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชา`;clearLoadingSkeleton();render();revealDashboardOnce();}
   catch(e){clearLoadingSkeleton();console.error(e);$('sourceDate').textContent='ยังไม่ได้เผยแพร่ชีทนี้เป็น CSV หรือโหลดข้อมูลไม่สำเร็จ';$('facultyChart').innerHTML='<div class="empty">กรุณา Publish ชีทสำหรับ Dashboard นี้เป็น CSV ก่อน</div>';}
   finally{$('refreshBtn').disabled=false;}
 }
@@ -588,7 +588,7 @@ document.addEventListener('keydown',e=>{
 });
 bindFacultyChartFilter();
 loadData();
-</script><script src="ui-i18n.js?v=20261016b"></script>
+</script><script src="ui-i18n.js?v=20261016c"></script><script>window.addEventListener("ooe:languagechange",()=>{if(typeof render==="function")render(false);});</script>
 <div class="auth-chip" aria-label="บัญชีผู้ใช้"><span id="authUserEmail"></span><button type="button" onclick="OOEAuth.logout()">ออกจากระบบ</button></div>
 </body></html>
 

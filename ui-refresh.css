@@ -42,3 +42,57 @@ body.theme-dark .scope-segments .scope-segment.active:hover{
   color:#fff!important;
   box-shadow:0 7px 18px rgba(0,0,0,.32)!important;
 }
+
+
+/* 2026-10-16b: explicit selected states; no pseudo-layer dependency. */
+.language-switch:before,
+body.theme-dark .topbar .nav .language-switch:before{display:none!important}
+.topbar .language-switch,
+.topbar-inner .language-switch{
+  display:grid!important;
+  grid-template-columns:1fr 1fr;
+  gap:4px!important;
+  padding:4px!important;
+  border:1px solid rgba(255,255,255,.42)!important;
+  border-radius:999px!important;
+  background:rgba(5,25,51,.38)!important;
+}
+.topbar .language-switch button,
+.topbar-inner .language-switch button{
+  position:relative;
+  z-index:1;
+  min-width:48px;
+  border:0!important;
+  border-radius:999px!important;
+  background:transparent!important;
+  color:#d8e8fb!important;
+  box-shadow:none!important;
+  transition:background-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.topbar .language-switch button.active,
+.topbar-inner .language-switch button.active,
+body.theme-dark .topbar .language-switch button.active,
+body.theme-dark .topbar-inner .language-switch button.active{
+  background:#f8fbff!important;
+  color:#103f78!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.28)!important;
+  transform:translateY(-1px);
+}
+.scope-segments .scope-segment.active,
+.scope-segments .scope-segment[aria-pressed="true"],
+body.theme-dark .scope-segments .scope-segment.active,
+body.theme-dark .scope-segments .scope-segment[aria-pressed="true"]{
+  background:#176dcc!important;
+  border:2px solid #8fc5ff!important;
+  color:#fff!important;
+  font-weight:900!important;
+  box-shadow:0 0 0 2px rgba(90,161,255,.28),0 8px 20px rgba(0,0,0,.34)!important;
+}
+.scope-segments .scope-segment.active:before,
+.scope-segments .scope-segment[aria-pressed="true"]:before{
+  content:"✓";
+  display:inline-block;
+  margin-right:7px;
+  font-weight:1000;
+}
+.scope-segments .scope-segment:not(.active){opacity:.72}

@@ -297,7 +297,7 @@ async function loadData(){
       return {...d,_audit:audit,_publicStatus:publicStatus,'สถานะการตรวจสอบ':AuditBridge.LABELS[publicStatus]};
     });
     const now=new Date();
-    $('sourceDate').textContent=`ดึงข้อมูลเมื่อ ${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${DATA.length.toLocaleString('th-TH')} รายวิชา · ผล Auditor ${auditRecords.length.toLocaleString('th-TH')} รายการ`;
+    $('sourceDate').textContent=`ดึงข้อมูลเมื่อ ${now.toLocaleDateString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} ${now.toLocaleTimeString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH",{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${DATA.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชา · ผล Auditor ${auditRecords.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายการ`;
     refreshFaculty();
     clearLoadingSkeleton();
     render();
@@ -354,15 +354,15 @@ function setKpis(rows){
   const reviewing=rows.filter(d=>d['สถานะการตรวจสอบ']===REVIEW.reviewing).length;
   const fail=rows.filter(d=>d['สถานะการตรวจสอบ']===REVIEW.fail).length;
 
-  $('totalKpi').textContent=total.toLocaleString('th-TH');
-  $('passKpi').textContent=pass.toLocaleString('th-TH');
-  $('reviewingKpi').textContent=reviewing.toLocaleString('th-TH');
-  $('failKpi').textContent=fail.toLocaleString('th-TH');
+  $('totalKpi').textContent=total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('passKpi').textContent=pass.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('reviewingKpi').textContent=reviewing.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  $('failKpi').textContent=fail.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
 
-  $('totalNote').textContent=`จากทั้งหมด ${all.toLocaleString('th-TH')} รายวิชาในหน้า ${activeType}`;
-  $('passNote').textContent=`${pass.toLocaleString('th-TH')} จาก ${total.toLocaleString('th-TH')} รายวิชาที่แสดง`;
-  $('reviewingNote').textContent=`${reviewing.toLocaleString('th-TH')} จาก ${total.toLocaleString('th-TH')} รายวิชาที่แสดง`;
-  $('failNote').textContent=`${fail.toLocaleString('th-TH')} จาก ${total.toLocaleString('th-TH')} รายวิชาที่แสดง`;
+  $('totalNote').textContent=`จากทั้งหมด ${all.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชาในหน้า ${activeType}`;
+  $('passNote').textContent=`${pass.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} จาก ${total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชาที่แสดง`;
+  $('reviewingNote').textContent=`${reviewing.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} จาก ${total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชาที่แสดง`;
+  $('failNote').textContent=`${fail.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} จาก ${total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายวิชาที่แสดง`;
 }
 
 function renderChart(rows){
@@ -401,8 +401,8 @@ function renderDonut(rows){
   $('donutChart').style.background=total
     ?`conic-gradient(var(--green) 0 ${gp}%,var(--amber) ${gp}% ${gp+lp}%,var(--red) ${gp+lp}% 100%)`
     :'#e8eef5';
-  $('donutTotal').textContent=total.toLocaleString('th-TH');
-  const item=(label,n,p,cls)=>`<div class="donut-item"><i class="dot ${cls}"></i><span>${label}</span><strong>${n.toLocaleString('th-TH')} วิชา (${p.toFixed(1)}%)</strong></div>`;
+  $('donutTotal').textContent=total.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH");
+  const item=(label,n,p,cls)=>`<div class="donut-item"><i class="dot ${cls}"></i><span>${label}</span><strong>${n.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} วิชา (${p.toFixed(1)}%)</strong></div>`;
   $('donutLegend').innerHTML=
     item('ผ่าน',good,gp,'green')+
     item('ไม่ผ่านเกณฑ์',low,lp,'amber')+
@@ -456,7 +456,7 @@ function renderTable(rows){
     <td>${evidence}</td>
   </tr>`;
   }).join('');
-  $('resultCount').textContent=`แสดง ${rows.length.toLocaleString('th-TH')} จาก ${typeRows().length.toLocaleString('th-TH')} วิชา`;
+  $('resultCount').textContent=`แสดง ${rows.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} จาก ${typeRows().length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} วิชา`;
   $('pageInfo').textContent=rows.length?`แสดง ${start+1}–${Math.min(start+PAGE_SIZE,rows.length)} จาก ${rows.length} รายวิชา`:'ไม่พบข้อมูล';
   $('prevBtn').disabled=currentPage===1;
   $('nextBtn').disabled=currentPage===pages;
@@ -509,6 +509,6 @@ $('nextBtn').addEventListener('click',()=>{currentPage++;render(false)});
 
 bindFacultyChartFilter();
 loadData();
-</script><script src="ui-i18n.js?v=20261016b"></script><div class="auth-chip" aria-label="บัญชีผู้ใช้"><span id="authUserEmail"></span><button type="button" onclick="OOEAuth.logout()">ออกจากระบบ</button></div>
+</script><script src="ui-i18n.js?v=20261016c"></script><script>window.addEventListener("ooe:languagechange",()=>{if(typeof render==="function")render(false);});</script><div class="auth-chip" aria-label="บัญชีผู้ใช้"><span id="authUserEmail"></span><button type="button" onclick="OOEAuth.logout()">ออกจากระบบ</button></div>
 </body></html>
 
