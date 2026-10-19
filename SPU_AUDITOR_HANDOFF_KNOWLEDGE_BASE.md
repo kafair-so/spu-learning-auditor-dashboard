@@ -220,3 +220,43 @@
 - คำขอผู้ใช้: ให้อัปเดต GitHub Handoff ตามความคืบหน้าจาก shared chat ก่อนเริ่มงานอื่น
 - สิ่งที่ทำ: อ่านและสรุปประวัติจาก shared chat, เทียบกับ Handoff และ GitHub commits, เพิ่ม section 13 พร้อมแยกหลักฐาน/คำรายงาน/งานค้าง
 - สิ่งที่ไม่ได้ทำ: ไม่แก้ source code, ไม่ deploy GitHub Pages/Supabase, ไม่แก้คิวหรือข้อมูล production และไม่อ้างว่างานที่ไม่มีหลักฐาน deploy สำเร็จแล้ว
+
+
+## 14. อัปเดต 2026-10-19 — ปิดงานแสดงรายชื่อวิชาจริงในคิวตรวจ
+**สถานะ: Source + GitHub Pages + Supabase production สำเร็จ / ยังไม่ได้ทดสอบ endpoint ด้วย reviewer session จริง**
+
+### คำขอและการรับช่วง
+- ผู้ใช้สั่งให้อ่านงานล่าสุดจาก Handoff และทำงานค้างต่อ โดยให้ใช้แท็บภายในในการตรวจสอบ
+- ตรวจจาก GitHub ผ่าน in-app browser และเทียบ source บน `main` พบว่างานข้อ 13.5(1) ยังไม่ปิดจริง: `queueOverview()` ส่งเพียงจำนวน, current job และ recent 8 รายการ; หน้า Audit Control Center ไม่มีรายชื่อวิชาทั้งหมดที่ queued/running
+
+### สิ่งที่แก้
+- `supabase/functions/api/index.ts`
+  - เพิ่ม `pending` ในผล `GET /v1/admin/jobs/overview` โดยคืนเฉพาะงาน queued/running ของรายวิชา active
+  - payload มี Course ID, รหัส/ชื่อ/กลุ่มวิชา, สถานะ, kind, priority และเวลา; ไม่เพิ่มข้อมูลผู้สอนหรือข้อมูลรับรอง
+  - เรียงงานที่กำลังตรวจขึ้นก่อน แล้วเรียง queued ตาม priority และเวลาสร้างเพื่อให้รายการคงที่
+  - Commit `05061060017f214c42fc195638037328239a7ea4`
+- `audit-review.js`
+  - เพิ่มส่วน “รายวิชาในคิวปัจจุบัน” แสดงทุกวิชาที่ API ส่งมา พร้อมรหัส ชื่อ กลุ่ม สถานะ และเวลาสร้าง/เริ่มตรวจ
+  - รายการมีพื้นที่ scroll, responsive mobile และสีที่อ่านได้ใน dark mode
+  - Commit `a961e2a8cf06249d8fbead982779de8c99ea3756`
+- `ui-i18n.js`
+  - เพิ่มคำแปลอังกฤษสำหรับหัวข้อ สถานะโหลด ชื่อวิชาไม่ทราบ และ empty state
+  - Commit `93fe21f96d3d914af1ec456ce3c8e0b4a71a8610`
+- `audit-review.html`
+  - bump cache key เป็น `ui-i18n.js?v=20261019a` และ `audit-review.js?v=20261019a`
+  - Commit `768a1940969df3ab37019b5588317f365b9d88f0`
+- เพิ่ม `tests/queue-overview.test.mjs` ครอบคลุม API payload, UI list, dark/mobile, English และ cache keys
+  - Commit `a866c1255d618d898bcf352c360b1c6bcd9fc3f4`
+
+### การตรวจสอบและ Deploy
+- Static regression checks กับ source ล่าสุดผ่าน **6/6** และ JavaScript parse check ของ `audit-review.js` / `ui-i18n.js` ผ่าน
+- GitHub Actions/Pages ตรวจจาก in-app browser: run `#85` (`39223344223`) **completed successfully**
+- Supabase Edge Function `api` deploy production จาก GitHub source ล่าสุดพร้อม `audit-quality.mjs`: version **32**, status **ACTIVE**, `verify_jwt=false` คงค่าเดิมเพราะ function ใช้ custom reviewer authentication
+- ตรวจ source ของ function v32 หลัง deploy พบ `pending` แล้ว
+- Query production แบบ read-only หลัง deploy: `queued_jobs=160`, `running_jobs=0`, `active_courses_in_queue=160`, `out_of_scope_jobs=0`
+- ไม่ได้แก้ schema, RLS, ข้อมูลคิว หรือผลตรวจ; deployment เปลี่ยนเฉพาะ response ของ queue overview
+
+### ข้อจำกัดและงานถัดไป
+- ยังไม่ได้เรียก `/v1/admin/jobs/overview` ด้วย reviewer session จริงใน browser เพราะ in-app tab ไม่มี session ผู้ดูแล; ให้ผู้ใช้ login แล้วเปิดหน้า “ระบบตรวจ” เพื่อตรวจว่าเห็นรายชื่อ 160 วิชาและเลื่อนดูได้ครบ
+- หากหน้าที่ยังเปิดอยู่ไม่เห็นส่วนใหม่ ให้ hard refresh หนึ่งครั้งเพื่อรับ cache key `20261019a`
+- งานค้างลำดับถัดไปจากข้อ 13.5: Google Drive folder ว่างต้องไม่นับเป็นเนื้อหา, OCR background flow, session refresh/resume, catalog หลังเหตุ 140 วิชา, Local 0.13.15 portability และ Google Photos diagnostics
