@@ -349,7 +349,7 @@ async function queueOverview(request) {
   const currentJobs = [...activeJobs, ...terminalJobs];
   const count = status => currentJobs.filter(job => job.status === status).length;
   const current = currentJobs.find(job => job.status === "running") || null;
-  const recent = currentJobs.slice(0, 8).map(job => ({
+  const queueJobRecord = job => ({
     jobId: job.job_id,
     courseId: job.course_id,
     courseCode: job.courses?.course_code || job.course_id,
@@ -357,12 +357,24 @@ async function queueOverview(request) {
     group: job.courses?.course_group || "",
     kind: job.kind,
     status: job.status,
+    priority: Number(job.priority || 0),
     attempts: job.attempts || 0,
     createdAt: job.created_at,
     startedAt: job.claimed_at,
     finishedAt: job.completed_at,
     error: job.last_error || ""
-  }));
+  });
+  const recent = currentJobs.slice(0, 8).map(queueJobRecord);
+  const pending = activeJobs
+    .slice()
+    .sort((left, right) => {
+      if (left.status !== right.status) return left.status === "running" ? -1 : 1;
+      if (left.status === "queued" && Number(left.priority || 0) !== Number(right.priority || 0)) {
+        return Number(right.priority || 0) - Number(left.priority || 0);
+      }
+      return String(left.created_at || "").localeCompare(String(right.created_at || ""));
+    })
+    .map(queueJobRecord);
   return {
     queued: count("queued"),
     running: count("running"),
@@ -370,7 +382,8 @@ async function queueOverview(request) {
     failed: count("failed"),
     cancelled: count("cancelled"),
     outstanding: count("queued") + count("running"),
-    current: current ? recent.find(item => item.jobId === current.job_id) : null,
+    current: current ? pending.find(item => item.jobId === current.job_id) : null,
+    pending,
     recent,
     generatedAt: new Date().toISOString()
   };
