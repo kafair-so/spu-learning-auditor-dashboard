@@ -53,6 +53,20 @@
     .theme-dark .auth-chip button{background:#2f6fbd!important;color:#fff!important;border-color:#6faaf2!important}
   </style>`);
 
+  document.head.insertAdjacentHTML("beforeend",`<style>
+    .queue-courses{grid-column:1/-1;border:1px solid #d7e5f6;border-radius:16px;background:#fff;overflow:hidden}
+    .queue-courses-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #dbe7f5}
+    .queue-courses-head h3{margin:0;color:#163d69;font-size:16px}.queue-courses-head span{color:#5f7893;font-size:12px;font-weight:800}
+    .queue-course-list{display:grid;max-height:360px;overflow:auto}
+    .queue-course-item{display:grid;grid-template-columns:minmax(145px,.7fr) minmax(220px,1.5fr) auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid #e5edf7}
+    .queue-course-item:last-child{border-bottom:0}.queue-course-item strong{display:block;color:#173f6d}.queue-course-item small{display:block;margin-top:3px;color:#6b8199}
+    .queue-course-status{display:inline-flex;align-items:center;gap:6px;justify-self:end;padding:5px 9px;border-radius:999px;background:#e8f2ff;color:#1c5ca8;font-size:12px;font-weight:800}
+    .queue-course-status.running{background:#e5f7ee;color:#08704a}.queue-course-empty{padding:22px;text-align:center;color:#6b8199}
+    .theme-dark .queue-courses{background:#122238;border-color:#304c6a}.theme-dark .queue-courses-head,.theme-dark .queue-course-item{border-color:#2b4059}
+    .theme-dark .queue-courses-head h3,.theme-dark .queue-course-item strong{color:#edf6ff}.theme-dark .queue-courses-head span,.theme-dark .queue-course-item small,.theme-dark .queue-course-empty{color:#aec0d5}
+    .theme-dark .queue-course-status{background:#203d61;color:#b9dcff}.theme-dark .queue-course-status.running{background:#153f37;color:#94ebca}
+    @media(max-width:650px){.queue-course-item{grid-template-columns:1fr auto}.queue-course-item>div:nth-child(2){grid-column:1/-1;grid-row:2}}
+  </style>`);
   function setMessage(text,type="ok"){$("message").textContent=text;$("message").className=`message ${type}`;}
   function setQueueMessage(text,type="ok"){$("queueMessage").textContent=text;$("queueMessage").className=`message ${type}`;}
   function setWorkerMessage(text,type="ok"){$("workerMessage").textContent=text;$("workerMessage").className=`message ${type}`;}
@@ -309,7 +323,7 @@
     const reportMenu=document.querySelector('[data-admin-view="reports"]');
     if(auditPanel&&!$("queueOverview")){
       const host=$("queueMessage");
-      host.insertAdjacentHTML("afterend",`<section class="queue-overview" id="queueOverview" aria-live="polite"><div class="queue-orbit"><div class="queue-orbit-ring"><div><strong id="queueOutstanding">—</strong><span>งานคงเหลือ</span></div></div></div><div class="queue-summary-grid"><article class="queue-stat"><span>รอเริ่มตรวจ</span><strong id="queueQueued">—</strong></article><article class="queue-stat queue-stat-running"><span>กำลังตรวจ</span><strong id="queueRunning">—</strong></article><article class="queue-stat"><span>ตรวจเสร็จ</span><strong id="queueCompleted">—</strong></article><article class="queue-stat queue-stat-failed"><span>ตรวจไม่สำเร็จ</span><strong id="queueFailed">—</strong></article><div class="queue-now" id="queueNow"><span class="pulse-dot"></span><div><strong>กำลังอ่านสถานะคิวจากระบบกลาง…</strong><small>ข้อมูลนี้อัปเดตอัตโนมัติขณะเปิดหน้า</small></div></div></div></section>`);
+      host.insertAdjacentHTML("afterend",`<section class="queue-overview" id="queueOverview" aria-live="polite"><div class="queue-orbit"><div class="queue-orbit-ring"><div><strong id="queueOutstanding">—</strong><span>งานคงเหลือ</span></div></div></div><div class="queue-summary-grid"><article class="queue-stat"><span>รอเริ่มตรวจ</span><strong id="queueQueued">—</strong></article><article class="queue-stat queue-stat-running"><span>กำลังตรวจ</span><strong id="queueRunning">—</strong></article><article class="queue-stat"><span>ตรวจเสร็จ</span><strong id="queueCompleted">—</strong></article><article class="queue-stat queue-stat-failed"><span>ตรวจไม่สำเร็จ</span><strong id="queueFailed">—</strong></article><div class="queue-now" id="queueNow"><span class="pulse-dot"></span><div><strong>กำลังอ่านสถานะคิวจากระบบกลาง…</strong><small>ข้อมูลนี้อัปเดตอัตโนมัติขณะเปิดหน้า</small></div></div></div><section class="queue-courses" aria-labelledby="queueCoursesTitle"><div class="queue-courses-head"><h3 id="queueCoursesTitle">รายวิชาในคิวปัจจุบัน</h3><span id="queueCourseCount">กำลังโหลด…</span></div><div class="queue-course-list" id="queueCourseList"><div class="queue-course-empty">กำลังอ่านรายชื่อวิชา…</div></div></section></section>`);
     }
     if(reportMenu&&!document.querySelector('[data-admin-view="monitor"]')){
       reportMenu.insertAdjacentHTML("afterend",`<button class="drawer-link" type="button" data-admin-view="monitor"><span class="menu-icon">◉</span><span>ติดตามระบบ</span><small>คิว ข้อผิดพลาด และประวัติ</small></button>`);
@@ -341,6 +355,9 @@
     $("queueFailed").textContent=Number(overview.failed||0).toLocaleString(locale());
     const current=overview.current;
     $("queueNow").innerHTML=current?`<span class="pulse-dot"></span><div><strong>กำลังตรวจ ${esc(current.courseCode||current.courseId)}</strong><small>${esc(current.courseTitle||jobLabel(current.kind))} · เริ่มเมื่อ ${esc(operationalTime(current.startedAt||current.createdAt))}</small></div>`:`<span class="pulse-dot" style="background:#94a7ba;box-shadow:none"></span><div><strong>${Number(overview.outstanding||0)?"มีงานรอเครื่องตรวจ":"ไม่มีงานรอในคิว"}</strong><small>อัปเดตล่าสุด ${esc(operationalTime(overview.generatedAt))}</small></div>`;
+    const pending=Array.isArray(overview.pending)?overview.pending:[];
+    if($("queueCourseCount"))$("queueCourseCount").textContent=`${pending.length.toLocaleString(locale())} รายวิชา`;
+    if($("queueCourseList"))$("queueCourseList").innerHTML=pending.length?pending.map(job=>`<article class="queue-course-item"><div><strong>${esc(job.courseCode||job.courseId)}</strong><small>${esc([job.group,job.courseId].filter(Boolean).join(" · "))}</small></div><div><strong>${esc(job.courseTitle||"ไม่ทราบชื่อรายวิชา")}</strong><small>${esc(jobLabel(job.kind))} · ${esc(operationalTime(job.startedAt||job.createdAt))}</small></div><span class="queue-course-status ${esc(job.status)}">${esc(jobStatusLabel(job.status))}</span></article>`).join(""):'<div class="queue-course-empty">ไม่มีรายวิชาในคิวปัจจุบัน</div>';
     if($("monitorFeed")){
       const recent=overview.recent||[];
       $("monitorFeed").innerHTML=recent.length?recent.map(job=>`<article class="monitor-event ${esc(job.status)}"><span class="event-dot"></span><div><strong>${esc(job.courseCode||job.courseId)}</strong><div class="muted">${esc(job.courseTitle||jobLabel(job.kind))}${job.error?` · ${esc(job.error)}`:""}</div></div><small>${esc(jobStatusLabel(job.status))}<br>${esc(operationalTime(job.finishedAt||job.startedAt||job.createdAt))}</small></article>`).join(""):'<div class="empty">ยังไม่มีประวัติคิวตรวจ</div>';
