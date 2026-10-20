@@ -505,3 +505,35 @@
 ### งานถัดไป
 - Load unpacked หรือแตก ZIP 0.1.6 แล้วตรวจรายวิชาในภาพซ้ำ เพื่อยืนยันแถวแบบทดสอบหลังเรียนแสดงผ่าน
 - ยังไม่ได้อัปโหลด ZIP/source 0.1.6 ขึ้น GitHub หรือ Releases
+
+
+## 24. รองรับ Moodle Forum ใต้ป้าย Pre/Post — Local Legacy 0.1.7 (2026-10-20)
+**สถานะ: ผู้ใช้อธิบายขอบเขต / สรุปแผนก่อนแก้ / ผู้ใช้อนุมัติ / แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### ข้อตกลงกระบวนการ
+- ก่อนแก้ไขรอบต่อไป ต้องสรุปสิ่งที่จะทำ ขอบเขต ผลกระทบ และวิธีป้องกัน false positive ให้ผู้ใช้อนุมัติก่อน
+- รอบนี้ผู้ใช้อนุมัติให้รองรับ Forum หลังได้รับสรุปขอบเขตแล้ว
+
+### การแก้ไข
+- Local Legacy ยอมรับ Moodle Forum เป็น Pre/Post เมื่อเป็นกิจกรรมแรกที่อยู่ใต้ป้ายภาพ Pre-test/Post-test ใน Section เดียวกัน
+- ใช้ข้อจำกัดเดิม: อยู่ภายในระยะใกล้ 720px และห้ามข้ามป้ายภาพถัดไป
+- Forum ที่ไม่มีป้าย Pre/Post ซึ่งสัมพันธ์กับรายการโดยตรงไม่ถูกเดาเป็นแบบทดสอบ
+- เพิ่มตัวกรองไม่รับ Forum ที่มีชื่อ/ข้อความระบุ `Announcements`, `News Forum`, `กระดานข่าว`, `กระดานประกาศ`, `ข่าวสาร` หรือ `ประกาศ`
+- Moodle Label ยังคงไม่เป็นเป้าหมายของการจับคู่
+- การจำแนกที่ได้ยังเก็บ `groupContextSource: local_image_label` เพื่อ audit ย้อนกลับ
+
+### การทดสอบและ Artifact
+- เพิ่ม regression assertions ยืนยันว่า Forum อยู่ในกลุ่ม Moodle activity ที่ป้าย Pre/Post จับคู่ได้
+- เพิ่ม regression assertion ยืนยันว่ามี Announcements/news exclusion
+- ยังคงตรวจว่าการจับคู่หยุดก่อนป้ายภาพถัดไปและเก็บ local-label provenance
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript syntax check ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.7.zip`
+- ขนาด: **9,323,776 bytes**
+- SHA-256: `F378D4ED4B01F8D8B4F661243F39DD0B4C6AF6848C5C85B50907B49771A9E4BF`
+- ตรวจ ZIP แล้ว: `manifest.json` เป็น Local Legacy version `0.1.7`
+
+### งานถัดไป
+- แตก ZIP/Load unpacked 0.1.7 แล้วทดสอบวิชาที่ใช้ Forum ใต้ป้าย Pre/Post จริง
+- ตรวจยืนยันว่า Announcements หรือกระดานประกาศไม่ถูกนับ
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.7 ขึ้น GitHub หรือ Releases
