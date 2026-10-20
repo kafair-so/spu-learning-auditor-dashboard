@@ -17,6 +17,7 @@
 2. บันทึกวันเวลา, คำขอ/ข้อสรุป, ไฟล์ที่เปลี่ยน, commit SHA, สถานะ test/deploy (สำเร็จ/ล้มเหลว/ยังไม่ตรวจ), ปัญหาคงค้างและ next steps
 3. แยกสถานะ **ยืนยันแล้ว / รายงานจากผู้ใช้ / ข้อสันนิษฐาน / ยังไม่ตรวจ** เพื่อไม่ให้ข้อมูลคลาดเคลื่อน
 4. หลีกเลี่ยงอ้างว่า deploy สำเร็จถ้าไม่มีหลักฐานจริง และรักษาประวัติของการตัดสินใจสำคัญไว้
+5. **บริหารโควต้าเป็นข้อจำกัดสำคัญ:** รวมการอ่าน/ตรวจ/แก้/ทดสอบเป็นรอบ ลด tool call และงานซ้ำที่ไม่จำเป็น ใช้ผลเดิมที่ยืนยันแล้ว และสำรองโควต้าให้ผู้ใช้สนทนา ตรวจผล และแก้ไขงานต่อ ห้ามใช้โควต้าส่วนใหญ่กับคำสั่งย่อย 1–2 งานโดยไม่จำเป็น
 
 กติกานี้เป็นแนวทางประจำโครงการ; เมื่อเริ่มแชทใหม่ ให้ผู้ใช้ส่งลิงก์ Repository หรือบอกให้เปิด Handoff ก่อนเริ่มงาน
 
@@ -260,3 +261,42 @@
 - ยังไม่ได้เรียก `/v1/admin/jobs/overview` ด้วย reviewer session จริงใน browser เพราะ in-app tab ไม่มี session ผู้ดูแล; ให้ผู้ใช้ login แล้วเปิดหน้า “ระบบตรวจ” เพื่อตรวจว่าเห็นรายชื่อ 160 วิชาและเลื่อนดูได้ครบ
 - หากหน้าที่ยังเปิดอยู่ไม่เห็นส่วนใหม่ ให้ hard refresh หนึ่งครั้งเพื่อรับ cache key `20261019a`
 - งานค้างลำดับถัดไปจากข้อ 13.5: Google Drive folder ว่างต้องไม่นับเป็นเนื้อหา, OCR background flow, session refresh/resume, catalog หลังเหตุ 140 วิชา, Local 0.13.15 portability และ Google Photos diagnostics
+
+
+## 15. อัปเดต 2026-10-19 — สร้าง SPU Learning Auditor Local Legacy 0.1.0 จาก Local 0.13.16
+**สถานะ: ยืนยัน source และ automated tests ในเครื่อง / สร้าง ZIP ใน workspace แล้ว / ยังไม่ได้อัปโหลด ZIP หรือ source รุ่น Legacy ขึ้น GitHub / ไม่ได้ deploy ระบบปัจจุบัน**
+
+### คำขอและขอบเขต
+- ผู้ใช้ต้องการรุ่น Local แยกสำหรับตรวจรายวิชาเก่า ไม่รวมกับ Extension เกณฑ์ปัจจุบัน
+- ใช้ไฟล์ต้นทางที่ผู้ใช้ระบุใน `C:\Users\Administrator\Downloads\SPU-Learning-Auditor-Local-0.13.16.zip` (9,330,043 bytes) เป็นฐาน; เก็บต้นฉบับไว้ ไม่แก้ทับ
+- รองรับเฉพาะ GR/GS, 15 ครั้ง; AI Tutor และ Podcast ไม่เป็นองค์ประกอบบังคับ; Moodle Quiz นับได้; ไม่มีคะแนน; ต้องผ่านองค์ประกอบบังคับครบทั้งหมดจึงผ่าน
+- ผู้ใช้สั่งเพิ่มการผ่อนปรนเวลาวิดีโอ GR/GS เป็น **20 นาที** (แทนเกณฑ์เดิมประมาณ 10 นาที)
+- ผู้ใช้กำชับให้บริหารโควต้าเป็นข้อจำกัดสำคัญ จึงเพิ่มเป็น Working Protocol ด้านบน: รวมงานเป็นรอบ ลดคำสั่งซ้ำ และสำรองโควต้าสำหรับการสนทนา/ทดสอบ/แก้ไขต่อ
+
+### สิ่งที่ยืนยันแล้วใน source Local Legacy
+- ชื่อ Extension: `SPU Learning Auditor — Local Legacy`; version `0.1.0`; rubric `GR/GS-LEGACY-COMPLETENESS-1.0`
+- แยกโฟลเดอร์จากรุ่นปัจจุบัน: `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16`
+- หน้า Queue ให้เลือกเฉพาะ GR/GS; catalog import กรองเฉพาะ GR/GS
+- ตัด Podcast และ AI Tutor ออกจาก checklist, งานรอยืนยัน, unresolved blockers และรายการที่เปิดตรวจปลายทางเบื้องหลัง
+- Checklist ครั้งที่ 1 มี: ข้อมูลรายวิชา, ข้อมูลผู้สอน, เอกสารประกอบ, วิดีโอ, กิจกรรมท้ายบท
+- Checklist ครั้งที่ 2–15 มี: แผนการสอน, เอกสารประกอบ, วิดีโอ, Pre-test, Post-test และกิจกรรมท้ายบท (ถ้ามี)
+- Moodle Quiz ที่ถูกจัดประเภท Pre/Post นับในแถวนั้น; ordinary Moodle Quiz นับเป็นกิจกรรมท้ายบทได้ โดยไม่ให้นับซ้ำ Pre/Post
+- ผลรวมเป็น `complete / required / missing / pending`; `not_applicable` ไม่นับเป็นองค์ประกอบบังคับ; มี pending จะเป็น “ต้องตรวจทาน”; มี fail จะ “ไม่ผ่าน”; ผ่านเมื่อ required ทั้งหมดผ่าน
+- ลบ UI ส่งออก Dashboard จากรุ่น Legacy เพื่อไม่ปะปนกับ Dashboard/Supabase เกณฑ์ปัจจุบัน
+- ปรับ `RULES.GR.toleranceMinutes` และ `RULES.GS.toleranceMinutes` เป็น `20`; มากกว่า 20 นาทีที่ขาดยังไม่ผ่าน
+- เพิ่ม/แก้เอกสาร `README.md`, `RELEASE-NOTES.md` และเพิ่ม `legacy-policy.js`
+
+### การทดสอบและ Artifact
+- คำสั่ง: `node --test tests/*.test.mjs`
+- ผลล่าสุด: **37/37 test files ผ่าน, 0 fail** รวม stress test 900 วิชา / 162,000 activities
+- เพิ่ม `tests/legacy-policy.test.mjs` และปรับ regression tests ให้ตรงนโยบาย Legacy/Moodle Quiz/ไม่มีคะแนน/ผ่อนปรน 20 นาที
+- ZIP ที่สร้างในเครื่อง:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.0.zip`
+- ขนาดล่าสุด: 9,319,808 bytes
+- SHA-256: `904DE57D2A88D4E462F6838DBBAE58079FDEE0AD88259E5AA8DCF93D89AFD3BF`
+
+### สิ่งที่ยังไม่ยืนยัน / งานถัดไป
+- ยังไม่ได้ Load unpacked และทดสอบกับรายวิชาเก่าจริงใน Chrome; automated tests ไม่แทน live acceptance test
+- ยังไม่ได้อัปโหลด ZIP หรือ source Local Legacy ขึ้น GitHub เพราะรอบนี้สร้าง artifact ใน workspace; การย้ายเครื่องต้องนำ ZIP ไปเก็บใน GitHub Releases/download storage ก่อน
+- ไม่ได้แก้/deploy Dashboard, GitHub Pages, Supabase Edge Function, schema, catalog หรือคิว production
+- รุ่นเกณฑ์ปัจจุบัน 0.13.16 ไม่ถูกแก้; การผ่อนปรน 20 นาทีรอบนี้ใช้กับ Local Legacy เท่านั้น
