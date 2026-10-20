@@ -440,3 +440,27 @@
 - ขนาด: **9,322,472 bytes**
 - SHA-256: `8988EA89430054AE47446DCB522EC1D86213E9AA95CF2640990C950F083DA087`
 - ยังไม่ได้อัปโหลด ZIP/source 0.1.4 ขึ้น GitHub หรือ Releases
+
+
+## 21. แก้ Pre/Post ภายใน Moodle ถูกพบแต่ไม่ผ่าน — Local Legacy 0.1.5 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### สาเหตุ
+- 0.1.4 จำแนก Post-test ใน Moodle Chat เป็น `post_quiz` ได้แล้ว
+- แต่ `presentQuiz()` ยังให้ผ่านเฉพาะ `/mod/quiz/`, Resource/Assignment, question title บางรูปแบบ, assessment text หรือ external link
+- ข้อความ `อย่างไรเพื่อ...` ยังติด boundary เดิมในขั้นสรุปผล จึงตกไปที่ `presentExternal()` และกิจกรรม Chat ภายใน Moodle ถูกตัดเป็น fail
+
+### การแก้ไข
+- ปรับ question detector ใน `presentQuiz()` ให้รองรับคำไทยเขียนติดกันเช่น `อย่างไรเพื่อ...`
+- เมื่อ classifier ยืนยัน `pre_quiz/post_quiz` จากชื่อหรือ local label แล้ว ให้ Moodle module ภายใน เช่น Chat/Page นับผ่านได้ ไม่จำกัดเฉพาะ Quiz module
+- ยังคงไม่เดาคำถามทั่วไปเป็น Pre/Post: การเข้าถึงเส้นทางนี้ต้องถูก classifier จัดเป็น `pre_quiz/post_quiz` ก่อน
+- เพิ่ม regression test: Moodle Chat ชื่อ `Post-test ... อย่างไรเพื่อ...` ต้องทำให้แถว Post-test ผ่าน
+
+### การทดสอบและ Artifact
+- `tests/review-recalculation.test.mjs` ผ่าน
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript `node --check` ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.5.zip`
+- ขนาด: **9,322,906 bytes**
+- SHA-256: `022C3AF4979D58482C86F6BC35F45C24ECD37CBDAE578667C80200B0E8AE251A`
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.5 ขึ้น GitHub หรือ Releases
