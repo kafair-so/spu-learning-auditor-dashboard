@@ -407,3 +407,36 @@
 ### งานถัดไป
 - Load unpacked 0.1.3 แล้วตรวจรายวิชาเดิมอีกครั้งเพื่อยืนยันว่า Post-test ครั้งที่ 4 แสดงเป็นผ่าน
 - ยังไม่ได้อัปโหลด ZIP/source 0.1.3 ขึ้น GitHub หรือ Releases
+
+
+## 20. Pre/Post จากชื่อ ป้าย และคำสะกดผิด — Local Legacy 0.1.4 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / ยังไม่ได้ live acceptance test**
+
+### กฎจำแนกที่ใช้
+- ไม่มีป้าย: ใช้ชื่อรายการที่ระบุ Pre/Post หรือแบบทดสอบก่อน/หลังเรียน
+- มีป้าย: คำถามทั่วไปนับเป็น Pre/Post ได้เมื่อป้ายเป็น local/adjacent/visual label ของรายการใน Section เดียวกัน
+- ป้ายที่เป็น inherited label จากรายการก่อนหน้าไม่สามารถเปลี่ยนคำถามทั่วไปให้เป็น Pre/Post
+- หากชื่อและป้ายเฉพาะรายการขัดกัน ให้ป้ายเฉพาะรายการเป็นตัวแก้ประเภท (รักษาพฤติกรรมเดิม)
+- คำถามที่ไม่มีชื่อหรือป้าย Pre/Post ไม่ถูกเดาเป็นแบบทดสอบ เพื่อป้องกันกิจกรรมท้ายบทถูกนับผิด
+
+### การป้องกันคำสะกดผิด
+- เพิ่ม `assessmentTitleKind()` ใน `rules.js`
+- รองรับคำอังกฤษบริเวณต้นชื่อที่คลาดเคลื่อนหนึ่ง edit (รวม transposition) เช่น `Pre-tset`, `Postest`
+- รองรับชื่อไทย `แบบทดสอบก่อนเรียน/หลังเรียน` ที่คลาดเคลื่อนหนึ่ง edit เช่น `แบบทดสอบกอนเรียน`
+- จำกัด fuzzy matching ไว้ที่ต้นชื่อและเป้าหมายเฉพาะ เพื่อลด false positive
+
+### Regression tests
+- Post-test จริงที่มี `อย่างไรเพื่อ...` ยังผ่าน
+- `Pre-tset Week 4` -> `pre_quiz`
+- `Postest Week 4` -> `post_quiz`
+- `แบบทดสอบกอนเรียน ครั้งที่ 4` -> `pre_quiz`
+- คำถามทั่วไปใต้ local Post-test label -> `post_quiz`
+- คำถามทั่วไปใต้ inherited Post-test label -> `other`
+- คำถามทั่วไปไม่มีชื่อ/ป้าย -> `other`
+- Automated test files ผ่าน **34/34**, 0 fail; JavaScript `node --check` ผ่าน
+
+### Artifact
+- `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.4.zip`
+- ขนาด: **9,322,472 bytes**
+- SHA-256: `8988EA89430054AE47446DCB522EC1D86213E9AA95CF2640990C950F083DA087`
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.4 ขึ้น GitHub หรือ Releases
