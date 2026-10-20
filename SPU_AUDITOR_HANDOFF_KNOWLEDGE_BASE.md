@@ -537,3 +537,61 @@
 - แตก ZIP/Load unpacked 0.1.7 แล้วทดสอบวิชาที่ใช้ Forum ใต้ป้าย Pre/Post จริง
 - ตรวจยืนยันว่า Announcements หรือกระดานประกาศไม่ถูกนับ
 - ยังไม่ได้อัปโหลด ZIP/source 0.1.7 ขึ้น GitHub หรือ Releases
+
+
+## 25. ระบบตรวจ 683 GR/GS หลายรายวิชา + PDF หลักฐานข้ามบัญชี — Local Legacy 0.2.0 (2026-10-20)
+**สถานะ: ออกแบบหลังผู้ใช้ยืนยัน / แก้ source / tests ผ่าน / สร้าง ZIP / ปรับ Google Sheet และสร้างโฟลเดอร์แล้ว / ยังต้อง Deploy Apps Script และทำ live acceptance test**
+
+### ขอบเขตที่ผู้ใช้อนุมัติ
+- สร้าง “ระบบ” สำหรับนำเข้ารายวิชาและรันคิวตรวจทั้งหมด ไม่ใช่ให้ Codex ตรวจ 152 วิชาแทนผู้ใช้ในรอบนี้
+- แหล่งรายการคือ Google Sheet ID `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`, tab `เหตุผลรายวิชา`, gid `532693621`
+- อ่านหน่วยกิตจากคอลัมน์ C, Course Profile จากคอลัมน์ D และลิงก์รายวิชาจากคอลัมน์เดิม Q ซึ่งเลื่อนไป R หลังเพิ่มคอลัมน์ผลใหม่
+- รับเฉพาะภาค 683 ประเภท GR/GS ที่มีลิงก์ d-Learning หรือ i-Learning; `(T)` และ `(TT)` เป็นทฤษฎี, `(L)` เป็นปฏิบัติ
+- เครื่องตรวจเป็นเครื่องแยกและใช้บัญชี Google คนละบัญชีกับเจ้าของ Sheet/Drive
+
+### สถาปัตยกรรมข้ามบัญชี
+- Apps Script ต้องสร้างและ Deploy โดยบัญชีเจ้าของ Sheet โดยตั้ง **Execute as: Me** และ access แบบ Anyone
+- เครื่องตรวจเก็บเพียง Web app URL กับ shared secret และต้องล็อกอินเฉพาะ d-Learning/i-Learning; ไม่ต้องล็อกอินบัญชี Google ของเจ้าของเอกสาร
+- Apps Script อ่าน catalog, สร้าง PDF ใน Drive ของเจ้าของ และเขียนผลกลับ Sheet ด้วยสิทธิ์เจ้าของ
+- shared secret ป้องกันบุคคลทั่วไปส่งข้อมูลเข้าบริการ; ห้ามบันทึก secret ลง GitHub/Handoff
+- PDF และโฟลเดอร์หลักฐานตั้งเป้า **ทุกคนที่มีลิงก์ดูได้เท่านั้น**
+- ความล้มเหลวตอนส่ง Drive/Sheet ไม่ทำลายผลตรวจและไม่หยุดคิว; หน้า Queue มีปุ่มส่ง PDF ใหม่
+
+### Google Sheet ที่แก้แล้ว
+- คงคอลัมน์ G และเปลี่ยนชื่อเป็น `ผลสุดท้าย (เดิม)`
+- เพิ่ม H: `ผลตรวจใหม่ (Local Legacy)`
+- เพิ่ม S:W: `สถานะการตรวจใหม่`, `ผู้ตรวจต้องดำเนินการ`, `แจ้งผู้สอนแก้ไข`, `วันที่ตรวจล่าสุด`, `หลักฐานผลตรวจ (PDF)`
+- รักษา dropdown/conditional formatting ของผลเดิมและเพิ่มรูปแบบให้ผลใหม่; ไม่ได้เขียนผลตรวจรายวิชาใดในรอบนี้
+- ชุดข้อมูลที่อ่านก่อนพัฒนา: 152 แถว 683GR (120 `(T)`, 32 `(TT)`), 144 d-Learning และ 8 i-Learning; ระบบเตรียมรองรับ 683GS ที่เพิ่มภายหลัง
+
+### Google Drive
+- สร้างโฟลเดอร์ `SPU Learning Auditor Evidence — 683`
+- Folder ID: `1ccIYrepKL1QO-UZ_XpaGBIwYALsv-Be_`
+- URL: https://drive.google.com/drive/folders/1ccIYrepKL1QO-UZ_XpaGBIwYALsv-Be_
+- การตั้ง Anyone-with-link จะทำผ่าน `setupEvidenceService()` ตอน Deploy เพื่อยืนยันด้วยบัญชีเจ้าของ; ยังไม่ได้ยืนยันการแชร์จริง
+
+### Source ที่เพิ่ม/แก้
+- `sheet-catalog.js`: อ่าน CSV fallback, parse Course Profile, GR/GS, T/TT/L
+- `evidence-package.js`: สร้างรายงาน HTML สำหรับ PDF และแยก “ผู้ตรวจต้องดำเนินการ” ออกจาก “แจ้งผู้สอนแก้ไข”
+- `evidence-sync.js`: อ่าน catalog และส่งหลักฐานผ่าน Apps Script
+- `apps-script/Code.gs`, `apps-script/README.md`: owner-executed web app, secret, PDF, Sheet update
+- `queue.html/css/js`: นำเข้าจากบริการเจ้าของ Sheet, ตั้ง endpoint/secret, แสดง PDF/sync state และ retry
+- `background.js`: ส่งหลักฐานหลัง done/empty; หน้าโล่งสร้าง PDF ผล “ไม่ผ่าน — ไม่พบเนื้อหารายวิชา”
+- `manifest.json`: Local Legacy version `0.2.0` และ optional permission สำหรับ `script.google.com`
+- `tests/sheet-catalog.test.mjs`, `tests/evidence-package.test.mjs`: regression tests ใหม่
+
+### การทดสอบและ Artifact
+- JavaScript syntax checks ผ่าน รวม Apps Script parse check
+- Automated test files ผ่าน **36/36**, 0 fail
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.2.0.zip`
+- ขนาด: **9,338,542 bytes**
+- SHA-256: `88A8FF3C8515EA938B636883271C0868B19C98EAAF631F268F8AA10BF6C2CAA0`
+- ZIP verification: 124 entries และมี `manifest.json`
+- ยังไม่ได้อัปโหลด ZIP/source 0.2.0 ขึ้น GitHub หรือ Releases
+
+### งานที่ต้องทำต่อก่อนเริ่มตรวจจริง
+1. บัญชีเจ้าของเอกสารสร้าง/เปิด Apps Script, วาง `apps-script/Code.gs`, รัน `setupEvidenceService()` หนึ่งครั้ง และ Deploy web app (Execute as Me)
+2. นำ Web app URL และ Secret ไปตั้งค่าใน Extension บนเครื่องตรวจ
+3. ทดสอบนำเข้าและตรวจ 1 วิชาทดสอบก่อน; ยืนยัน PDF เปิดได้แบบไม่ล็อกอิน, Sheet เขียนถูกแถว และข้อความผู้ตรวจ/ผู้สอนแยกถูกต้อง
+4. หลัง acceptance test จึงนำเข้าทั้ง 683 และกดเริ่มคิวครั้งเดียว
+5. ห้ามอ้างว่าระบบ production พร้อมหรือ Apps Script deploy สำเร็จจนกว่าจะมีหลักฐาน live test จริง
