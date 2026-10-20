@@ -475,3 +475,33 @@
 - resource classifier จึงคงรายการเป็นเอกสาร และรายงานนำ DOCX ไปผ่านหัวข้อเอกสารประกอบการสอนแทน ขณะที่ Post-test แสดงว่าไม่พบ
 - Google Drive รายการถัดไปมีคำ Assignment จึงถูกนับเป็นกิจกรรมท้ายบท ไม่ใช่ Post-test
 - แนวทางแก้ที่ปลอดภัย: ขยายการจับคู่ป้าย Pre/Post เฉพาะรายการถัดไปใน Section เดียวกันให้รองรับ Resource/File/Page/Chat/URL เมื่อชื่อมีสัญญาณแบบทดสอบ/คำถาม และหยุดที่ป้ายหมวดถัดไป; ห้ามเหมารวมไฟล์ทุกชนิดใต้ป้าย
+
+
+## 23. ป้ายภาพ Pre/Post ครอบคลุมไฟล์และกิจกรรม Moodle — Local Legacy 0.1.6 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### สาเหตุเดิม
+- ตัวจับคู่ป้ายภาพ Pre-test/Post-test รับเฉพาะ Moodle Quiz และ Assignment
+- กรณีป้าย `Post-test` ตามด้วย Moodle Resource/File ชื่อ `แบบทดสอบ ครั้งที่ 2...` ปลายทาง `Quiz 2.docx` จึงไม่รับประเภทจากป้าย
+- ชื่อไฟล์ไม่มีคำ Post-test/หลังเรียน ทำให้ถูกจำแนกเป็นเอกสารประกอบการสอนแทน
+
+### การแก้ไข
+- ให้ป้ายภาพ Pre-test/Post-test เป็นหมวดของกิจกรรม Moodle รายการแรกที่อยู่ถัดลงมาใน Section เดียวกัน
+- รองรับ Resource/File, Page, Chat, URL, Quiz, Assignment และกิจกรรม Moodle อื่นที่มีหน้า `/mod/.../view.php`
+- จำกัดการจับคู่ภายในระยะเดิม 720px และไม่ข้ามป้ายภาพถัดไป
+- ตัด Forum และ Label ออกจากเป้าหมาย เพื่อไม่ให้ป้ายหรือกระดานประกาศถูกนับเป็นแบบทดสอบ
+- บันทึก provenance เป็น `groupContextSource: local_image_label` เพื่อให้ตรวจสอบย้อนกลับได้
+- ผลที่ต้องการ: ป้าย Post-test + ไฟล์ `Quiz 2.docx` ถัดลงมา ถูกนับเป็น Post-test แม้ผู้สอนไม่ใส่คำ Post-test ในชื่อไฟล์
+
+### การทดสอบและ Artifact
+- เพิ่ม regression assertions ตรวจว่าตัวจับคู่รองรับกิจกรรม Moodle ทั่วไป หยุดที่ป้ายถัดไป และเก็บ local-label provenance
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript syntax check ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.6.zip`
+- ขนาด: **9,323,447 bytes**
+- SHA-256: `5B410E16BB1F89A152F3F4A395D9F22DEBC3C714255272DCB38C116282C9C412`
+- ZIP verification: `manifest.json` ภายในเป็น Local Legacy version `0.1.6`
+
+### งานถัดไป
+- Load unpacked หรือแตก ZIP 0.1.6 แล้วตรวจรายวิชาในภาพซ้ำ เพื่อยืนยันแถวแบบทดสอบหลังเรียนแสดงผ่าน
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.6 ขึ้น GitHub หรือ Releases
