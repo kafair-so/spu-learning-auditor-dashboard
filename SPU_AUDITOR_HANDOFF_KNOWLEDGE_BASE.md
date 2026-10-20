@@ -464,3 +464,14 @@
 - ขนาด: **9,322,906 bytes**
 - SHA-256: `022C3AF4979D58482C86F6BC35F45C24ECD37CBDAE578667C80200B0E8AE251A`
 - ยังไม่ได้อัปโหลด ZIP/source 0.1.5 ขึ้น GitHub หรือ Releases
+
+
+## 22. Known issue — ป้าย Post-test รูปภาพตามด้วยไฟล์ DOCX ไม่ถูกนับ (2026-10-20)
+**สถานะ: วินิจฉัยสาเหตุแล้ว / ยังไม่แก้ source**
+
+- โครงสร้างที่พบ: ป้ายรูปภาพ `Post-test` ตามด้วย Moodle Resource/File ชื่อ `แบบทดสอบ ครั้งที่ 2: ...` ปลายทาง `Quiz 2.docx` และลิงก์ Google Drive สำหรับ Assignment
+- ชื่อไฟล์ไม่มีคำ `Post-test` หรือ `หลังเรียน` จึงไม่ผ่านเส้นทางจำแนกจากชื่อเพียงอย่างเดียว
+- `collectAssessmentPillEvidence()` ใน `content.js` จับป้ายภาพ Pre/Post ไปยังเฉพาะโมดูล `/mod/quiz/` หรือ `/mod/assign/`; Moodle Resource/File ถูกกรองออก
+- resource classifier จึงคงรายการเป็นเอกสาร และรายงานนำ DOCX ไปผ่านหัวข้อเอกสารประกอบการสอนแทน ขณะที่ Post-test แสดงว่าไม่พบ
+- Google Drive รายการถัดไปมีคำ Assignment จึงถูกนับเป็นกิจกรรมท้ายบท ไม่ใช่ Post-test
+- แนวทางแก้ที่ปลอดภัย: ขยายการจับคู่ป้าย Pre/Post เฉพาะรายการถัดไปใน Section เดียวกันให้รองรับ Resource/File/Page/Chat/URL เมื่อชื่อมีสัญญาณแบบทดสอบ/คำถาม และหยุดที่ป้ายหมวดถัดไป; ห้ามเหมารวมไฟล์ทุกชนิดใต้ป้าย
