@@ -599,3 +599,35 @@
 ### สถานะการเปิดหน้า Deploy
 - เปิด `script.google.com/home` ในแท็บภายในแล้ว แต่ Google แสดง `Verify it’s you` สำหรับ `siraprah.so@spu.ac.th`; หยุดตามข้อกำหนดความปลอดภัยและเก็บแท็บไว้ให้เจ้าของบัญชีกดยืนยันตัวตนเอง
 - หลังผู้ใช้ยืนยันบัญชีแล้ว ให้ทำต่อจากแท็บเดิม: สร้าง project, วาง Code.gs, รัน setup และ Deploy; ยังไม่มี Web app URL/Secret ในขณะบันทึกนี้
+
+
+## 26. Apps Script Evidence Service Deploy สำเร็จ — Local Legacy 0.2.0 (2026-10-20)
+**สถานะ: Deploy สำเร็จ / setup สิทธิ์สำเร็จ / GET endpoint ผ่าน / ยังไม่ได้ live test POST catalog และยังไม่ได้ตรวจรายวิชาทดสอบ**
+
+### Deployment ที่ยืนยันแล้ว
+- Project: `SPU Learning Auditor Evidence — 683`
+- Script project ID: `1y45LoTMAhyVOG8PnGANu83vR8T1qKPHnNiSseQHYb68mQKbeXGEf8_W-`
+- Deployment ID: `AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA`
+- Web app URL: https://script.google.com/macros/s/AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA/exec
+- Version 1 deployed 20 ตุลาคม 2569 เวลา 14:55 น. (Asia/Bangkok)
+- Execute as: เจ้าของเอกสาร `siraprah.so@spu.ac.th`
+- Access: `Anyone`; ทุกคำสั่ง POST ที่ใช้งานจริงยังตรวจ shared secret
+- `setupEvidenceService()` execution completed: สร้าง shared secret และตั้งโฟลเดอร์หลักฐานเป็น Anyone with link / Viewer สำเร็จ
+- GET endpoint ยืนยันผลจริง: `{"ok":true,"service":"SPU Learning Auditor Evidence","version":"1"}`
+- **ห้ามบันทึก shared secret ลง GitHub/Handoff**; ค่าอยู่ในไฟล์ local ส่วนตัว `outputs/SPU-Auditor-683-Connection-PRIVATE.txt` เท่านั้น
+
+### Source/Artifact ที่ปรับให้ตรงกับ Deployment
+- เปลี่ยน URL validation ใน `apps-script/Code.gs` จาก regex เป็น URL parser เพื่อให้ข้อความที่วางผ่าน Apps Script Editor ไม่เสีย escape characters
+- Automated test files ผ่าน **36/36**, 0 fail
+- Apps Script syntax check ผ่าน
+- ZIP เดิมถูก rebuild โดยยังใช้ชื่อ `SPU-Learning-Auditor-Local-Legacy-0.2.0.zip`
+- ขนาดใหม่: **9,338,611 bytes**
+- SHA-256 ใหม่: `207209BA7A6B80195C8F5F744A2BABE17F9833CD1D72A175C79DAC246AE31B37`
+- 124 entries และมี `manifest.json`
+
+### งานถัดไป
+1. ย้าย ZIP และไฟล์ connection แบบ PRIVATE ไปเครื่องตรวจ โดยห้ามเผย Secret
+2. Load unpacked 0.2.0, ตั้ง Web app URL + Secret และเปิด automatic evidence sync
+3. ทดสอบนำเข้า catalog 683; ต้องยืนยันจำนวน/ประเภทที่อ่านได้ก่อนเริ่มคิว
+4. ตรวจ 1 วิชาทดสอบและยืนยัน end-to-end: PDF ถูกสร้าง, ลิงก์เปิดแบบไม่ล็อกอิน, Sheet เขียนถูกแถว และข้อความผู้ตรวจ/ผู้สอนถูกคอลัมน์
+5. เมื่อ acceptance test ผ่าน จึงเริ่มคิวทั้งหมด; ณ จุดนี้ยังไม่มีการตรวจ 152 วิชาจริง
