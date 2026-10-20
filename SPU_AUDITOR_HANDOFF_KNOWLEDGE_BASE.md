@@ -383,3 +383,27 @@
 - ยืนยันด้วยการทดสอบตรงจากชื่อในภาพ: Pre-test ได้ `pre_quiz`; Post-test ได้ `other`; `POST_PATTERN` จับคำว่า Post-test ได้ แต่ `questionInTitle` เป็น false
 - แนวทางแก้ที่เสนอ: เมื่อชื่อมี Pre-test/Post-test ชัดเจน ให้คำถามภาษาไทย (`อย่างไร/อะไร/เพราะเหตุใด/ทำไม/ข้อใด/เท่าไร`) จับได้แม้คำถัดไปเขียนติดกัน และเพิ่ม regression test ของข้อความจริงนี้
 - ยังไม่ได้แก้หรือแพ็ก Local Legacy รุ่นใหม่ในรายการนี้ เพราะผู้ใช้ถามหาสาเหตุเท่านั้น
+
+
+## 19. แก้ Post-test ใน Moodle Chat/Page — Local Legacy 0.1.3 (2026-10-20)
+**สถานะ: แก้ source / regression test / full automated tests / สร้าง ZIP แล้ว / ยังไม่ได้ live acceptance test**
+
+### การแก้ไข
+- ปรับ `questionInTitle` ใน `classifier.js` ให้คำบอกคำถามภาษาไทย `อย่างไร/อะไร/เพราะเหตุใด/ทำไม/ข้อใด/เท่าไร` ใช้ได้แม้เขียนติดคำถัดไป
+- เงื่อนไขนี้ใช้ร่วมกับชื่อ Pre-test/Post-test ที่ชัดเจน จึงไม่เปลี่ยนข้อความทั่วไปให้เป็นแบบทดสอบโดยไม่มีป้ายประเภท
+- กรณีจริง `Post-test ... นโยบายอย่างไรเพื่อส่งเสริม...` ใน Moodle Chat เปลี่ยนจาก `other` เป็น `post_quiz`
+- เพิ่ม regression test ด้วยชื่อเต็มจากรายการจริงในครั้งที่ 4
+- เกณฑ์ Local Legacy 0.1.2 เดิมยังคงเดิม: นับเฉพาะวิดีโอ 15/7 ครั้ง; Podcast และ AI Tutor ไม่นับ
+
+### การทดสอบและ Artifact
+- `tests/classifier.test.mjs` ผ่าน
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript `node --check` ผ่าน
+- ZIP:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.3.zip`
+- ขนาด: **9,321,717 bytes**
+- SHA-256: `7A2D8A4A24CE04FBFBFEA57999C5DCC980CE99396AEADDD2B42614501ECF7A42`
+
+### งานถัดไป
+- Load unpacked 0.1.3 แล้วตรวจรายวิชาเดิมอีกครั้งเพื่อยืนยันว่า Post-test ครั้งที่ 4 แสดงเป็นผ่าน
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.3 ขึ้น GitHub หรือ Releases
