@@ -631,3 +631,62 @@
 3. ทดสอบนำเข้า catalog 683; ต้องยืนยันจำนวน/ประเภทที่อ่านได้ก่อนเริ่มคิว
 4. ตรวจ 1 วิชาทดสอบและยืนยัน end-to-end: PDF ถูกสร้าง, ลิงก์เปิดแบบไม่ล็อกอิน, Sheet เขียนถูกแถว และข้อความผู้ตรวจ/ผู้สอนถูกคอลัมน์
 5. เมื่อ acceptance test ผ่าน จึงเริ่มคิวทั้งหมด; ณ จุดนี้ยังไม่มีการตรวจ 152 วิชาจริง
+
+## 27. แก้ Apps Script Catalog URL Parser และเตรียมโหมดเลือกชุดตรวจ (2026-10-20)
+
+**สถานะ: จัดทำโค้ดแก้ไขสำหรับวางใน Apps Script แล้ว / ยังไม่ได้ยืนยันว่า Save, Deploy หรือทดสอบบน production สำเร็จ**
+
+### คำขอ
+- ผู้ใช้อนุมัติให้แก้ปัญหา Apps Script ที่ดึง catalog แล้วได้ 0 รายการ ทั้งที่ Sheet มีรายวิชา 683GR/GS ที่เข้าเกณฑ์ 152 รายการ
+- ผู้ใช้ขอเพิ่มรูปแบบการเลือกชุดตรวจ 4 แบบ:
+  1. เลือกวิชาเอง
+  2. สุ่ม 10 วิชาที่ยังไม่มีผลตรวจ
+  3. ตรวจทั้งหมดที่ยังไม่มีผลตรวจ
+  4. เลือกตรวจซ้ำในรายวิชาที่มีผลตรวจแล้ว
+
+### การวินิจฉัย
+- โค้ดเดิมใช้ `new URL()` และ `URLSearchParams` ใน Apps Script
+- Runtime ของ Apps Script ในโปรเจกต์นี้ไม่รองรับ browser Web API ดังกล่าวอย่างเชื่อถือได้
+- การตรวจ URL ล้มเหลวและถูกดักเป็น error/fallback ส่งผลให้ URL รายวิชาที่ถูกต้องอาจถูกปฏิเสธ ทำให้ catalog ว่าง
+- ตรวจพบว่าต้องแก้ทั้งจุดอ่าน catalog และจุดจับคู่ URL ก่อนเขียนผล/PDF กลับลง Sheet ไม่ใช่เฉพาะ `getCatalog_()`
+
+### สิ่งที่จัดทำแล้ว
+- จัดทำ `Code.gs` ฉบับเต็มสำหรับคัดลอกวาง
+- เพิ่ม `parseSupportedCourseUrl_()` ที่ใช้ string operations แทน `new URL()`
+- จำกัด URL ที่รับเฉพาะ:
+  - `https://dlearning.spu.ac.th/course/view.php?id=ตัวเลข`
+  - `https://ilearning.spu.ac.th/course/view.php?id=ตัวเลข`
+- URL ที่มี query parameter อื่นหรือ fragment ยังรับได้ หากมี `id` เป็นตัวเลข
+- เพิ่ม canonical URL รูปแบบ `host/course/view.php?id=ตัวเลข` เพื่อให้จับคู่ URL ระหว่าง Extension กับ Sheet ได้สม่ำเสมอ
+- `getCatalog_()` คืน diagnostics:
+  - `rowsRead`
+  - `profileRejected`
+  - `urlRejected`
+  - `accepted`
+  - `withResult`
+  - `withoutResult`
+- catalog ระบุ `hasAuditResult` จากคอลัมน์ผลตรวจใหม่, สถานะการตรวจใหม่ หรือหลักฐาน PDF
+- ไม่เปลี่ยนข้อมูลใน Google Sheet, ไม่เริ่มคิว 152 วิชา, ไม่สร้าง PDF และไม่หมุน shared secret
+
+### สิ่งที่ยังไม่ได้ทำ / ยังไม่ยืนยัน
+- ยังไม่ได้ยืนยันว่าโค้ดถูกวางและ Save ใน Apps Script project จริง
+- ยังไม่ได้ Deploy Apps Script version ใหม่
+- ยังไม่ได้ทดสอบ POST `getCatalog` ด้วย shared secret จริง
+- ยังไม่ได้ยืนยันว่า endpoint ส่งกลับ `accepted = 152`
+- ยังไม่ได้ทดสอบ `publishEvidence` แบบ end-to-end
+- ยังไม่ได้ยืนยัน source/commit ล่าสุดของ GitHub main หรืออัปเดต ZIP Extension
+- โหมดเลือกชุดตรวจ 4 แบบมีรายงานว่าเริ่มแก้ source และกำลังทดสอบ แต่ยังไม่มีหลักฐาน source, test result, commit หรือ deploy ที่ยืนยันได้ในบันทึกนี้
+
+### ข้อกำหนดก่อนเริ่มตรวจจริง
+1. วางและ Save `Code.gs` ฉบับแก้ไข
+2. Deploy เป็น New version บน Web App deployment เดิม เพื่อรักษา Web app URL และ shared secret เดิม
+3. ห้ามรัน `setupEvidenceService()` ซ้ำ เว้นแต่ต้องการหมุน Secret โดยตั้งใจ
+4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
+5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
+6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ
+
+### ความเสี่ยง
+- ห้ามถือว่า `auditStatus` ที่มีข้อความเพียงอย่างเดียวเป็นผลตรวจที่สมบูรณ์โดยไม่ตรวจนิยามสถานะใน Extension
+- ควรใช้ Course Profile ร่วมกับ canonical Moodle Course URL เพื่อระบุแถว Sheet และป้องกันการเขียนผลผิดรายวิชา
+- ห้ามบันทึก shared secret, token, cookie หรือข้อมูลบัญชีผู้ใช้ลง GitHub หรือ Handoff
