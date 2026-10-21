@@ -815,3 +815,47 @@
 - นำรูปแบบผลตรวจแยกตามสัปดาห์และข้อความ “ลิงก์ไม่สามารถเข้าถึงได้” ไปใช้ทุกจุดที่ผู้สอนเห็น
 - ห้ามเปลี่ยนสาเหตุเทคนิคภายในเป็นข้อความเดียวในฐานข้อมูล; ควรมาตรฐานเฉพาะ presentation layer เพื่อรักษาความสามารถในการวิเคราะห์ปัญหา
 - งานดังกล่าวยัง **ไม่ได้ดำเนินการ** ในรอบ 0.2.2 นี้
+
+
+## 31. Local Legacy 0.2.3 — ยืนยันข้อมูลผู้สอนก่อนแจ้งแก้และแก้ PDF ตัวอย่างครั้งที่ 1 (2026-10-21)
+
+**สถานะ: แก้ source แล้ว / tests ผ่าน / PDF visual QA ผ่าน / สร้าง ZIP แล้ว / ยังไม่ได้อัปโหลด ZIP หรือ source ขึ้น GitHub**
+
+### ปัญหาที่ผู้ใช้พบ
+- PDF preview 0.2.2 ใช้ checklist ของครั้งที่ 2–15 กับครั้งที่ 1 ทำให้หัวข้อกับหลักฐานเหลื่อมกันและเกิดแถวที่ 6 เกินเกณฑ์
+- ตัวอย่างดังกล่าวเป็นบั๊กของข้อมูลจำลองสำหรับสร้าง PDF preview ไม่ใช่การเปลี่ยน `LEGACY_FIRST_CHECKLIST` ของตัวตรวจจริง
+- ผู้ใช้ยืนยันว่าหลักฐานรูป/ชื่อ/ช่องทางติดต่อไม่ควรถูกแสดงเป็นสิ่งที่ผู้สอนต้องแก้ก่อนทีมตรวจยืนยันว่าเป็นข้อมูลผู้สอนและครบหรือไม่
+
+### สิ่งที่แก้แล้ว
+- PDF preview ครั้งที่ 1 กลับมาใช้เกณฑ์จริง 5 ข้อ:
+  1. ข้อมูลและแนะนำรายวิชา
+  2. ข้อมูลผู้สอนและการติดต่อ
+  3. เอกสารประกอบการสอน
+  4. วิดีโอแนะนำ/บันทึกการสอน
+  5. กิจกรรมท้ายบท
+- ระบบสแกนอัตโนมัติที่พบหรือไม่พบรูป/ชื่อ/ช่องทางติดต่อ จะเก็บเป็น `pending_instructor` ฝั่งผู้ตรวจเท่านั้น และไม่สร้าง teacher action/PDF comment
+- สร้าง teacher action `เพิ่มข้อมูลผู้สอนให้ครบ ได้แก่ รูป ชื่อ และช่องทางติดต่อ` เฉพาะเมื่อรายละเอียดมีคำตัดสินจากผู้ตรวจว่าไม่มีหรือไม่ครบ
+- แก้ลำดับ FINALIZE_REVIEW ให้ rebuild checklist ก่อน แล้วจึง apply คำตัดสินผู้ตรวจ ป้องกันการคำนวณใหม่เขียนทับคำตัดสินกลับเป็น pending
+- เมื่อกด “ยืนยันผลแจ้งอาจารย์” สำหรับรายงานจากคิว ระบบจะ publish PDF และผล Sheet ใหม่อัตโนมัติ พร้อมอัปเดตลิงก์ PDF ใน queue; หาก sync ล้มเหลว งานยังคงผลตรวจไว้และแสดงสถานะ retry ตามกลไกเดิม
+
+### Source หลักที่เปลี่ยน
+- `teacher-summary.js`: แยก scanner uncertainty ออกจาก reviewer-confirmed missing
+- `background.js`: แก้ลำดับ apply/recalculate และ republish evidence หลัง FINALIZE_REVIEW
+- `tmp/pdfs/render-evidence-sample.mjs`: ใช้ first checklist 5 ข้อที่ถูกต้อง
+- `manifest.json`, `README.md`, `RELEASE-NOTES.md` และ regression tests
+
+### การทดสอบและ Artifact
+- Automated test files ผ่าน **37/37**, 0 fail
+- JavaScript syntax checks ผ่าน
+- Regression ใหม่ยืนยันว่า scanner uncertainty ไม่สร้าง instructor correction, reviewer missing จึงสร้าง correction, pending instructor ไม่ปรากฏใน teacher PDF และ FINALIZE_REVIEW republish ผล
+- PDF visual QA: render และตรวจภาพครบ **5 หน้า A4**; ครั้งที่ 1 มี 5 ข้อตรงเกณฑ์, ข้อมูลผู้สอนเป็นต้องตรวจทาน และไม่ปรากฏในรายการผู้สอนต้องแก้
+- ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\outputs\\SPU-Learning-Auditor-Local-Legacy-0.2.3.zip`
+- ZIP size: **9,347,184 bytes**, 126 entries
+- SHA-256: `D450C3020B743844D6EF6B09A34509F4DCD81EC7D7B392F019C0230D9BCA954A`
+- ตรวจ `manifest.json` ภายใน ZIP แล้วเป็น version `0.2.3`
+- PDF preview: `output/pdf/SPU-Learning-Auditor-PDF-Preview-0.2.3.pdf` (162,325 bytes)
+
+### งานค้างสำหรับ Dashboard/Local รุ่นปัจจุบัน
+- ต้องใช้ reviewer-gated instructor correction แบบเดียวกัน: scanner เป็นเพียง evidence locator; ห้ามสร้าง instructor correction ก่อน reviewer decision
+- ต้องตรวจว่าการยืนยันผลทำให้รายงาน/PDF/API/Sheet ถูก regenerate จากผลยืนยันล่าสุด ไม่ใช่ใช้ provisional artifact เดิม
+- งานนี้ยังไม่ได้ดำเนินการนอก Local Legacy 0.2.3
