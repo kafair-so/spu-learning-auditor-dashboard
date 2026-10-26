@@ -33,3 +33,9 @@ test("queue course list supports dark mode, mobile layout and English", () => {
   assert.match(page, /ui-i18n\.js\?v=20261019a/);
   assert.match(page, /audit-review\.js\?v=20261019a/);
 });
+
+
+test("queue overview ranks reused terminal jobs by lifecycle update time", () => {
+  assert.match(api, /created_at,updated_at,claimed_at,completed_at/);
+  assert.match(api, /\.order\("updated_at", \{ ascending:false \}\)\.order\("created_at", \{ ascending:false \}\)/);
+});
