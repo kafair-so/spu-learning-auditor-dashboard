@@ -1131,3 +1131,30 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Extension/package 0.2.8 ไม่ต้อง Reload หรือ Load Unpacked ใหม่
 - กติกาถาวร: ก่อนนำผลจากเอกสารภายนอกมารับรอง ต้องจับคู่กับฐาน `เหตุผลรายวิชา` ก่อนเสมอ; ห้ามเพิ่ม Course Profile ที่ไม่อยู่ในฐาน 152 โดยอัตโนมัติ
 - Section 39 นี้แก้ไขตัวเลขและขอบเขตใน Section 38: จำนวนที่ถูกต้องสำหรับงาน KPI คือ **92 หนังสือรับรอง** ไม่ใช่ 96; 4 ฉบับที่เหลือถูกแยกออกจาก KPI แล้ว
+
+
+## 40. แก้การส่งผลล้มเหลวเมื่อหัวตารางคะแนนอยู่แถว 2 (2026-10-26)
+
+**สถานะ: แก้ไขและ Deploy สำเร็จ / Apps Script Production Version 7 / URL เดิม / tests ผ่าน**
+
+### อาการและสาเหตุ
+- เครื่องตรวจแสดง `ส่งหลักฐานไม่สำเร็จ: โครงสร้างชีตคะแนนภายในไม่ถูกต้อง: ต้องเริ่มด้วย คณะ และ Course Profile`
+- แท็บ `ผลคะแนนภายใน (Local Legacy)` ใช้หัวตารางสองชั้น: แถว 1 เป็นชื่อกลุ่มคะแนน ส่วน `คณะ` และ `Course Profile` อยู่แถว 2; ข้อมูลรายวิชาเริ่มแถว 3
+- Apps Script Version 6 ตรวจเฉพาะ A1:B1 จึงปฏิเสธโครงสร้างที่ยังถูกต้องนี้ก่อนเขียนผล
+
+### การแก้ไข
+- ปรับ `ensureInternalScoreSheet_` ให้อ่าน A1:B2 และยอมรับเมื่อพบ `คณะ` กับ `Course Profile` ในแถว 1 **หรือ** แถว 2
+- ยังปฏิเสธชีตที่ไม่พบหัวคอลัมน์ดังกล่าวในทั้งสองแถว
+- ไม่ย้ายหัวตาราง ไม่แก้คะแนนเดิม ไม่เปลี่ยนข้อมูลใน Google Sheet และข้อมูลรายวิชายังเริ่มแถว 3
+- อัปเดต source ที่ `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16/apps-script/Code.gs`, README และ RELEASE-NOTES
+
+### การทดสอบและ Production
+- Automated test ผ่านครบ **39 test files, 0 fail**; regression เฉพาะ Apps Script retention/certification ผ่าน
+- Deploy สำเร็จเป็น **Version 7** เวลา 26/10/2026 13:17 น. Asia/Bangkok
+- Deployment ID เดิม: `AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA`
+- Web App URL เดิม: `https://script.google.com/macros/s/AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA/exec`
+- ตรวจ doGet หลัง Deploy แล้วตอบ `{"ok":true,"service":"SPU Learning Auditor Evidence","version":"2"}`
+
+### วิธีดำเนินการกับรายการที่เคยส่งไม่สำเร็จ
+- ไม่ต้องตรวจรายวิชาใหม่และไม่ต้อง Reload/Load Unpacked Extension
+- กด `ส่ง PDF ใหม่` ที่การ์ดเดิม ระบบจะส่งข้อมูลผ่าน Version 7 ไปยัง URL เดิม
