@@ -1236,6 +1236,7 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 ### Artifact
 - Local ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\outputs\\SPU-Learning-Auditor-Local-Legacy-0.2.9.zip`
 - ZIP size: **9,497,769 bytes**, 131 entries
+- SHA-256: `23C35153D11DC7DB3713EA332C34C86F1FE9F6F40B1B85E6126491909170E23C`
 - ตรวจ `manifest.json` ภายใน ZIP แล้วเป็น version `0.2.9` และมี `teacher-summary.js`
 - การเปลี่ยนครั้งนี้อยู่ใน Extension จึงต้อง Reload/Load Unpacked รุ่น 0.2.9 ก่อนสร้างรายงานใหม่
 - รายงาน/PDF ที่สร้างไว้ก่อนอัปเดตจะไม่เปลี่ยนย้อนหลัง ต้องตรวจหรือส่ง PDF ใหม่หากต้องการข้อความแบบใหม่
