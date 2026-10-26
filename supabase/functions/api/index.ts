@@ -328,12 +328,12 @@ async function queueOverview(request) {
   if (catalogError) throw catalogError;
   const activeCourseIds = new Set((catalog || []).map(course => course.course_id));
   const { data, error } = await db.from("audit_jobs").select(
-    "job_id,course_id,kind,status,priority,attempts,created_at,claimed_at,completed_at,last_error,batch_id,courses!audit_jobs_course_id_fkey(course_code,course_title,course_group)"
-  ).order("created_at", { ascending:false }).limit(5000);
+    "job_id,course_id,kind,status,priority,attempts,created_at,updated_at,claimed_at,completed_at,last_error,batch_id,courses!audit_jobs_course_id_fkey(course_code,course_title,course_group)"
+  ).order("updated_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
   if (error) throw error;
-  // A course can have historical jobs from previous audit rounds.  The
-  // operational board must show one current state per active course, never
-  // the accumulated number of old job rows.
+  // A course can have historical jobs from previous audit rounds. Requeued
+  // rows keep their original created_at, so updated_at must determine which
+  // terminal state is current. The board still shows one state per course.
   const jobs = (data || []).filter(job => activeCourseIds.has(job.course_id));
   // Active work takes precedence over a later historical row such as a
   // cancelled duplicate.  Otherwise the dashboard can show 0 available
