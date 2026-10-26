@@ -1158,3 +1158,28 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 ### วิธีดำเนินการกับรายการที่เคยส่งไม่สำเร็จ
 - ไม่ต้องตรวจรายวิชาใหม่และไม่ต้อง Reload/Load Unpacked Extension
 - กด `ส่ง PDF ใหม่` ที่การ์ดเดิม ระบบจะส่งข้อมูลผ่าน Version 7 ไปยัง URL เดิม
+
+
+## 41. วินิจฉัย Dashboard ไม่แสดงจำนวนตรวจเสร็จระหว่างคิว GR 120 วิชา (2026-10-26)
+
+**สถานะ: พบสาเหตุแล้ว / ยืนยันผลตรวจไม่สูญหาย / ยังไม่ได้แก้ source หรือ deploy**
+
+### อาการ
+- Dashboard แสดงว่าสร้างคิว GR 120 วิชา; ภาพผู้ใช้ขณะนั้นเป็น queued 109, running 1, completed 0, failed 0 แม้เครื่องตรวจทำไปแล้ว 10 วิชา
+- ระหว่างตรวจฐานข้อมูลจำนวนงาน completed เพิ่มต่อเนื่องจาก 13 เป็น 14 แสดงว่า worker และ RPC บันทึกผลจริง แต่ตัวสรุปคิวเลือกแถวผิด
+
+### หลักฐานจาก Production Supabase
+- `record_audit_result` เปลี่ยนงานที่ส่งผลสำเร็จเป็น `completed` ถูกต้อง
+- ตรวจ 13 งาน completed ชุดแรกแล้ว ทั้ง 13 วิชามี `latest_internal_run_id` และพบ `audit_runs` ครบ: pass 3, has_content 7, no_content 1, needs_review 1, audit_failed 1
+- ทุกวิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
+
+### สาเหตุในโค้ด
+- `enqueue_selected_audits` ใช้ job_key เดิมและ requeue แถวเก่าด้วยการอัปเดต `updated_at`; ค่า `created_at` ของงานยังเป็นวันที่สร้างครั้งแรก
+- `queueOverview()` ดึง `audit_jobs` เรียง `created_at desc` แล้วเลือก terminal job แรกต่อวิชา
+- เมื่อแถว completed ที่เพิ่งตรวจเสร็จมี created_at เก่ากว่าแถว cancelled ในอดีต Dashboard จึงนับ cancelled แทน completed
+- หน้า UI ไม่มีการ์ดแสดง cancelled ทำให้ผู้ใช้เห็น completed=0 ทั้งที่ผลถูกเก็บแล้ว
+
+### แนวทางแก้ที่เสนอ (รอผู้ใช้อนุมัติ)
+- เปลี่ยนการเลือก terminal job ใน `queueOverview()` ให้เรียงตามเวลาสถานะล่าสุด เช่น `updated_at/completed_at` แทน `created_at` โดยยังให้ queued/running มีลำดับความสำคัญสูงสุด
+- เพิ่ม regression test กรณี requeue job เดิมแล้ว completed แต่มี cancelled job ที่ created_at ใหม่กว่า
+- Deploy Supabase Edge Function `api` และตรวจ production ว่า completed เพิ่มตามจำนวนจริงโดยไม่แก้หรือลบ audit history
