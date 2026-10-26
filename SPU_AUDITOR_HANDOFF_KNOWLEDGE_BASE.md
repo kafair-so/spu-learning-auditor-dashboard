@@ -1206,3 +1206,41 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Edge Function `api`: Version **33**, status `ACTIVE`, `verify_jwt=false` คงเดิม
 - หลัง Deploy คำนวณด้วยลำดับเดียวกับ Production ได้ queued 105, running 1, completed 14, cancelled 40 ณ เวลาตรวจ
 - ตัวเลขเปลี่ยนต่อเนื่องได้ตาม worker; ประเด็นสำคัญคือ completed 14 ไม่ถูก cancelled เก่าบดบังอีก
+
+
+## 43. Local Legacy 0.2.9 — ปรับข้อความเอกสารสำหรับผู้สอนให้ตรงสาเหตุ (2026-10-26)
+
+**สถานะ: แก้ source แล้ว / tests ผ่าน / สร้าง ZIP แล้ว / ยังไม่ได้อัปโหลด ZIP ขึ้น GitHub**
+
+### คำขอและข้อสรุปที่ผู้ใช้อนุมัติ
+- ข้อความในรายงานสำหรับผู้สอนต้องบอกสิ่งที่ขาดและสิ่งที่ต้องทำด้วยคำสั้น ๆ ไม่ใช้ภาษาของระบบ
+- หากไม่มีแผนการสอนจริง ห้ามใช้คำว่า `แก้ไขหัวข้อ “แผนการสอน”` เพราะทำให้เข้าใจผิดว่ามีเอกสารแล้วแต่ตั้งชื่อผิด
+- หากมีลิงก์เอกสารแต่เปิดไม่ได้หรือติดสิทธิ์ ต้องแยกจากกรณีไม่มีเอกสาร และระบุครั้งที่มีปัญหา
+
+### การแก้ไข
+- ไม่มีแผนการสอน → `เพิ่มแผนการสอน`
+- ไม่มีเอกสารประกอบการสอน → `เพิ่มเอกสารประกอบการสอน`
+- ลิงก์แผนการสอนเปิดไม่ได้/ติดสิทธิ์ → `ลิงก์แผนการสอนไม่สามารถเข้าถึงได้`
+- ลิงก์เอกสารประกอบการสอนเปิดไม่ได้/ติดสิทธิ์ → `ลิงก์เอกสารประกอบการสอนไม่สามารถเข้าถึงได้`
+- ระบบยังรวมครั้งที่ต่อเนื่องให้อ่านง่าย เช่น `ครั้งที่ 3–6, 9 และ 12`
+- ตัดข้อความยาว `เพราะระบบไม่พบเอกสารที่ใช้ให้คะแนน` ออกจากคำแนะนำผู้สอน
+- เพิ่มคำแปล EN/zh-CN/JA สำหรับข้อความใหม่
+
+### Source และการทดสอบ
+- Source หลัก: `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16/teacher-summary.js`
+- อัปเดต `i18n.js`, `manifest.json`, `README.md`, `RELEASE-NOTES.md`, `TEST-RESULTS.txt` และ regression tests
+- Extension version: **0.2.9**
+- Automated tests: **39/39 ผ่าน**, 0 fail
+- Regression ครอบคลุม missing plan, missing materials, inaccessible plan/material links, needs-review link ที่เป็นปัญหาชัดเจน และการรวมช่วงครั้งที่
+
+### Artifact
+- Local ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\outputs\\SPU-Learning-Auditor-Local-Legacy-0.2.9.zip`
+- ZIP size: **9,497,769 bytes**, 131 entries
+- ตรวจ `manifest.json` ภายใน ZIP แล้วเป็น version `0.2.9` และมี `teacher-summary.js`
+- การเปลี่ยนครั้งนี้อยู่ใน Extension จึงต้อง Reload/Load Unpacked รุ่น 0.2.9 ก่อนสร้างรายงานใหม่
+- รายงาน/PDF ที่สร้างไว้ก่อนอัปเดตจะไม่เปลี่ยนย้อนหลัง ต้องตรวจหรือส่ง PDF ใหม่หากต้องการข้อความแบบใหม่
+
+### GitHub และงานส่งต่อ
+- อัปเดต Handoff นี้แล้ว
+- GitHub in-app browser ไม่มี session ที่มี push access จึงยังไม่ได้อัปโหลด ZIP 0.2.9 ไป `downloads/`; ห้ามอ้างว่ามีไฟล์บน GitHub จนกว่าจะอัปโหลดและตรวจ URL สำเร็จ
+- Source ของ Local Legacy ยังไม่ได้เก็บเป็น tree ใน repo นี้; งานถัดไปควรอัปโหลด ZIP 0.2.9 หรือเพิ่ม source tree เพื่อให้ย้ายเครื่องได้จริง
