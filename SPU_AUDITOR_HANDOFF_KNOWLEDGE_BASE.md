@@ -1,6 +1,6 @@
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
-> Living handoff / บันทึกส่งต่องาน อัปเดต 19 ตุลาคม 2569 (2026-10-19)
+> Living handoff / บันทึกส่งต่องาน อัปเดต 26 ตุลาคม 2569 (2026-10-26)
 > Repo: https://github.com/kafair-so/spu-learning-auditor-dashboard
 > Branch: `main` | Frontend: https://kafair-so.github.io/spu-learning-auditor-dashboard/
 
