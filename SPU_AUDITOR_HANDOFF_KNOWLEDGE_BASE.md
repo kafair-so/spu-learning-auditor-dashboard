@@ -1183,3 +1183,26 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - เปลี่ยนการเลือก terminal job ใน `queueOverview()` ให้เรียงตามเวลาสถานะล่าสุด เช่น `updated_at/completed_at` แทน `created_at` โดยยังให้ queued/running มีลำดับความสำคัญสูงสุด
 - เพิ่ม regression test กรณี requeue job เดิมแล้ว completed แต่มี cancelled job ที่ created_at ใหม่กว่า
 - Deploy Supabase Edge Function `api` และตรวจ production ว่า completed เพิ่มตามจำนวนจริงโดยไม่แก้หรือลบ audit history
+
+
+## 42. แก้ Dashboard ให้แสดงจำนวนตรวจเสร็จจากคิว GR ถูกต้อง (2026-10-26)
+
+**สถานะ: แก้ source แล้ว / regression checks ผ่าน / Deploy Supabase Edge Function Version 33 / Production ตรวจแล้ว**
+
+### การแก้ไข
+- ใน `queueOverview()` เพิ่ม `updated_at` ในข้อมูล `audit_jobs`
+- เปลี่ยนลำดับ query จาก `created_at desc` เป็น `updated_at desc, created_at desc`
+- queued/running ยังมีลำดับความสำคัญสูงสุดเหมือนเดิม แต่ terminal job ต่อวิชาจะเลือกจากเวลาที่สถานะถูกอัปเดตจริง
+- ไม่แก้หรือลบ `audit_jobs`, `audit_runs`, หลักฐาน หรือประวัติย้อนหลัง
+
+### Source และการทดสอบ
+- Source commit: `74e0212742ad8684c4392aa8e85e063df7a2606f`
+- Regression test commit: `43cd7d33647e70865504b70e9e58a007c3fcbd03`
+- ตรวจ regression/static assertions ของ queue overview และ UI รวม 14 จุด ผ่าน 14, fail 0
+- ยืนยัน source ก่อน Deploy ตรงกับ Production Version 32 และ source หลัง Deploy ตรงกับ GitHub ทุกบรรทัด
+
+### Production
+- Supabase project: `SPU OOE Learning Auditor` (`nwupjnkotdkodyxnraie`)
+- Edge Function `api`: Version **33**, status `ACTIVE`, `verify_jwt=false` คงเดิม
+- หลัง Deploy คำนวณด้วยลำดับเดียวกับ Production ได้ queued 105, running 1, completed 14, cancelled 40 ณ เวลาตรวจ
+- ตัวเลขเปลี่ยนต่อเนื่องได้ตาม worker; ประเด็นสำคัญคือ completed 14 ไม่ถูก cancelled เก่าบดบังอีก
