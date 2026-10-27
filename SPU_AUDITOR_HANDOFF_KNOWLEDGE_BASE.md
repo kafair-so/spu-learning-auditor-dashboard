@@ -1276,3 +1276,12 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - ยังไม่มีไฟล์ถูกลบ เพราะการลบถาวรต้องได้รับคำยืนยันสุดท้าย
 - กฎ retention ที่เตรียมไว้ใช้ Advanced Drive API v3 และเก็บ PDF ล่าสุดไม่เกิน 2 ไฟล์ต่อรายวิชา
 
+### 2026-10-27 — Published Dashboard 0.13.16 on the website
+
+- อัปโหลด `SPU-Learning-Auditor-Dashboard-0.13.16.zip` ที่ root ของ repository แล้ว
+- หน้า `audit-review.html` แสดงรุ่น `0.13.16` และปุ่มดาวน์โหลดชี้ไปยัง ZIP รุ่นนี้
+- `audit-review.js` บังคับค่ารุ่น/ลิงก์ดาวน์โหลดเป็น `0.13.16`
+- GitHub Pages deployment สำเร็จที่ commit `671b84760674d5a38c91b6d36762a200df06e29f`
+- Workflow run: https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/40455057851
+- SHA-256 ของ ZIP: `BE56B4CC0B37CD9435AF687E3002FC86EDC8EEC3E8A51D77F86996314C9FEAB2`
+
