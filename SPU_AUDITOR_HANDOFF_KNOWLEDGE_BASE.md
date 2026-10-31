@@ -1285,3 +1285,79 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Workflow run: https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/40455057851
 - SHA-256 ของ ZIP: `BE56B4CC0B37CD9435AF687E3002FC86EDC8EEC3E8A51D77F86996314C9FEAB2`
 
+---
+
+## 2026-11-01 — Supabase Production SQL baseline for Course QA integration (screenshots 2026-10-31)
+
+**สถานะ:** บันทึกหลักฐานจาก SQL ที่ Owner รันด้วยตนเองผ่าน Supabase SQL Editor และส่งภาพ Results ในแชท SPU Course QA (ภาพชื่อ 20261031-172733, 20261031-172852, 20261031-173111) เท่านั้น / **ไม่ได้เข้าถึง Supabase SQL โดยตรงผ่าน ChatGPT Connector** / ไม่มี DDL, DML, Deploy หรือเปลี่ยน Production
+
+- Supabase project: \`SPU OOE Learning Auditor\`, ref \`nwupjnkotdkodyxnraie\`; \`public\` schema, production \`main\`.
+- Snapshot evidence: screenshot ที่ผู้ใช้ส่งมาเมื่อ **31 ตุลาคม 2569**; รายการคิวและผลตรวจสามารถเปลี่ยนได้ภายหลัง การบันทึกนี้ไม่ใช่ตัวเลขปัจจุบันตลอดไป
+- 2026-10-27 GitHub \`main\` ตรวจพบ commit \`541c3f4\`; **ยังไม่ได้ยืนยัน Supabase Edge Function runtime SHA/version และฐานข้อมูลด้วย direct connector** ในรอบ SQL นี้
+
+### A. Historical audit_runs (SQL group by internal_status)
+
+\`\`\`sql
+SELECT internal_status,
+       COUNT(*) AS total_runs,
+       COUNT(DISTINCT course_id) AS unique_courses
+FROM public.audit_runs
+GROUP BY internal_status
+ORDER BY total_runs DESC;
+\`\`\`
+
+| internal_status | total_runs | unique_courses within status |
+|---|---:|---:|
+| has_content | 327 | 138 |
+| audit_failed | 89 | 52 |
+| no_content | 33 | 16 |
+| pass | 29 | 19 |
+| needs_review | 16 | 11 |
+| **รวม runs** | **494** | **ห้ามรวม unique_courses ข้ามสถานะ** |
+
+ผลนี้คือ **ประวัติการตรวจ** ไม่ใช่จำนวนรายวิชาปัจจุบัน และ \`unique_courses\` ในแต่ละสถานะซ้ำข้ามสถานะได้
+
+### B. Current active GR/GS vs latest internal audit run
+
+Query ใช้ \`courses.active=true\`, \`course_group IN ('GR','GS')\`, left join \`audit_runs.run_id=courses.latest_internal_run_id\`, แล้ว group by \`course_group\`.
+
+| metric | GR | GS | รวม |
+|---|---:|---:|---:|
+| active courses | 125 | 40 | 165 |
+| with latest run | 125 | 40 | 165 |
+| without latest run | 0 | 0 | 0 |
+| latest pass | 7 | 0 | 7 |
+| latest has_content | 99 | 3 | 102 |
+| latest no_content | 10 | 0 | 10 |
+| latest needs_review | 9 | 0 | 9 |
+| latest audit_failed | 0 | 37 | 37 |
+| with published pointer | 125 | 39 | 164 |
+
+**ข้อจำกัด:** \`GS audit_failed=37\` หมายถึงผลตรวจล่าสุดล้มเหลว ไม่ใช่หลักฐานว่ารายวิชาเหล่านั้นไม่มีเนื้อหา; สาเหตุ error ยังไม่ได้ตรวจ. จำนวน active 165 **ต่างจาก historical target 160**; ต้องเทียบ identity/catalog_version จริงก่อนตัดสินว่าผิดหรือควรลดจำนวน
+
+### C. Published pointer integrity (เฉพาะ active GR/GS)
+
+Query เชื่อม \`courses c\` → \`audit_runs p\` ด้วย \`c.published_run_id=p.run_id AND c.course_id=p.course_id\` และ \`public_course_results pr\` ด้วย \`course_id\`, แล้วนับ broken, mismatch, invalid public status และ older run.
+
+| metric | GR | GS | รวม |
+|---|---:|---:|---:|
+| active courses | 125 | 40 | 165 |
+| with published pointer | 125 | 39 | 164 |
+| broken pointer (existing pointer but no matching run) | 0 | 0 | 0 |
+| public_result_mismatch (only courses with pointer) | 0 | 0 | 0 |
+| invalid_published_status (only courses with pointer) | 0 | 0 | 0 |
+| published_is_older_run | 9 | 36 | 45 |
+
+**ตีความอย่างระมัดระวัง:** ไม่มี broken/mismatch ที่ Query ตรวจพบสำหรับ 164 published pointers. \`published_is_older_run=45\` สอดคล้องกับการคงผลสาธารณะก่อนหน้า เมื่อ latest run เป็น \`needs_review\` หรือ \`audit_failed\`, แต่ยังต้องตรวจระดับรายวิชาก่อนยืนยันเหตุผลทั้งหมด. **GS 1 วิชาไม่มี pointer**; SQL ที่รันยังไม่ได้ตรวจว่ามี orphan \`public_course_results\` row หรือไม่. Predicate \`p.public_status NOT IN (...)\` ไม่จับ NULL; ดังนั้นค่า invalid=0 ไม่ใช่การรับรองว่า column นี้ไม่มี NULL เสมอ
+
+### D. Follow-up checks ก่อนรวมกับ SPU Course QA (ยังไม่ได้รัน)
+
+1. **P0:** ดู Course ID ของ GS 1 วิชาที่ \`published_run_id IS NULL\`, latest run, public row และสาเหตุ business-rule ที่อาจทำให้ไม่มีผลเผยแพร่; อย่าแก้ pointer ทันที
+2. **P0:** วิเคราะห์ error code / reason / \`source_payload\` ที่จำเป็นใน GS \`audit_failed=37\` แบบ aggregate/redacted (หลีกเลี่ยงดึงหลักฐานหรือข้อมูลส่วนบุคคลเกินจำเป็น). ตรวจว่าความล้มเหลวเป็นของเครื่องตรวจ/สิทธิ์/timeout/การส่งผลหรือเหตุอื่น
+3. **P1:** ตรวจ 45 courses ที่ latest internal run ไม่เท่ากับ published run; แยก \`needs_review\`/\`audit_failed\` และยืนยันกฎ retain-previous-public-result
+4. **P1:** Diff active 165 \`course_id\` กับ approved current GR/GS catalog/term และ historical 160 target; ใช้ actual IDs ไม่ hard-code การตัดรายวิชา; ตรวจแยก GR125/GS40
+5. **P1:** สำหรับ Course QA Integration ต้องกำหนด identity \`(source, moodle_course_id)\` และ year/term/snapshot version; Auditor เดิมใช้ \`course_id\` ข้อเท็จจริงนี้ยังไม่พิสูจน์ว่า ID ทั้งหมดอยู่บน d-Learning หรือจะไม่ชนกับ i-Learning
+6. **P1:** ตรวจ consistency ของ public result เมื่อ missing pointer (รวม absent/orphan public row, \`published_run_id\` ตรง row, NULL public status) และเทียบ latest/public ใน snapshot เดียว
+7. เก็บชุดข้อมูลและการทดสอบแบบ Read-only, ไม่ลบ \`audit_runs\`, \`audit_jobs\`, \`public_course_results\` หรือ Evidence และไม่เปลี่ยน publication/eligibility ระหว่างวางแผนรวมระบบ
+
+**Integration decision:** ยังไม่ย้ายฐานข้อมูล Supabase ไป Neon, ยังไม่แก้ production logic, ยังไม่รวม frontend; ให้กำหนด versioned catalog/results contract ก่อน โดยคง Auditor audit queue / runs / evidence เป็น source of truth ของผลตรวจ และ Course QA เป็น source of truth ของ published course profiles / eligibility ตามขอบเขตที่ Owner อนุมัติ
