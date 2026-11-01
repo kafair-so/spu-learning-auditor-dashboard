@@ -1391,3 +1391,33 @@ Query เชื่อม \`courses c\` → \`audit_runs p\` ด้วย \`c.pub
 ### งานถัดไป
 - ต้อง Load/Reload Local 0.13.18 ใน Chrome และ smoke-test รายงานจริงหนึ่งรายการเพื่อยืนยันการแบ่งหมวดและ Console ไม่มี error.
 - ZIP 0.13.18 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
+
+
+---
+
+## 2026-11-01 — Local Legacy 0.3.3: Assignment เป็นรายการเสริมทุกครั้งเรียน
+
+**สถานะ:** ตรวจแพ็กเกจที่ผู้ใช้ใช้งานจริง / แก้ source และสร้าง ZIP ใน workspace / ทดสอบกติกาเป้าหมายผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
+
+### คำขอและสาเหตุ
+- ผู้ใช้พบ Local Legacy 0.3.2 แสดง `ครบ 77 จาก 77 องค์ประกอบบังคับ` แต่ป้ายผลรวมยังเป็น `ไม่ผ่าน` โดยรายการที่ไม่มีเพียง Assignment ซึ่งตกลงไว้ว่าเป็นรายการ `ถ้ามี`.
+- ตรวจจาก `C:\Users\User\Downloads\SPU-Learning-Auditor-Local-Legacy-0.3.2.zip` โดยตรง พบว่าครั้งที่ 1 ยังคืน Assignment ที่ไม่พบเป็น `fail` ขณะที่ครั้งอื่นคืน `not_applicable`; teacher summary ยังสามารถสร้างคำแนะนำให้เพิ่ม Assignment และ `resolveLegacyResult()` ใช้คำแนะนำนั้นกดผลรวมเป็น fail.
+- ผลจึงขัดกันเองระหว่างตัวนับองค์ประกอบบังคับและป้ายสถานะรวม.
+
+### การแก้ไข
+- `background.js`: Assignment ที่ไม่พบคืน `not_applicable` ทุกครั้งเรียน รวมถึงครั้งที่ 1.
+- `legacy-policy.js`: `legacyCompleteness()` ตัดแถว Assignment ออกจากตัวหารองค์ประกอบบังคับทุกครั้งเรียน; รองรับรายงานเก่าที่เคยเก็บ Assignment ที่ไม่พบเป็น `fail`.
+- `teacher-summary.js`: Local Legacy GR/GS ไม่สร้างงานแก้ไขผู้สอนจากแถวกิจกรรมท้ายบท/Assignment เพราะเป็นรายการเสริม.
+- เพิ่ม regression ใน `tests/legacy-policy.test.mjs` และ `tests/teacher-summary.test.mjs`; อัปเดต version assertions, manifest, README, Release Notes และ Test Results เป็น **0.3.3**.
+- ไม่เปลี่ยน Dashboard, Supabase, Google Sheets, publication logic หรือข้อมูล production.
+
+### การตรวจสอบและ Artifact
+- `node --check` ผ่านสำหรับ `background.js`, `legacy-policy.js`, `teacher-summary.js`.
+- Regression เป้าหมายผ่าน: legacy policy, teacher summary และ internal-video/final-label.
+- ชุดทดสอบแพ็กเกจผ่าน 37/39; สองไฟล์ที่ล้มเหลวคือ stale baseline assertions (`evidence-package.test.mjs`, `media-batch.test.mjs`) และยืนยันว่าล้มเหลวแบบเดียวกันใน ZIP 0.3.2 เดิมก่อนการแก้ครั้งนี้.
+- Local artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-Legacy-0.3.3.zip`
+- ZIP: 132 entries, manifest `0.3.3`, SHA-256 `243E930116D25417D8D0181CEDDAF093202507AC28D82B3545223991DE609263`.
+
+### งานถัดไป
+- ให้ผู้ใช้ Load/Reload Local Legacy 0.3.3 แล้วเปิดรายงานเดิมหรือสั่งตรวจซ้ำเพื่อ smoke-test ว่าสถานะเปลี่ยนเป็นผ่านเมื่อองค์ประกอบบังคับอื่นครบ.
+- ZIP 0.3.3 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
