@@ -1421,3 +1421,37 @@ Query เชื่อม \`courses c\` → \`audit_runs p\` ด้วย \`c.pub
 ### งานถัดไป
 - ให้ผู้ใช้ Load/Reload Local Legacy 0.3.3 แล้วเปิดรายงานเดิมหรือสั่งตรวจซ้ำเพื่อ smoke-test ว่าสถานะเปลี่ยนเป็นผ่านเมื่อองค์ประกอบบังคับอื่นครบ.
 - ZIP 0.3.3 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
+
+
+---
+
+## 2026-11-01 — Local Legacy 0.3.4: คืนเกณฑ์คะแนนภายใน 80/100 เป็นตัวตัดสินผลรวม
+
+**สถานะ:** วิเคราะห์ภาพจากผู้ใช้และ source 0.3.3 / แก้ source และสร้าง ZIP ใน workspace / regression เป้าหมายผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
+
+### คำขอและสาเหตุ
+- ผู้ใช้ยืนยันข้อตกลงเดิมว่า Local Legacy ไม่แสดงตัวเลขคะแนนในรายงานผู้สอน แต่ต้องคำนวณคะแนน 100 คะแนนเบื้องหลัง และคะแนนตั้งแต่ 80 ขึ้นไปต้องเป็น `ผ่าน`.
+- ภาพจาก 0.3.3 แสดงครบ 63/63 องค์ประกอบบังคับ แต่สถานะรวม `ไม่ผ่าน`.
+- ตรวจ source พบความไม่สอดคล้อง: `evidence-package.js` ใช้ `legacyScorecard()` อยู่แล้ว แต่ `background.js` และ `report.js` ใช้ `legacyCompleteness()`/คำแนะนำผู้สอนเป็นตัวตัดสินสถานะรวม ทำให้หน้าแต่ละส่วนและขั้นยืนยันผลใช้คนละกติกา.
+
+### การแก้ไข
+- `background.js`: GR/GS ใน `preliminaryScore()` ใช้ `legacyScorecard()` เป็น source of truth สำหรับผลรวมและ finalization.
+- `report.js`: ทั้งรายงานใหม่และรายงานเก่าคำนวณสถานะจากคะแนนภายใน; ยังคงใช้ `legacyCompleteness()` เฉพาะแสดงจำนวนองค์ประกอบ ไม่ใช้กดสถานะรวม.
+- หน้ารายงานไม่แสดงตัวเลขคะแนนจริง แต่แจ้งว่า `คำนวณคะแนนภายในโดยไม่แสดงตัวเลขในรายงานนี้`.
+- `rules.js`: ระบุ scoring mode เป็น `legacy_100_internal`.
+- Assignment ยังเป็นคะแนนเสริม: เมื่อไม่มี Assignment แต่ส่วนอื่นครบ คะแนนภายในเป็น 85/100 และผลต้องเป็น `ผ่าน`.
+- เพิ่ม/ปรับ regression สำหรับ private-score pass, report wording, final-label, review recalculation และ version 0.3.4.
+- ไม่เปลี่ยน Dashboard, Supabase, Google Sheets หรือข้อมูล production.
+
+### การตรวจสอบและ Artifact
+- Syntax checks ผ่านสำหรับ `background.js`, `report.js`, `rules.js`, `legacy-policy.js`.
+- Regression เป้าหมายผ่าน รวมกรณีไม่มี Assignment ได้ 85 คะแนนภายในและสถานะผ่าน.
+- ชุดทดสอบแพ็กเกจผ่าน 37/39; สองไฟล์เดิม `evidence-package.test.mjs` และ `media-batch.test.mjs` ยังคงเป็น stale baseline failures ที่พิสูจน์แล้วว่าล้มเหลวเหมือนกันใน ZIP 0.3.2 ต้นฉบับ.
+- Artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-Legacy-0.3.4.zip`
+- Size: 9,508,898 bytes; 132 entries; manifest `0.3.4`.
+- SHA-256: `68C03CB5B5303EA0ED16ED341F754FDF9D75CB294941C7B027C296DE569DD655`.
+
+### งานถัดไป
+- Load/Reload 0.3.4 แล้วเปิดรายงานเดิมในภาพ; ควรเปลี่ยนเป็น `ผ่าน` พร้อมข้อความว่าคะแนนภายในถึงเกณฑ์ โดยไม่แสดงเลขคะแนน.
+- หากผลเดิมในคิว/ชีตเคยถูกส่งเป็นไม่ผ่าน ต้องสั่งตรวจซ้ำหรือยืนยัน/ส่งผลใหม่หลังใช้ 0.3.4 เพื่อให้ปลายทางรับสถานะที่คำนวณด้วยกติกาถูกต้อง.
+- ZIP ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด.
