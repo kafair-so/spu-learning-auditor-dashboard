@@ -1361,3 +1361,33 @@ Query เชื่อม \`courses c\` → \`audit_runs p\` ด้วย \`c.pub
 7. เก็บชุดข้อมูลและการทดสอบแบบ Read-only, ไม่ลบ \`audit_runs\`, \`audit_jobs\`, \`public_course_results\` หรือ Evidence และไม่เปลี่ยน publication/eligibility ระหว่างวางแผนรวมระบบ
 
 **Integration decision:** ยังไม่ย้ายฐานข้อมูล Supabase ไป Neon, ยังไม่แก้ production logic, ยังไม่รวม frontend; ให้กำหนด versioned catalog/results contract ก่อน โดยคง Auditor audit queue / runs / evidence เป็น source of truth ของผลตรวจ และ Course QA เป็น source of truth ของ published course profiles / eligibility ตามขอบเขตที่ Owner อนุมัติ
+
+---
+
+## 2026-11-01 — Local 0.13.18 แก้รายงานไม่แบ่งหมวดจาก JavaScript error
+
+**สถานะ:** วิเคราะห์แพ็กเกจที่ผู้ใช้ใช้งานจริงแล้ว / แก้ source และสร้าง ZIP ใน workspace / tests ผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
+
+### อาการและสาเหตุ
+- ผู้ใช้ส่งภาพ Local 0.13.17 ซึ่งหน้ารายงานแสดงเป็นหน้าเดียว ไม่แบ่งหัวข้อ/แท็บตามรูปแบบเดิม พร้อม Console error `ReferenceError: updatePublicResult is not defined`.
+- ตรวจจาก `C:\Users\User\Downloads\SPU-Learning-Auditor-Local-0.13.17.zip` โดยตรง ยืนยันว่า `report.js` เรียก `updatePublicResult(...)` แต่ไม่มีนิยามฟังก์ชัน และเรียกซ้ำสองครั้งทั้งเส้นทาง GN และ GR/GS.
+- Error เกิดก่อน `installReportWorkspace(data, unmappedItems)` จึงหยุดการสร้าง workspace ที่แบ่งรายงานเป็นหมวด ไม่ใช่การตั้งค่าขนาดหน้าต่างหรือการตั้งค่า Chrome ของผู้ใช้.
+
+### การแก้ไข
+- เพิ่ม `updatePublicResult(passed)` ให้ปรับสถานะ/ข้อความของ `.public-result-card` อย่างปลอดภัย.
+- ลดการเรียกเหลือหนึ่งครั้งต่อการคำนวณใหม่ของ GN และหนึ่งครั้งต่อ GR/GS.
+- คง `installReportWorkspace(...)` และเพิ่ม regression assertion ว่าตัว refresher ถูกนิยามก่อนเรียก.
+- อัปเดต manifest/README/Release Notes เป็น Local **0.13.18**.
+- ไม่เปลี่ยนสูตรคะแนน เกณฑ์ผ่าน ข้อมูลรายงานเดิม Dashboard, Supabase, Google Sheets หรือ publication logic.
+
+### การตรวจสอบและ Artifact
+- `node --check report.js` ผ่าน.
+- Automated tests ผ่าน **35/35 test files**, fail 0.
+- ตรวจ ZIP แล้ว: manifest `0.13.18`, 118 entries, มีฟังก์ชัน `updatePublicResult`, มี `installReportWorkspace`, และแต่ละเส้นทางเรียก refresher ครั้งเดียว.
+- Local artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-0.13.18.zip`
+- Size: **9,336,625 bytes**
+- SHA-256: `362B39D71254BFC01317520B5AAAC16760786FAA68B98684E12F4C4ECFFF4A95`
+
+### งานถัดไป
+- ต้อง Load/Reload Local 0.13.18 ใน Chrome และ smoke-test รายงานจริงหนึ่งรายการเพื่อยืนยันการแบ่งหมวดและ Console ไม่มี error.
+- ZIP 0.13.18 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
