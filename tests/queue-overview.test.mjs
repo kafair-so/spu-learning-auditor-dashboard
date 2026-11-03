@@ -30,8 +30,23 @@ test("queue course list supports dark mode, mobile layout and English", () => {
   assert.match(review, /@media\(max-width:650px\)/);
   assert.match(i18n, /"รายวิชาในคิวปัจจุบัน":"Courses currently in queue"/);
   assert.match(i18n, /"ไม่มีรายวิชาในคิวปัจจุบัน":"No courses are currently queued\."/);
-  assert.match(page, /ui-i18n\.js\?v=20261019a/);
-  assert.match(page, /audit-review\.js\?v=20261019a/);
+  assert.match(page, /ui-i18n\.js\?v=20261103a/);
+  assert.match(page, /audit-review\.js\?v=20261103a/);
+});
+
+test("reviewers can remove one waiting course or clear every waiting course", () => {
+  const client = read("audit-api.js");
+  assert.match(client, /removeQueuedJob:jobId=>request\(`\/v1\/admin\/jobs\/\$\{encodeURIComponent\(jobId\)\}`/);
+  assert.match(client, /clearQueuedJobs:\(\)=>request\("\/v1\/admin\/jobs",\{method:"DELETE"\}\)/);
+  assert.match(api, /async function cancelQueuedJob\(request, jobId\)/);
+  assert.match(api, /async function clearQueuedJobs\(request\)/);
+  assert.match(api, /job\.status === "running"/);
+  assert.match(api, /\.eq\("status", "queued"\)\.select\("job_id"\)/);
+  assert.doesNotMatch(api, /from\("audit_jobs"\)\.delete\(/,"queue history must be cancelled rather than hard-deleted");
+  assert.match(review, /id="queueClearAll"/);
+  assert.match(review, /data-remove-queue-job=/);
+  assert.match(review, /ผลตรวจเดิมของรายวิชาจะไม่ถูกลบ/);
+  assert.match(review, /ผลตรวจเดิมและวิชาที่กำลังตรวจจะไม่ถูกลบ/);
 });
 
 
@@ -39,3 +54,4 @@ test("queue overview ranks reused terminal jobs by lifecycle update time", () =>
   assert.match(api, /created_at,updated_at,claimed_at,completed_at/);
   assert.match(api, /\.order\("updated_at", \{ ascending:false \}\)\.order\("created_at", \{ ascending:false \}\)/);
 });
+
