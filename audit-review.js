@@ -98,8 +98,11 @@
     .ooe-load-state.is-error{background:#fff3f2;border-color:#ebaeaa;color:#a33636}
     .ooe-loader{width:17px;height:17px;border:2px solid #b6d3f5;border-top-color:#2464c6;border-radius:50%;animation:ooeSpin .85s linear infinite;flex:none}
     .ooe-load-state.is-error .ooe-loader{display:none}
+    .report-intro{display:flex;align-items:center}.report-intro>div{min-width:0}.report-refresh{margin-left:auto;white-space:nowrap}.report-refresh:disabled{cursor:wait;opacity:.72}
+    .theme-dark .report-refresh{background:linear-gradient(135deg,#2d7ce6,#1754b5)!important;color:#fff!important}
     .ooe-report-skeleton td{padding:17px!important}.ooe-report-skeleton span{display:block;height:13px;width:75%;border-radius:6px;background:linear-gradient(95deg,#dce7f5,#f3f8ff,#dce7f5);background-size:220% 100%;animation:ooeShimmer 1.45s linear infinite}
     .kpi,.table-panel,.audit-command-center,.admin-intro{animation:ooeEnter .5s ease-out both}
+    @media(max-width:700px){.report-intro{flex-wrap:wrap}.report-refresh{width:100%;margin-left:46px}}
     @media(prefers-reduced-motion:reduce){.ooe-skeleton,.ooe-report-skeleton span,.ooe-loader,.kpi,.table-panel,.audit-command-center,.admin-intro{animation:none!important}}
   </style>`);
   function showResultState(state,detail=""){
@@ -110,6 +113,30 @@
     banner.innerHTML='<span class="ooe-loader" aria-hidden="true"></span><span>'+esc(detail||(state==="loading"?"กำลังโหลดผลตรวจจากระบบกลาง…":state==="error"?"ไม่สามารถโหลดผลตรวจได้ กรุณาลองอีกครั้ง":""))+'</span>';
     if(state==="loading"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}$("count").textContent="กำลังโหลดข้อมูล…";$("rows").innerHTML=Array.from({length:4},()=>'<tr class="ooe-report-skeleton"><td colspan="12"><span></span></td></tr>').join("");}
     else if(state==="error"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.classList.remove("ooe-skeleton");element.textContent="—";}}$("count").textContent="ไม่สามารถโหลดข้อมูล";$("rows").innerHTML='<tr><td colspan="12" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>';}
+  }
+
+  function setupReportRefresh(){
+    const intro=document.querySelector('[data-admin-panel="reports"] .admin-intro');
+    if(!intro||$("refreshReport"))return;
+    intro.classList.add("report-intro");
+    const button=document.createElement("button");
+    button.id="refreshReport";button.type="button";button.className="primary report-refresh";
+    button.textContent="↻ อัปเดตข้อมูล";button.setAttribute("aria-label","อัปเดตข้อมูลผลตรวจล่าสุด");
+    intro.appendChild(button);
+    button.addEventListener("click",async()=>{
+      const reload=$("reloadResults");
+      button.disabled=true;if(reload)reload.disabled=true;button.textContent="↻ กำลังอัปเดต…";
+      try{
+        await loadResults();
+        button.textContent="✓ อัปเดตแล้ว";
+        window.setTimeout(()=>{if(!button.disabled)button.textContent="↻ อัปเดตข้อมูล";},1800);
+      }catch(error){
+        button.textContent="↻ ลองใหม่";
+        setMessage(error.message||String(error),"error");
+      }finally{
+        button.disabled=false;if(reload)reload.disabled=false;
+      }
+    });
   }
 
   function showAdminView(view){
@@ -592,6 +619,7 @@
   document.querySelectorAll("[data-admin-view]").forEach(button=>button.addEventListener("click",()=>showAdminView(button.dataset.adminView)));
   window.addEventListener("ooe:languagechange",()=>{if(hasLoadedResults)render();if(queueOverviewData)renderQueueOverview();if(!$("errorModal")?.hidden)renderErrorReport();});
   setupExperience();
+  setupReportRefresh();
   setupReportAccess();
   refreshWorkerStatus().catch(()=>{});
   setupAccessManagement();
