@@ -53,7 +53,7 @@ function corsHeaders(request) {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "",
     "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Vary": "Origin"
   };
 }
