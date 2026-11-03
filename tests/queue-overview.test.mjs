@@ -40,6 +40,7 @@ test("reviewers can remove one waiting course or clear every waiting course", ()
   assert.match(client, /clearQueuedJobs:\(\)=>request\("\/v1\/admin\/jobs",\{method:"DELETE"\}\)/);
   assert.match(api, /async function cancelQueuedJob\(request, jobId\)/);
   assert.match(api, /async function clearQueuedJobs\(request\)/);
+  assert.match(api, /"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS"/);
   assert.match(api, /job\.status === "running"/);
   assert.match(api, /\.eq\("status", "queued"\)\.select\("job_id"\)/);
   assert.doesNotMatch(api, /from\("audit_jobs"\)\.delete\(/,"queue history must be cancelled rather than hard-deleted");
