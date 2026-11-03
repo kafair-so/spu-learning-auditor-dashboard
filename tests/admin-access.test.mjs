@@ -41,6 +41,14 @@ test("review results are loaded and decided through the central API", () => {
   assert.doesNotMatch(review, /AuditBridge\.loadRecords\(\)/);
 });
 
+test("the report reads only each active course's latest audit run", () => {
+  assert.match(api, /latest_internal_run_id/);
+  assert.match(api, /\.in\("run_id", runIds\)/);
+  assert.doesNotMatch(api, /\.in\("course_id", activeIds\)\.order\("audited_at"/);
+  const recordBody = api.slice(api.indexOf("function adminResultRecord"), api.indexOf("function historyRunRecord"));
+  assert.doesNotMatch(recordBody, /\.\.\.source/);
+});
+
 test("owners and super admins can inspect pending evidence and possible scores", () => {
   const evidence = read("audit-evidence.js");
   assert.match(api, /const AUDIT_MAX_SCORE = 110/);
@@ -105,5 +113,6 @@ test("the worker renews a session before expiry and pauses safely when Google re
   assert.match(review, /OOEAuth\.refreshCredential\(\{interactive:true\}\)/);
   assert.match(review, /กลับไปทำคิวเดิม/);
 });
+
 
 
