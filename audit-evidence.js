@@ -3,6 +3,7 @@
   const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const date=value=>value?new Date(value).toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH",{dateStyle:"long",timeStyle:"short"}):"—";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH"):"—";
+  const mediaTime=value=>{const seconds=Math.max(0,Math.round(Number(value)||0));if(!seconds)return"อ่านเวลาไม่ได้";const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;};
   const criterionStatus=value=>({pass:"ผ่าน",pass_tolerance:"ผ่านตามค่าผ่อนปรน",needs_review:"รอตรวจ",fail:"ไม่ผ่าน",not_applicable:"ไม่มีข้อบังคับ/ไม่มี"}[value]||value||"—");
   const MANUAL_REVIEW_ITEMS=[
     ["student_meetings","การจัดให้มีการพบนักศึกษา","กำหนดตารางพบนักศึกษารวม 3 ครั้ง"],
@@ -22,9 +23,9 @@
   };
   const statusExplanation=(status,run,superAdmin=false)=>{
     const confirmed=Number(run.confirmedScore)||0,possible=Number(run.possibleScore)||0,threshold=Number(run.threshold)||80;
-    if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`,actions:[]};
+    if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:superAdmin?`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`:"รายวิชาผ่านเกณฑ์การประเมินแล้ว",actions:[]};
     if(status==="needs_review"&&superAdmin)return {title:"รอตรวจโดยทีมตรวจ",text:`คะแนนยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ แต่คะแนนที่อาจได้ ${score(possible)} อาจถึง ${score(threshold)} คะแนน จึงต้องให้ทีมตรวจยืนยันหลักฐานก่อน`,actions:["ผู้สอนไม่ต้องส่งคำยืนยันในหน้านี้ แต่ควรเตรียมหลักฐานของหัวข้อที่ระบุว่า “รอตรวจ” ไว้ให้ทีมตรวจ"]};
-    if(status==="has_content"||status==="needs_review")return {title:"ไม่ผ่านเกณฑ์",text:`คะแนนที่ระบบยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`,actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่เพื่อยืนยันคะแนน"]};
+    if(status==="has_content"||status==="needs_review")return {title:"ไม่ปรากฏ / ไม่ครบ",text:superAdmin?`คะแนนที่ระบบยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`:"ยังพบองค์ประกอบที่ไม่ครบหรือยังยืนยันไม่ได้",actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่"]};
     if(status==="no_content")return {title:"ยังไม่พบองค์ประกอบรายวิชา",text:"ระบบตรวจสำเร็จแล้ว แต่ไม่พบองค์ประกอบที่ใช้คำนวณคะแนน",actions:["เพิ่มองค์ประกอบการสอนและหลักฐานในรายวิชา แล้วตรวจใหม่"]};
     return {title:"ตรวจไม่สำเร็จ",text:"ระบบเข้าถึงหรืออ่านข้อมูลได้ไม่ครบ จึงยังสรุปผลรายวิชาไม่ได้",actions:["ตรวจสอบสิทธิ์เข้าถึงรายวิชาและลิงก์ภายนอก แล้วรันการตรวจใหม่"]};
   };
@@ -59,7 +60,7 @@
       if(!issues.length)add("podcast-content","Podcast","เพิ่มหรือแก้ไข Podcast ให้เป็นคลิปเสียงที่เปิดฟังได้");
       return issues;
     }
-    if(/ai\s*tutor/.test(text)){add("ai-tutor","AI Tutor","เพิ่ม AI Tutor ตามรูปแบบที่มหาวิทยาลัยกำหนด");return issues;}
+    if(/ai\s*tutor/.test(text)){add("ai-tutor","AI Tutor",access?"แก้ไขลิงก์ AI Tutor ที่เปิดไม่ได้":"เพิ่ม AI Tutor");return issues;}
     if(/กิจกรรมท้ายบท|assignment/.test(text)){add("final-activity","กิจกรรมท้ายบท","เพิ่มกิจกรรมท้ายบทหรือ Assignment ให้ชัดเจนตามเกณฑ์");return issues;}
     const label=item.label||`หัวข้อที่ ${item.criterion||"—"}`;
     add(`general:${label}:${item.detail||""}`,label,item.detail||"เพิ่มหรือแก้ไของค์ประกอบให้ครบตามเกณฑ์");
@@ -88,12 +89,19 @@
       const snapshot=run.evidenceSnapshot||{};
       const activities=Array.isArray(snapshot.activities)?snapshot.activities:[];
       const weeks=Array.isArray(snapshot.weeks)?snapshot.weeks:[];
-      const activityRows=activities.slice(0,200).map(item=>{
+      const reviewKeys=new Set(reviewCandidates(run).filter(item=>item.kind==="criterion").map(item=>item.key));
+      const activityRows=activities.slice(0,200).map((item,activityIndex)=>{
         const href=AuditBridge.safeUrl(item.externalUrl||item.href);
         const destination=href?` <a href="${esc(href)}" target="_blank" rel="noopener">เปิดหลักฐาน ↗</a>`:"";
-        return `<li><strong>${esc(item.section||"ไม่ระบุครั้ง")} — ${esc(item.title||item.kind||"หลักฐาน")}</strong>${destination}<div class="muted">${esc(item.accessNote||item.linkStatus||"")}</div></li>`;
+        const session=Number(item.auditSession)||Number(String(item.section||"").match(/\d+/)?.[0])||0;
+        const criterionKey=item.kind==="video"?`criterion:${session}:${session===1?4:3}`:item.kind==="podcast"?`criterion:${session}:${session===1?5:4}`:"";
+        const seconds=Number(item.reviewerDurationSeconds||item.systemDurationSeconds||item.durationSeconds||0);
+        const required=item.kind==="video"?(session===1?2700:5400):item.kind==="podcast"?600:0;
+        const prior=item.reviewReused?`<div class="reuse-note">ใช้ผลยืนยันเดิม${item.reviewerConfirmedAt?` · ${esc(date(item.reviewerConfirmedAt))}`:""}</div>`:"";
+        const priorDecision=item.priorEvidenceDecision||"";
+        const control=superAdmin&&index===0&&reviewKeys.has(criterionKey)&&["video","podcast"].includes(item.kind)?`<div class="evidence-item-review" data-evidence-item data-criterion-key="${esc(criterionKey)}" data-required="${required}"><label>นำรายการนี้มานับหรือไม่<select data-evidence-decision data-evidence-key="${esc(href||item.href||`item:${activityIndex}`)}"><option value=""${!priorDecision?" selected":""}>ยังไม่ตัดสิน</option><option value="use"${priorDecision==="use"?" selected":""}>ใช้รายการนี้</option><option value="not_use"${priorDecision==="not_use"?" selected":""}>ไม่ใช้รายการนี้</option></select></label><label>เวลาที่ใช้คำนวณ (วินาที)<input type="number" min="0" max="43200" step="1" data-evidence-seconds value="${seconds||""}" placeholder="0"></label><span class="muted">ระบบอ่านได้ ${esc(mediaTime(seconds))} · ต้องรวมอย่างน้อย ${esc(mediaTime(required))}</span></div>`:"";
+        return `<li><strong>${esc(item.section||`ครั้งที่ ${session||"—"}`)} — ${esc(item.title||item.kind||"หลักฐาน")}</strong>${destination}<div class="muted">ป้าย: ${esc(item.groupContext||"ไม่พบชื่อป้าย")} · ประเภท: ${esc(item.kind||"—")} · เวลา: ${esc(mediaTime(seconds))}</div><div class="muted">${esc(item.accessNote||item.linkStatus||"")}</div>${prior}${control}</li>`;
       }).join("");
-      const reviewKeys=new Set(reviewCandidates(run).filter(item=>item.kind==="criterion").map(item=>item.key));
       const reviewChoice=(key,label,eligible=reviewKeys.has(key))=>superAdmin&&index===0&&eligible?`<div class="review-choice" data-review-control><span>ยืนยันผลรายการนี้</span><div class="review-buttons" role="group" aria-label="ยืนยัน ${esc(label)}"><button type="button" class="review-pass" data-review-pick="pass" data-review-key="${esc(key)}">ผ่าน</button><button type="button" class="review-fail" data-review-pick="fail" data-review-key="${esc(key)}">ไม่ผ่าน</button></div><label class="review-edit">แก้ไขผล<select data-review-item data-review-key="${esc(key)}" aria-label="แก้ไขผล ${esc(label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label></div>`:"";
       const weekRows=weeks.map((week,weekIndex)=>{
         const criteria=Array.isArray(week.criteria)?week.criteria:[];
@@ -107,10 +115,11 @@
       const possible=Number.isFinite(Number(run.possibleScore))?Math.min(maximum,Number(run.possibleScore)):null;
       const explanation=statusExplanation(status,run,superAdmin),quality=qualityMessage(run);
       const actions=explanation.actions.length?`<ul class="action-list">${explanation.actions.map(action=>`<li>${esc(action)}</li>`).join("")}</ul>`:"";
-      const possibleFact=superAdmin?`<div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div>`:"";
-      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts"><div class="fact"><span>คะแนนที่ระบบยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div>${possibleFact}<div class="fact"><span>คะแนนเกณฑ์ผ่าน</span><strong>${score(run.threshold)} / ${score(maximum)}</strong></div><div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.11</div>'}${manualRows}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
+      const scoreFacts=superAdmin?`<div class="fact"><span>คะแนนที่ระบบยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนเกณฑ์ผ่าน</span><strong>${score(run.threshold)} / ${score(maximum)}</strong></div>`:"";
+      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts">${scoreFacts}<div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.11</div>'}${manualRows}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
     }).join("");
     document.querySelectorAll(".run>h3").forEach(heading=>{const content=heading.nextElementSibling;if(!content||!["ผลตรวจตามครั้ง/สัปดาห์","หลักฐานที่ตรวจพบ"].includes(heading.textContent.trim()))return;const details=document.createElement("details");details.className="evidence-details";const summary=document.createElement("summary");summary.textContent=heading.textContent;heading.replaceWith(details);details.append(summary,content);});
+    $("runs").querySelectorAll("[data-evidence-decision]").forEach(select=>{if(select.value)select.dispatchEvent(new Event("change",{bubbles:true}));});
     window.OOEI18n?.translate(document);
   }
 
@@ -152,7 +161,18 @@
     control.querySelectorAll("button[data-review-pick]").forEach(button=>button.classList.toggle("selected",button.dataset.reviewPick===value));
     updateReviewTotal($("runs").querySelector("[data-review-run]"));
   };
-  $("runs").addEventListener("change",event=>{if(!event.target.matches("select[data-review-item]"))return;setReviewChoice(event.target.closest("[data-review-control]"),event.target.value);});
+  $("runs").addEventListener("change",event=>{
+    if(event.target.matches("select[data-review-item]")){setReviewChoice(event.target.closest("[data-review-control]"),event.target.value);return;}
+    if(!event.target.matches("[data-evidence-decision],[data-evidence-seconds]"))return;
+    const row=event.target.closest("[data-evidence-item]"),key=row?.dataset.criterionKey;if(!key)return;
+    const rows=[...$("runs").querySelectorAll(`[data-evidence-item][data-criterion-key="${CSS.escape(key)}"]`)];
+    const complete=rows.every(item=>item.querySelector("[data-evidence-decision]")?.value);
+    if(!complete)return;
+    const seconds=rows.filter(item=>item.querySelector("[data-evidence-decision]")?.value==="use").reduce((sum,item)=>sum+Number(item.querySelector("[data-evidence-seconds]")?.value||0),0);
+    const required=Math.max(...rows.map(item=>Number(item.dataset.required||0)));
+    const select=$("runs").querySelector(`select[data-review-key="${CSS.escape(key)}"]`);
+    if(select)setReviewChoice(select.closest("[data-review-control]"),seconds>=required?"pass":"fail");
+  });
   $("runs").addEventListener("click",async event=>{
     const pick=event.target.closest("button[data-review-pick]");if(pick){setReviewChoice(pick.closest("[data-review-control]"),pick.dataset.reviewPick);return;}
     const button=event.target.closest("button[data-review-save]");if(!button)return;
@@ -162,11 +182,14 @@
     if(!runId)return;
     if(error)error.textContent="";
     const reviewDecisions=[...$("runs").querySelectorAll("select[data-review-item]")].map(select=>({key:select.dataset.reviewKey,accepted:select.value==="pass"}));
+    const evidenceDecisions=[...$("runs").querySelectorAll("[data-evidence-item]")].map(row=>({key:row.querySelector("[data-evidence-key]")?.dataset.evidenceKey||"",criterionKey:row.dataset.criterionKey||"",decision:row.querySelector("[data-evidence-decision]")?.value||"",seconds:Number(row.querySelector("[data-evidence-seconds]")?.value||0)}));
     if(reviewDecisions.some(item=>!item.key)||reviewDecisions.length!==Number(panel.dataset.reviewCount)){if(error)error.textContent="กรุณาเลือกผลยืนยันทุกหัวข้อก่อนบันทึก";return;}
+    if(evidenceDecisions.some(item=>!item.decision)){if(error)error.textContent="กรุณาเลือกใช้หรือไม่ใช้สำหรับวิดีโอและ Podcast ทุกรายการ";return;}
     button.disabled=true;
-    try{await AuditApi.decideResult(runId,reviewDecisions,note);await load();}
+    try{await AuditApi.decideResult(runId,reviewDecisions,note,evidenceDecisions);await load();}
     catch(err){if(error)error.textContent=err.message||"บันทึกผลไม่สำเร็จ";button.disabled=false;}
   });
   load();
 })();
+
 

@@ -68,7 +68,7 @@ test("owners and super admins can inspect pending evidence and possible scores",
   assert.match(evidence, /Extension รุ่น 0\.13\.11/);
 });
 
-test("non-super-admin report payloads redact pending status and possible scores", () => {
+test("non-super-admin and public payloads redact every numeric score", () => {
   const evidence = read("audit-evidence.js");
   assert.match(api, /limitedAdminResultRecord/);
   assert.match(api, /if \(!canSeeInternalReview && !row\.public_status\) continue/);
@@ -76,8 +76,12 @@ test("non-super-admin report payloads redact pending status and possible scores"
   assert.match(api, /status: item\.status === "needs_review" \? "fail" : item\.status/);
   assert.match(api, /snapshot:publicEvidenceSnapshot/);
   assert.match(review, /const isSuperAdmin=/);
-  assert.match(review, /คะแนนที่ระบบยืนยัน/);
-  assert.match(review, /คะแนนเกณฑ์ผ่าน/);
+  const limited = api.slice(api.indexOf("function limitedAdminResultRecord"),api.indexOf("// Only the current"));
+  const publicRun = api.slice(api.indexOf("function publicHistoryRunRecord"),api.indexOf("function limitedAdminResultRecord"));
+  assert.doesNotMatch(limited, /confirmedScore|maxScore|threshold/);
+  assert.doesNotMatch(publicRun, /confirmedScore|maxScore|threshold/);
+  assert.match(api, /map\(\(\{ score, \.\.\.record \}\) => record\)/);
+  assert.doesNotMatch(review.slice(review.indexOf("if\(!superAdmin\)return"),review.indexOf("return `<tr",review.indexOf("if\(!superAdmin\)return")+25)), /confirmedScore|threshold/);
   assert.match(evidence, /const possibleFact=superAdmin/);
 });
 

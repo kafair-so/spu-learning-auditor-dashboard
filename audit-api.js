@@ -76,7 +76,7 @@
     queueOverview:()=>request("/v1/admin/jobs/overview"),
     adminCourseHistory:courseId=>request(`/v1/admin/courses/${encodeURIComponent(courseId)}/history`),
     adminEvidence,
-    decideResult:(runId,reviewDecisions,note="")=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({reviewDecisions,note})}),
+    decideResult:(runId,reviewDecisions,note="",evidenceDecisions=[])=>request(`/v1/admin/results/${encodeURIComponent(runId)}/decision`,{method:"POST",body:JSON.stringify({reviewDecisions,note,evidenceDecisions})}),
     accessUsers:()=>request("/v1/admin/access-users"),
     saveAccessUser:(email,displayName="",role="admin")=>request("/v1/admin/access-users",{method:"POST",body:JSON.stringify({email,displayName,role})}),
     setAccessUserStatus:(email,active)=>request(`/v1/admin/access-users/${encodeURIComponent(email)}/status`,{method:"POST",body:JSON.stringify({active})}),

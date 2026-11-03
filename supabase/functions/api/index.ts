@@ -258,9 +258,6 @@ function publicHistoryRunRecord(row) {
     auditedAt: row.audited_at,
     auditorVersion: row.auditor_version || "",
     publicStatus: row.public_status || "",
-    confirmedScore: row.score == null ? null : Number(row.score),
-    maxScore: AUDIT_MAX_SCORE,
-    threshold: row.passing_score == null ? null : Number(row.passing_score),
     evidenceAvailable: Boolean(row.evidence_object_path)
   };
 }
@@ -281,9 +278,6 @@ function limitedAdminResultRecord(row) {
     faculty: course.faculty || source.faculty || "",
     instructors: course.instructor_names || source.instructors || [],
     publicStatus: row.public_status || "",
-    confirmedScore: row.score == null ? null : Number(row.score),
-    maxScore: AUDIT_MAX_SCORE,
-    threshold: row.passing_score == null ? null : Number(row.passing_score),
     evidenceCount: activities.length,
     auditedAt: row.audited_at,
     auditorVersion: row.auditor_version || "",
@@ -493,7 +487,13 @@ async function decideAdminResult(request, runId) {
   const threshold = Number(currentRun.passing_score || 80);
   const decision = confirmedScore >= threshold ? "pass" : "has_content";
   const reviewerNote = String(payload.note || "").trim().slice(0, 1000);
-  const reviewConfirmation = { confirmedAt:new Date().toISOString(), reviewer:actor.email, decisions:Object.fromEntries(reviewKeys.map((key) => [key, supplied.get(key)])) };
+  const evidenceDecisions = Array.isArray(payload.evidenceDecisions) ? payload.evidenceDecisions.slice(0,500).map((item) => ({
+    key:String(item?.key || "").slice(0,500),
+    criterionKey:String(item?.criterionKey || "").slice(0,100),
+    decision:["use","not_use"].includes(item?.decision) ? item.decision : "",
+    seconds:Math.max(0,Math.min(43200,Math.round(Number(item?.seconds || 0))))
+  })).filter((item) => item.key && item.criterionKey && item.decision) : [];
+  const reviewConfirmation = { confirmedAt:new Date().toISOString(), reviewer:actor.email, decisions:Object.fromEntries(reviewKeys.map((key) => [key, supplied.get(key)])), evidenceDecisions };
   const note = `reviewer_confirmation:${actor.email}${reviewerNote ? ` | ${reviewerNote}` : ""}`;
   const { data: run, error: runError } = await db.from("audit_runs")
     .update({ internal_status:decision, public_status:decision, score:confirmedScore, reviewable_points:0, internal_note:note, source_payload:{ ...source, reviewConfirmation } })
@@ -633,7 +633,7 @@ async function publicResults() {
     .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,status,score,audited_at,published_run_id,evidence_available,published_at")
     .in("course_id", activeIds).order("course_code", { ascending: true }).limit(5000);
   if (error) throw error;
-  return data || [];
+  return (data || []).map(({ score, ...record }) => record);
 }
 
 async function publicHistory(courseId) {
@@ -660,7 +660,8 @@ async function publicHistory(courseId) {
     .eq("course_id", courseId).not("public_status", "is", null)
     .order("audited_at", { ascending: false }).limit(3);
   if (error) throw error;
-  return { ...publicRow, runs: (runs || []).map(publicHistoryRunRecord) };
+  const { score, ...safePublicRow } = publicRow;
+  return { ...safePublicRow, runs: (runs || []).map(publicHistoryRunRecord) };
 }
 
 function publicEvidenceSnapshot(snapshot) {
@@ -817,6 +818,42 @@ async function purgeRetiredEvidence(limit = 20) {
   }
 }
 
+function canonicalEvidenceTarget(value = "") {
+  try {
+    const url = new URL(String(value || ""));
+    url.hash = "";
+    for (const key of [...url.searchParams.keys()]) if (/^(?:utm_|fbclid|gclid|si$|feature$|t$)/i.test(key)) url.searchParams.delete(key);
+    return url.toString();
+  } catch { return String(value || "").trim(); }
+}
+
+async function attachPriorEvidenceDecisions(courseId, payload) {
+  const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
+  if (!activities.length) return payload;
+  const { data:previous, error } = await db.from("audit_runs").select("source_payload")
+    .eq("course_id", courseId).order("audited_at", { ascending:false }).limit(1).maybeSingle();
+  if (error) throw error;
+  const confirmation = previous?.source_payload?.reviewConfirmation || {};
+  const decisions = Array.isArray(confirmation.evidenceDecisions) ? confirmation.evidenceDecisions : [];
+  if (!decisions.length) return payload;
+  const byTarget = new Map(decisions.map((item) => [canonicalEvidenceTarget(item.key), item]));
+  const failures = new Set(["access_denied","login_required","link_unavailable","link_error","reviewer_confirmed_unreadable"]);
+  const reused = [];
+  for (const item of activities) {
+    if (failures.has(item.mediaStatus) || /broken|unavailable|denied|login/i.test(String(item.linkStatus || ""))) continue;
+    const target = canonicalEvidenceTarget(item.externalUrl || item.href || "");
+    const prior = byTarget.get(target);
+    if (!prior) continue;
+    item.reviewReused = true;
+    item.reviewerConfirmedAt = confirmation.confirmedAt || null;
+    item.priorEvidenceDecision = prior.decision;
+    if (prior.seconds > 0) item.reviewerDurationSeconds = prior.seconds;
+    reused.push({ ...prior, key:target, reviewer:confirmation.reviewer || "", confirmedAt:confirmation.confirmedAt || null });
+  }
+  if (reused.length) payload.priorEvidenceDecisions = reused;
+  return payload;
+}
+
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
@@ -825,6 +862,7 @@ async function submitResult(request, jobId) {
   const course = String(payload.courseId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
   if (!externalId || !course || !allowed.has(payload.internalStatus)) throw Object.assign(new Error("invalid_audit_result"), { status: 400 });
+  await attachPriorEvidenceDecisions(course, payload);
   const path = `evidence/${course}/${externalId}.json`;
   const bytes = new TextEncoder().encode(JSON.stringify(payload.evidenceSnapshot || {}));
   const { error: uploadError } = await db.storage.from("audit-evidence").upload(path, bytes, {
