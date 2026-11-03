@@ -389,6 +389,41 @@ async function queueOverview(request) {
   };
 }
 
+// Queue removal is intentionally a cancellation, not a hard delete. This
+// keeps the operational history auditable and lets a course be queued again.
+// A running job is never cancelled here because its worker may already be
+// collecting evidence and submitting a result.
+async function cancelQueuedJob(request, jobId) {
+  const actor = await reviewer(request);
+  if (!jobId) throw Object.assign(new Error("job_id_required"), { status:400 });
+  const { data: job, error: findError } = await db.from("audit_jobs")
+    .select("job_id,course_id,status").eq("job_id", jobId).maybeSingle();
+  if (findError) throw findError;
+  if (!job) throw Object.assign(new Error("queue_job_not_found"), { status:404 });
+  if (job.status === "running") throw Object.assign(new Error("queue_job_is_running"), { status:409 });
+  if (job.status !== "queued") throw Object.assign(new Error("queue_job_not_waiting"), { status:409 });
+  const now = new Date().toISOString();
+  const { data, error } = await db.from("audit_jobs").update({
+    status:"cancelled", last_error:`queue_removed_by:${actor.email}`, updated_at:now, completed_at:now
+  }).eq("job_id", jobId).eq("status", "queued").select("job_id,course_id").maybeSingle();
+  if (error) throw error;
+  if (!data) throw Object.assign(new Error("queue_job_changed"), { status:409 });
+  return { cancelled:true, jobId:data.job_id, courseId:data.course_id };
+}
+
+async function clearQueuedJobs(request) {
+  const actor = await reviewer(request);
+  const now = new Date().toISOString();
+  const { data, error } = await db.from("audit_jobs").update({
+    status:"cancelled", last_error:`queue_cleared_by:${actor.email}`, updated_at:now, completed_at:now
+  }).eq("status", "queued").select("job_id");
+  if (error) throw error;
+  const { count: running, error: countError } = await db.from("audit_jobs")
+    .select("job_id", { count:"exact", head:true }).eq("status", "running");
+  if (countError) throw countError;
+  return { cancelled:(data || []).length, runningSkipped:Number(running || 0) };
+}
+
 async function adminHistory(request, courseId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return publicHistory(courseId);
@@ -836,6 +871,12 @@ Deno.serve(async request => {
     if (request.method === "GET" && parts.join("/") === "v1/admin/jobs/overview") {
       return respond(request, 200, await queueOverview(request), "private, no-store");
     }
+    if (request.method === "DELETE" && parts.join("/") === "v1/admin/jobs") {
+      return respond(request, 200, await clearQueuedJobs(request), "private, no-store");
+    }
+    if (request.method === "DELETE" && parts[0] === "v1" && parts[1] === "admin" && parts[2] === "jobs" && parts.length === 4) {
+      return respond(request, 200, await cancelQueuedJob(request, parts[3]), "private, no-store");
+    }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "admin" && parts[2] === "courses" && parts[4] === "history") {
       const result = await adminHistory(request, parts[3]);
       return result ? respond(request, 200, result, "private, no-store") : respond(request, 404, { error:"course_not_found" });
@@ -895,5 +936,6 @@ Deno.serve(async request => {
     console.error(error); return respond(request, Number(error.status || 400), { error: error.message || "request_failed" });
   }
 });
+
 
 
