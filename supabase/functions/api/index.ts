@@ -202,7 +202,6 @@ function adminResultRecord(row) {
   const scoreModel = String(source.scoreModel || "");
   const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
   return {
-    ...source,
     runId: row.run_id,
     auditId: row.external_audit_id,
     courseId: row.course_id,
@@ -303,19 +302,29 @@ async function activeCatalogIds() {
 async function listAdminResults(request) {
   const user = await reviewer(request);
   const canSeeInternalReview = ["owner", "super_admin"].includes(user.role);
-  const activeIds = await activeCatalogIds();
-  if (!activeIds.length) return { records:[], role:user.role, restricted:!canSeeInternalReview };
-  const { data, error } = await db.from("audit_runs").select(
-    "run_id,external_audit_id,course_id,internal_status,public_status,score,passing_score,reviewable_points,has_content,audited_at,auditor_version,evidence_object_path,source_payload,internal_note,created_at,courses!audit_runs_course_id_fkey(course_code,course_title,course_group,faculty,instructor_names,course_url)"
-  ).in("course_id", activeIds).order("audited_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
-  if (error) throw error;
-  const latest = new Map();
-  for (const row of data || []) {
-    if (latest.has(row.course_id)) continue;
+  // courses.latest_internal_run_id is maintained whenever an audit result is
+  // ingested. Use that pointer instead of loading and sorting every historic
+  // run (including its full evidence payload) on every dashboard refresh.
+  const { data:catalog, error:catalogError } = await db.from("courses").select(
+    "course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id"
+  ).eq("active", true).in("course_group", ["GR", "GS"]).limit(5000);
+  if (catalogError) throw catalogError;
+  const courses = (catalog || []).filter(course => course.latest_internal_run_id);
+  if (!courses.length) return { records:[], role:user.role, restricted:!canSeeInternalReview };
+  const runIds = courses.map(course => course.latest_internal_run_id);
+  const { data:runs, error:runsError } = await db.from("audit_runs").select(
+    "run_id,external_audit_id,course_id,internal_status,public_status,score,passing_score,reviewable_points,has_content,audited_at,auditor_version,evidence_object_path,source_payload,internal_note,created_at"
+  ).in("run_id", runIds).limit(5000);
+  if (runsError) throw runsError;
+  const courseById = new Map(courses.map(course => [course.course_id, course]));
+  const records = [];
+  for (const row of runs || []) {
     if (!canSeeInternalReview && !row.public_status) continue;
-    latest.set(row.course_id, canSeeInternalReview ? adminResultRecord(row) : limitedAdminResultRecord(row));
+    row.courses = courseById.get(row.course_id) || {};
+    records.push(canSeeInternalReview ? adminResultRecord(row) : limitedAdminResultRecord(row));
   }
-  return { records:[...latest.values()], role:user.role, restricted:!canSeeInternalReview };
+  records.sort((left, right) => String(right.auditedAt || "").localeCompare(String(left.auditedAt || "")));
+  return { records, role:user.role, restricted:!canSeeInternalReview };
 }
 
 // The queue view is intentionally separate from the course-result view.  A
