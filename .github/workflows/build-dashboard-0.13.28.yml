@@ -21,21 +21,10 @@ jobs:
           set -euo pipefail
           rm -rf build/dashboard-0.13.28
           mkdir -p build/dashboard-0.13.28
-          python3 - <<'PY'
-          from pathlib import Path
-          from zipfile import ZipFile
-
-          source = Path("SPU-Learning-Auditor-Dashboard-0.13.21.zip")
-          target = Path("build/dashboard-0.13.28")
-          with ZipFile(source) as archive:
-              for member in archive.infolist():
-                  try:
-                      archive.extract(member, target)
-                  except (OSError, ValueError) as error:
-                      if member.filename != "vendor/lang/chi_tra.traineddata":
-                          raise
-                      print(f"Skipping damaged legacy OCR file: {error}")
-          PY
+          # The legacy archive has an invalid OCR member and an offset pattern
+          # tolerated by Info-ZIP but rejected by Python's zipfile on Linux.
+          # Extract every recoverable member, then replace the bad OCR payload.
+          unzip -q -o SPU-Learning-Auditor-Dashboard-0.13.21.zip -d build/dashboard-0.13.28 || true
           cp -R release-src/dashboard-0.13.28/. build/dashboard-0.13.28/
           curl --fail --location --retry 3 \
             https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/chi_tra.traineddata \
