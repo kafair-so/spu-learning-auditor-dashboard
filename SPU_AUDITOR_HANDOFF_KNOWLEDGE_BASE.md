@@ -1674,3 +1674,30 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Dashboard tests ผ่าน **36/36**, fail 0
 - Supabase Edge Function `api` version **42**, ACTIVE
 
+
+## 61. Dashboard 0.13.28 — SharePoint `.m4a` และสถานะข้อมูลผู้สอน (2026-11-09)
+
+**สถานะ: แก้ Extension + backend แล้ว / tests ผ่าน / Deploy Edge Function และเผยแพร่ ZIP ใหม่แล้ว**
+
+### อาการและสาเหตุ
+- SharePoint Stream ใช้โครงตัวเล่น `<video>` ร่วมกันทั้งไฟล์ภาพและไฟล์เสียง ทำให้ Podcast ที่ชื่อไฟล์จริงลงท้าย `.m4a` ถูกจัดเป็นวิดีโอและไม่เปิดช่องยืนยันเวลา
+- การคำนวณคะแนนข้อมูลผู้สอนใช้ `identityComplete && contactComplete` แต่ตัวปิดงานผู้ตรวจยังบังคับ flag รูปอีกชุดหนึ่ง จึงเกิดกรณีคะแนนเพิ่มและข้อความบอกว่าพบครบ แต่สถานะยังค้าง `รอตรวจ`
+- payload บางรุ่นเปลี่ยน criterion เป็นผ่านแล้ว แต่ยังเก็บข้อมูลผู้สอนไว้ใน `reviewableCriteria` ทำให้ Dashboard ค้างสถานะรอตรวจโดยไม่ควรเพิ่มคะแนนซ้ำ
+
+### การแก้ไข
+- สำหรับ Google Drive, OneDrive และ SharePoint ให้ชื่อไฟล์จริงใน URL/พารามิเตอร์ที่ถอดรหัสแล้วเป็นหลักฐานชนิดสื่อที่มีน้ำหนักสูงกว่าตัวเล่นกลาง: `.m4a`, `.mp3`, `.wav`, `.ogg`, `.oga`, `.aac`, `.flac`, `.opus`, `.wma` เป็นเสียง และนามสกุลวิดีโอยังคงเป็นวิดีโอ
+- เมื่อตรวจหลาย frame ให้ frame ที่พบชื่อไฟล์เสียงหรือวิดีโอชัดเจนชนะ frame `<video>` ทั่วไปของผู้ให้บริการ
+- backend ปรับชนิดกิจกรรมจากนามสกุลไฟล์เสียงซ้ำอีกชั้นก่อนบันทึกผล เพื่อกันข้อมูลผิดจากส่วนขยายรุ่นเก่า
+- ข้อมูลผู้สอนถือว่าผ่านอัตโนมัติเมื่อ `identityComplete`, `contactComplete` และ `reviewStatus=evidence_found` (หรือมี flag รูปผู้สอน) จากนั้นเปลี่ยน criterion เป็นผ่านและลบงานยืนยันข้อมูลผู้สอนออก
+- ป้องกันคะแนนซ้ำ: เพิ่ม 1 คะแนนเฉพาะเมื่อ criterion เดิมยังเป็น `needs_review`; หากคะแนนขึ้นแล้วแต่ `reviewableCriteria` ค้าง จะลบเฉพาะงานค้างและคำนวณสถานะใหม่
+
+### การตรวจสอบและ Artifact
+- Extension tests ผ่าน **41/41**, fail 0 ทั้ง source และ ZIP ที่แตกตรวจจริง
+- Dashboard tests ผ่าน **37/37**, fail 0
+- Supabase Edge Function `api` version **43**, ACTIVE
+- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,353,240 bytes
+- SHA-256: `CBE9CD8915A7CBA4FA8C1ECFF67F770DF6CC26FB438C714DBE80EE01FDD88DF5`
+- GitHub ZIP blob: `71f2ae22f801a116af14c44dd916186a20e65c81`
+- GitHub release commit: `6a3b8a9325fc7b97bd4d87a86ec33eb046381e87`
+- รายงานที่สร้างค้างไว้ก่อนติดตั้ง/Reload ส่วนขยายยังเก็บผลเดิม; ต้องตรวจรายวิชานั้นใหม่หนึ่งครั้งเพื่อให้กิจกรรม `.m4a` ถูกสร้างเป็น Podcast เสียงและให้สถานะข้อมูลผู้สอนถูกคำนวณใหม่
+
