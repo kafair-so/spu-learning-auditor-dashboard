@@ -1,0 +1,106 @@
+{
+  "manifest_version": 3,
+  "name": "SPU Learning Auditor — Dashboard",
+  "version": "0.13.28",
+  "description": "ตรวจรายวิชาและส่งผลเข้าสู่ SPU Learning Auditor Dashboard ผ่าน Supabase พร้อมหลักฐาน PDF สื่อ และลิงก์เสีย",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["activeTab", "storage", "unlimitedStorage", "tabs", "scripting", "power"],
+  "host_permissions": ["https://dlearning.spu.ac.th/*", "https://ilearning.spu.ac.th/*"],
+  "optional_host_permissions": [
+    "https://drive.google.com/*",
+    "https://docs.google.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://youtube.googleapis.com/*",
+    "https://photos.app.goo.gl/*",
+    "https://photos.google.com/*",
+    "https://photos.fife.usercontent.google.com/*",
+    "https://1drv.ms/*",
+    "https://onedrive.live.com/*",
+    "https://*.sharepoint.com/*",
+    "https://notebooklm.google.com/*",
+    "https://notebook.google.com/*",
+    "https://spuai.spu.ac.th/*",
+    "https://spu-km.jib-ai.com/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://poe.com/*",
+    "https://gemini.google.com/*",
+    "https://copilot.microsoft.com/*",
+    "https://claude.ai/*",
+    "https://perplexity.ai/*",
+    "https://www.perplexity.ai/*",
+    "https://character.ai/*",
+    "https://*.botpress.cloud/*",
+    "https://*.chatbase.co/*",
+    "https://*.voiceflow.com/*",
+    "https://udify.app/*",
+    "https://*.udify.app/*",
+    "https://*.dify.ai/*",
+    "https://*.coze.com/*",
+    "https://spulive-my.sharepoint.com/*",
+    "https://www.youtube.com/*",
+    "https://www.youtube-nocookie.com/*",
+    "https://youtu.be/*",
+    "https://*.heygen.com/*",
+    "https://www.tiktok.com/*",
+    "https://m.tiktok.com/*",
+    "https://vm.tiktok.com/*",
+    "https://vt.tiktok.com/*",
+    "https://*.loom.com/*",
+    "https://*.vidyard.com/*",
+    "https://*.vimeo.com/*",
+    "https://fast.wistia.net/*",
+    "https://*.wistia.com/*",
+    "https://*.kaltura.com/*",
+    "https://spulive.spu.ac.th/*",
+    "https://canva.link/*",
+    "https://canva.com/*",
+    "https://www.canva.com/*",
+    "https://*.canva.site/*",
+    "https://gamma.app/*",
+    "https://*.gamma.app/*"
+  ],
+  "action": {
+    "default_title": "SPU Learning Auditor",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://dlearning.spu.ac.th/course/view.php*", "https://ilearning.spu.ac.th/course/view.php*"],
+      "js": ["vendor/tesseract.min.js", "ocr-content.js", "file-evidence.js", "assignment-text.js", "content.js"]
+    },
+    {
+      "matches": ["https://dlearning.spu.ac.th/mod/hvp/view.php*", "https://dlearning.spu.ac.th/mod/h5pactivity/view.php*", "https://ilearning.spu.ac.th/mod/hvp/view.php*", "https://ilearning.spu.ac.th/mod/h5pactivity/view.php*"],
+      "js": ["h5p-inspector.js"]
+    },
+    {
+      "matches": [
+        "https://kafair-so.github.io/spu-learning-auditor-dashboard/*",
+        "http://127.0.0.1:8765/*",
+        "http://localhost:8765/*"
+      ],
+      "js": ["dashboard-worker-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["vendor/worker.min.js", "vendor/tesseract-core-lstm.wasm.js", "vendor/tesseract-core-lstm.wasm", "vendor/lang/tha.traineddata", "vendor/lang/eng.traineddata", "vendor/lang/jpn.traineddata", "vendor/lang/chi_sim.traineddata", "vendor/lang/chi_tra.traineddata"],
+    "matches": ["https://dlearning.spu.ac.th/*", "https://ilearning.spu.ac.th/*"]
+  }]
+}
+
