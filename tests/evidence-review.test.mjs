@@ -44,6 +44,17 @@ test("complete instructor evidence closes the criterion before result ingestion"
   assert.ok(api.indexOf("resolveAutomaticInstructorCriterion\(submittedPayload\)") < api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)"));
 });
 
+test("table 3 keeps all five manual items and remains confirmable below threshold", () => {
+  assert.match(evidence,/const criterionCount=Math\.max\(0,count-manual\.length\)/);
+  assert.match(evidence,/return \[\.\.\.criteria\.slice\(0,criterionCount\),\.\.\.manual\]/);
+  assert.match(evidence,/ตารางที่ 3 — ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน/);
+  assert.match(evidence,/มีครบ 5 ข้อ/);
+  assert.match(evidence,/\["needs_review","has_content"\]\.includes\(run\.internalStatus\)/);
+  assert.match(api,/\["needs_review", "has_content"\]\.includes\(currentRun\.internal_status\)/);
+  assert.match(api,/const criterionLimit = manualReviewKeys\.length \? Math\.max\(0, reviewCount - manualReviewKeys\.length\)/);
+  for (const key of ["student_meetings","video_quality","media_placement","submission_policy","backup"]) assert.match(evidence,new RegExp(key));
+});
+
 test("numeric scores are absent from public and ordinary-admin payloads", () => {
   const publicRun = api.slice(api.indexOf("function publicHistoryRunRecord"),api.indexOf("function limitedAdminResultRecord"));
   const limited = api.slice(api.indexOf("function limitedAdminResultRecord"),api.indexOf("// Only the current"));
