@@ -20,9 +20,20 @@ test("video and Podcast review is itemized with links, duration and use decision
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
   assert.match(api,/function canonicalEvidenceTarget/);
+  assert.match(api,/referrerscenario/);
   assert.match(api,/attachPriorEvidenceDecisions/);
   assert.match(api,/item\.reviewReused = true/);
   assert.match(api,/failures\.has\(item\.mediaStatus\)/);
+});
+
+test("completed legacy review is reused when score envelope and evidence destinations are unchanged", () => {
+  assert.match(api,/function preservesConfirmedEvidenceTargets/);
+  assert.match(api,/function sameReviewScoreEnvelope/);
+  assert.match(api,/reusedFromRunId:previous\.run_id/);
+  assert.match(api,/reuseBasis:"same_score_envelope_and_prior_evidence_preserved"/);
+  assert.match(api,/previousPayload\?\.reviewReuseEnvelope/);
+  assert.match(api,/payload\.possibleScore = confirmedScore/);
+  assert.ok(api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)") < api.indexOf("applyAutomaticPublicationGate\(submittedPayload\)"));
 });
 
 test("numeric scores are absent from public and ordinary-admin payloads", () => {
