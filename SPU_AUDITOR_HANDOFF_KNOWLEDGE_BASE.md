@@ -1246,212 +1246,356 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - GitHub in-app browser ไม่มี session ที่มี push access จึงยังไม่ได้อัปโหลด ZIP 0.2.9 ไป `downloads/`; ห้ามอ้างว่ามีไฟล์บน GitHub จนกว่าจะอัปโหลดและตรวจ URL สำเร็จ
 - Source ของ Local Legacy ยังไม่ได้เก็บเป็น tree ใน repo นี้; งานถัดไปควรอัปโหลด ZIP 0.2.9 หรือเพิ่ม source tree เพื่อให้ย้ายเครื่องได้จริง
 
----
 
-## 2026-10-27 — Dashboard Extension 0.13.16: image-label activity, Forum/Chat, verified AI Tutor
+## 44. Local Legacy 0.3.3–0.3.6 — ข้อมูลผู้สอนและการจำแนก Pre/Post-test (2026-11-04)
 
-สถานะ: ดำเนินการและทดสอบแล้ว แยกจาก Local Legacy
+**สถานะ: แก้ source แล้ว / ตรวจด้วย scan จริงแล้ว / tests 43/43 ผ่าน / ยังไม่ได้อัปโหลด ZIP 0.3.6 ขึ้น GitHub**
 
-สิ่งที่แก้:
-- OCR เฉพาะป้ายภาพเหนือ Moodle activity เพื่ออ่าน `กิจกรรมท้ายบทเรียน` / `After Class Activity` และ AI Tutor แล้วผูกป้ายกับรายการที่อยู่ถัดลงมา
-- Forum และ Chat ใต้ป้าย Pre-test, Post-test หรือกิจกรรมท้ายบทจะนับเมื่อเปิดหน้ากิจกรรมแล้วพบคำถาม/คำสั่งให้ผู้เรียนตอบจริง; Forum/Chat ทั่วไปไม่ถูกเหมารวม
-- รองรับการสะกด AI Tutor/Coach/Chatbot/SPUAI/ChatGPT ที่คลาดเคลื่อน โดยป้องกันคำทั่วไปที่มีเพียง `AI`
-- AI Tutor ต้องเปิดไปยังหน้าแชทจริง: ตรวจช่องพิมพ์และองค์ประกอบสนทนาแบบอ่านอย่างเดียว ไม่พิมพ์หรือส่งข้อความ
-- ปลายทาง AI ที่เปิดไม่ได้/ติดสิทธิ์เป็นไม่ผ่าน, เปิดได้แต่ไม่ใช่หน้าแชทเป็นไม่ผ่าน, และกรณีสิทธิ์ตรวจไม่พอหรือยังยืนยันไม่ได้เป็นต้องตรวจทาน
-- ปรับข้อความผู้สอนให้ตรงและสั้น เช่น `เพิ่มแผนการสอน`, `เพิ่มเอกสารประกอบการสอน`, `ลิงก์...ไม่สามารถเข้าถึงได้`, `เปลี่ยนลิงก์ AI Tutor ให้เปิดไปยังหน้าแชทกับ AI`
-- Manifest version: `0.13.16`
-- ผลทดสอบ: ผ่านทั้งหมด 34 ไฟล์ รวม stress test 900 รายวิชา / 162,000 กิจกรรม
-- ไฟล์แพ็กเกจ: `SPU-Learning-Auditor-Dashboard-0.13.16.zip`
-- SHA-256: `BE56B4CC0B37CD9435AF687E3002FC86EDC8EEC3E8A51D77F86996314C9FEAB2`
+### การเปลี่ยนแปลงช่วง 0.3.3–0.3.5
+- 0.3.3 ปรับการตรวจลิงก์/กลุ่ม LINE และปิดงานข้อมูลผู้สอนอัตโนมัติเมื่อผลตรวจครบ
+- 0.3.4 แยกครั้งที่ 1 ไม่ให้มีแถว Pre-test/Post-test และคงคะแนน Pre/Post จากครั้งที่ 2–15
+- 0.3.5 เพิ่ม fallback จับคู่ป้าย Pre/Post เมื่อ OCR อ่านป้ายไม่ได้
+- การแก้ 0.3.4–0.3.5 **ยังไม่แก้กรณีจริงของ PHY212** และไม่ควรอ้างว่าแก้สำเร็จจากข้อมูลจำลองเพียงอย่างเดียว
 
-ข้อควรทราบ:
-- ต้องติดตั้ง/โหลด Extension 0.13.16 ใหม่บนเครื่องตรวจ
-- ผลตรวจเก่าไม่เปลี่ยนย้อนหลัง ต้องสั่งตรวจรายวิชาที่เกี่ยวข้องใหม่
-- การแก้ครั้งนี้อยู่ในตัวตรวจ Dashboard; ไม่มีการเปลี่ยนเกณฑ์หรือข้อมูลของ Local Legacy
+### สาเหตุจริงและการแก้ใน 0.3.6
+- ตรวจไฟล์จริง `dlearning-structure-scan (9).json` ของ `ฟิสิกส์ 2 [683GR-PHY212(T)-(T)]` จำนวน 182 activities
+- Moodle Quiz `https://dlearning.spu.ac.th/mod/quiz/view.php?id=2895684` มีชื่อ `แบบทดสอบครั้งที่ 1 ทบทวนเรื่อง Vector Quiz`
+- `groupContext` มีข้อความชัดเจนว่า `ทำแบบทดสอบหลังการเรียนครั้งที่ 1...`
+- กฎเดิมรองรับ `หลังเรียน` แต่ไม่รองรับ `หลังการเรียน` จึงตกไปเป็นกิจกรรมท้ายบท แม้ข้อมูลต้นทางครบ
+- ขยายกฎให้รองรับ `ก่อนเรียน/ก่อนการเรียน` และ `หลังเรียน/หลังการเรียน` ใน `rules.js`, `assignment-text.js` และตัวอ่านบริบทใน `content.js`
+- แก้ลำดับ classifier ให้ป้ายติดกิจกรรมที่ระบุ `แบบทดสอบหลังการเรียน` ชนะบริบทผสม Video/แบบฝึกหัด/WORKSHEET แต่ไม่ยอมรับป้ายเก่าค้างหรือข้อมูลเก่าที่ไม่มีแหล่งที่มาของป้าย
 
-### Local Legacy retention — บันทึกสถานะที่ต้องดำเนินการต่อ
+### หลักฐานยืนยัน
+- รัน classifier กับ Moodle Quiz ใต้ข้อความ `หลังการเรียน` ทั้ง 7 รายการจริง (`id=2895684`, `2895689`, `2895732`, `2895753`, `2895772`, `2895791`, `2895849`) แล้วได้ `post_quiz` ทั้งหมด
+- ตรวจรายการก่อนเรียนแล้วยังได้ `pre_quiz` และ regression ป้ายเก่าค้างยังคงได้ Quiz ปกติ
+- เพิ่ม regression test ด้วยชื่อ URL และ groupContext จาก scan จริง รวมกรณีป้ายผสม Video/แบบฝึกหัด/WORKSHEET
+- Automated tests ผ่าน **43/43**, fail 0
 
-- Apps Script Version 8 ถูก deploy เมื่อ 2026-10-26 เวลา 16:40 (Asia/Bangkok)
-- dry-run พบ PDF เก่า 33 ไฟล์ใน 173 กลุ่มรายวิชาที่จับคู่ได้
-- ยังไม่มีไฟล์ถูกลบ เพราะการลบถาวรต้องได้รับคำยืนยันสุดท้าย
-- กฎ retention ที่เตรียมไว้ใช้ Advanced Drive API v3 และเก็บ PDF ล่าสุดไม่เกิน 2 ไฟล์ต่อรายวิชา
+### Artifact
+- Local ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\SPU-Learning-Auditor-Local-Legacy-0.3.6.zip`
+- ZIP size: **9,513,071 bytes**, 134 entries
+- SHA-256: `2C49E691526AC69F8FA3FFA24B8C70CBB2311D1C65DC2089F4F9482CA8FC90A4`
+- ตรวจ `manifest.json` ภายใน ZIP แล้วเป็น version `0.3.6`
+- ยังไม่ได้อัปโหลด GitHub; ห้ามกล่าวว่า deploy/เผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL ดาวน์โหลดจริง
 
-### 2026-10-27 — Published Dashboard 0.13.16 on the website
 
-- อัปโหลด `SPU-Learning-Auditor-Dashboard-0.13.16.zip` ที่ root ของ repository แล้ว
-- หน้า `audit-review.html` แสดงรุ่น `0.13.16` และปุ่มดาวน์โหลดชี้ไปยัง ZIP รุ่นนี้
-- `audit-review.js` บังคับค่ารุ่น/ลิงก์ดาวน์โหลดเป็น `0.13.16`
-- GitHub Pages deployment สำเร็จที่ commit `671b84760674d5a38c91b6d36762a200df06e29f`
-- Workflow run: https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/40455057851
-- SHA-256 ของ ZIP: `BE56B4CC0B37CD9435AF687E3002FC86EDC8EEC3E8A51D77F86996314C9FEAB2`
+## 45. Local Legacy 0.3.7 — Google Photos อัลบั้มว่างไม่เข้าคิวผู้ตรวจ (2026-11-04)
 
----
-
-## 2026-11-01 — Supabase Production SQL baseline for Course QA integration (screenshots 2026-10-31)
-
-**สถานะ:** บันทึกหลักฐานจาก SQL ที่ Owner รันด้วยตนเองผ่าน Supabase SQL Editor และส่งภาพ Results ในแชท SPU Course QA (ภาพชื่อ 20261031-172733, 20261031-172852, 20261031-173111) เท่านั้น / **ไม่ได้เข้าถึง Supabase SQL โดยตรงผ่าน ChatGPT Connector** / ไม่มี DDL, DML, Deploy หรือเปลี่ยน Production
-
-- Supabase project: \`SPU OOE Learning Auditor\`, ref \`nwupjnkotdkodyxnraie\`; \`public\` schema, production \`main\`.
-- Snapshot evidence: screenshot ที่ผู้ใช้ส่งมาเมื่อ **31 ตุลาคม 2569**; รายการคิวและผลตรวจสามารถเปลี่ยนได้ภายหลัง การบันทึกนี้ไม่ใช่ตัวเลขปัจจุบันตลอดไป
-- 2026-10-27 GitHub \`main\` ตรวจพบ commit \`541c3f4\`; **ยังไม่ได้ยืนยัน Supabase Edge Function runtime SHA/version และฐานข้อมูลด้วย direct connector** ในรอบ SQL นี้
-
-### A. Historical audit_runs (SQL group by internal_status)
-
-\`\`\`sql
-SELECT internal_status,
-       COUNT(*) AS total_runs,
-       COUNT(DISTINCT course_id) AS unique_courses
-FROM public.audit_runs
-GROUP BY internal_status
-ORDER BY total_runs DESC;
-\`\`\`
-
-| internal_status | total_runs | unique_courses within status |
-|---|---:|---:|
-| has_content | 327 | 138 |
-| audit_failed | 89 | 52 |
-| no_content | 33 | 16 |
-| pass | 29 | 19 |
-| needs_review | 16 | 11 |
-| **รวม runs** | **494** | **ห้ามรวม unique_courses ข้ามสถานะ** |
-
-ผลนี้คือ **ประวัติการตรวจ** ไม่ใช่จำนวนรายวิชาปัจจุบัน และ \`unique_courses\` ในแต่ละสถานะซ้ำข้ามสถานะได้
-
-### B. Current active GR/GS vs latest internal audit run
-
-Query ใช้ \`courses.active=true\`, \`course_group IN ('GR','GS')\`, left join \`audit_runs.run_id=courses.latest_internal_run_id\`, แล้ว group by \`course_group\`.
-
-| metric | GR | GS | รวม |
-|---|---:|---:|---:|
-| active courses | 125 | 40 | 165 |
-| with latest run | 125 | 40 | 165 |
-| without latest run | 0 | 0 | 0 |
-| latest pass | 7 | 0 | 7 |
-| latest has_content | 99 | 3 | 102 |
-| latest no_content | 10 | 0 | 10 |
-| latest needs_review | 9 | 0 | 9 |
-| latest audit_failed | 0 | 37 | 37 |
-| with published pointer | 125 | 39 | 164 |
-
-**ข้อจำกัด:** \`GS audit_failed=37\` หมายถึงผลตรวจล่าสุดล้มเหลว ไม่ใช่หลักฐานว่ารายวิชาเหล่านั้นไม่มีเนื้อหา; สาเหตุ error ยังไม่ได้ตรวจ. จำนวน active 165 **ต่างจาก historical target 160**; ต้องเทียบ identity/catalog_version จริงก่อนตัดสินว่าผิดหรือควรลดจำนวน
-
-### C. Published pointer integrity (เฉพาะ active GR/GS)
-
-Query เชื่อม \`courses c\` → \`audit_runs p\` ด้วย \`c.published_run_id=p.run_id AND c.course_id=p.course_id\` และ \`public_course_results pr\` ด้วย \`course_id\`, แล้วนับ broken, mismatch, invalid public status และ older run.
-
-| metric | GR | GS | รวม |
-|---|---:|---:|---:|
-| active courses | 125 | 40 | 165 |
-| with published pointer | 125 | 39 | 164 |
-| broken pointer (existing pointer but no matching run) | 0 | 0 | 0 |
-| public_result_mismatch (only courses with pointer) | 0 | 0 | 0 |
-| invalid_published_status (only courses with pointer) | 0 | 0 | 0 |
-| published_is_older_run | 9 | 36 | 45 |
-
-**ตีความอย่างระมัดระวัง:** ไม่มี broken/mismatch ที่ Query ตรวจพบสำหรับ 164 published pointers. \`published_is_older_run=45\` สอดคล้องกับการคงผลสาธารณะก่อนหน้า เมื่อ latest run เป็น \`needs_review\` หรือ \`audit_failed\`, แต่ยังต้องตรวจระดับรายวิชาก่อนยืนยันเหตุผลทั้งหมด. **GS 1 วิชาไม่มี pointer**; SQL ที่รันยังไม่ได้ตรวจว่ามี orphan \`public_course_results\` row หรือไม่. Predicate \`p.public_status NOT IN (...)\` ไม่จับ NULL; ดังนั้นค่า invalid=0 ไม่ใช่การรับรองว่า column นี้ไม่มี NULL เสมอ
-
-### D. Follow-up checks ก่อนรวมกับ SPU Course QA (ยังไม่ได้รัน)
-
-1. **P0:** ดู Course ID ของ GS 1 วิชาที่ \`published_run_id IS NULL\`, latest run, public row และสาเหตุ business-rule ที่อาจทำให้ไม่มีผลเผยแพร่; อย่าแก้ pointer ทันที
-2. **P0:** วิเคราะห์ error code / reason / \`source_payload\` ที่จำเป็นใน GS \`audit_failed=37\` แบบ aggregate/redacted (หลีกเลี่ยงดึงหลักฐานหรือข้อมูลส่วนบุคคลเกินจำเป็น). ตรวจว่าความล้มเหลวเป็นของเครื่องตรวจ/สิทธิ์/timeout/การส่งผลหรือเหตุอื่น
-3. **P1:** ตรวจ 45 courses ที่ latest internal run ไม่เท่ากับ published run; แยก \`needs_review\`/\`audit_failed\` และยืนยันกฎ retain-previous-public-result
-4. **P1:** Diff active 165 \`course_id\` กับ approved current GR/GS catalog/term และ historical 160 target; ใช้ actual IDs ไม่ hard-code การตัดรายวิชา; ตรวจแยก GR125/GS40
-5. **P1:** สำหรับ Course QA Integration ต้องกำหนด identity \`(source, moodle_course_id)\` และ year/term/snapshot version; Auditor เดิมใช้ \`course_id\` ข้อเท็จจริงนี้ยังไม่พิสูจน์ว่า ID ทั้งหมดอยู่บน d-Learning หรือจะไม่ชนกับ i-Learning
-6. **P1:** ตรวจ consistency ของ public result เมื่อ missing pointer (รวม absent/orphan public row, \`published_run_id\` ตรง row, NULL public status) และเทียบ latest/public ใน snapshot เดียว
-7. เก็บชุดข้อมูลและการทดสอบแบบ Read-only, ไม่ลบ \`audit_runs\`, \`audit_jobs\`, \`public_course_results\` หรือ Evidence และไม่เปลี่ยน publication/eligibility ระหว่างวางแผนรวมระบบ
-
-**Integration decision:** ยังไม่ย้ายฐานข้อมูล Supabase ไป Neon, ยังไม่แก้ production logic, ยังไม่รวม frontend; ให้กำหนด versioned catalog/results contract ก่อน โดยคง Auditor audit queue / runs / evidence เป็น source of truth ของผลตรวจ และ Course QA เป็น source of truth ของ published course profiles / eligibility ตามขอบเขตที่ Owner อนุมัติ
-
----
-
-## 2026-11-01 — Local 0.13.18 แก้รายงานไม่แบ่งหมวดจาก JavaScript error
-
-**สถานะ:** วิเคราะห์แพ็กเกจที่ผู้ใช้ใช้งานจริงแล้ว / แก้ source และสร้าง ZIP ใน workspace / tests ผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
+**สถานะ: แก้ source แล้ว / tests 43/43 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลด GitHub**
 
 ### อาการและสาเหตุ
-- ผู้ใช้ส่งภาพ Local 0.13.17 ซึ่งหน้ารายงานแสดงเป็นหน้าเดียว ไม่แบ่งหัวข้อ/แท็บตามรูปแบบเดิม พร้อม Console error `ReferenceError: updatePublicResult is not defined`.
-- ตรวจจาก `C:\Users\User\Downloads\SPU-Learning-Auditor-Local-0.13.17.zip` โดยตรง ยืนยันว่า `report.js` เรียก `updatePublicResult(...)` แต่ไม่มีนิยามฟังก์ชัน และเรียกซ้ำสองครั้งทั้งเส้นทาง GN และ GR/GS.
-- Error เกิดก่อน `installReportWorkspace(data, unmappedItems)` จึงหยุดการสร้าง workspace ที่แบ่งรายงานเป็นหมวด ไม่ใช่การตั้งค่าขนาดหน้าต่างหรือการตั้งค่า Chrome ของผู้ใช้.
+- ลิงก์ Google Photos เปิดได้แต่หน้าแสดง `Album is empty` ระบบยังสร้างงานให้ผู้ตรวจเลือกว่าสอนย้อนหลัง กิจกรรม หรือสื่อเสริม
+- ตัวอ่านเดิมรู้จักหน้าติดสิทธิ์ ลิงก์เสีย และวิดีโอถูกลบ แต่ไม่รู้จักข้อความอัลบั้มว่าง
+- เมื่ออ่านเวลาไม่ได้จึงตกไปเป็น `duration_unavailable` และ `requiresMediaReview()` สร้างงานผู้ตรวจ ทั้งที่ไม่มีวิดีโอให้ตัดสิน
 
 ### การแก้ไข
-- เพิ่ม `updatePublicResult(passed)` ให้ปรับสถานะ/ข้อความของ `.public-result-card` อย่างปลอดภัย.
-- ลดการเรียกเหลือหนึ่งครั้งต่อการคำนวณใหม่ของ GN และหนึ่งครั้งต่อ GR/GS.
-- คง `installReportWorkspace(...)` และเพิ่ม regression assertion ว่าตัว refresher ถูกนิยามก่อนเรียก.
-- อัปเดต manifest/README/Release Notes เป็น Local **0.13.18**.
-- ไม่เปลี่ยนสูตรคะแนน เกณฑ์ผ่าน ข้อมูลรายงานเดิม Dashboard, Supabase, Google Sheets หรือ publication logic.
+- `providers.js` ตรวจ `Album is empty` และข้อความอัลบั้มว่างภาษาไทย เฉพาะ URL ของ Google Photos
+- รีเฟรชตรวจซ้ำหนึ่งรอบก่อนยืนยัน `empty_media` ป้องกันการตัดสินจากหน้าที่ยังโหลดไม่ครบ
+- `empty_media` เป็น definitive media failure: ไม่นับเวลา ไม่สร้างงานผู้ตรวจ และยังคงแสดงหลักฐานต้นทาง
+- ข้อความผู้สอนเป็น `ลิงก์ Google Photos ไม่มีวิดีโอ กรุณาเพิ่มวิดีโอหรือเปลี่ยนลิงก์` แยกจากกรณีลิงก์เข้าไม่ได้
+- เพิ่ม regression ป้องกันหน้าเว็บไซต์ทั่วไปที่มีคำว่า `Album is empty` ถูกตีความเป็น Google Photos
 
-### การตรวจสอบและ Artifact
-- `node --check report.js` ผ่าน.
-- Automated tests ผ่าน **35/35 test files**, fail 0.
-- ตรวจ ZIP แล้ว: manifest `0.13.18`, 118 entries, มีฟังก์ชัน `updatePublicResult`, มี `installReportWorkspace`, และแต่ละเส้นทางเรียก refresher ครั้งเดียว.
-- Local artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-0.13.18.zip`
-- Size: **9,336,625 bytes**
-- SHA-256: `362B39D71254BFC01317520B5AAAC16760786FAA68B98684E12F4C4ECFFF4A95`
+### การทดสอบและ Artifact
+- Automated tests ผ่าน **43/43**, fail 0
+- Local ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\SPU-Learning-Auditor-Local-Legacy-0.3.7.zip`
+- ZIP size: **9,514,257 bytes**, 134 entries
+- SHA-256: `5157F8C8171210A23FD7D9C4F3B71660EB8D1CC5D64D153C4E1FA9AE0DCD5E61`
+- ตรวจ ZIP แล้ว `manifest.json` เป็น `0.3.7` และ `providers.js` ภายในมี rule `empty_media`
+- รายงานเดิมไม่เปลี่ยนย้อนหลัง ต้อง Reload Extension และตรวจรายวิชาใหม่จึงจะล้างงานยืนยันอัลบั้มว่าง
 
-### งานถัดไป
-- ต้อง Load/Reload Local 0.13.18 ใน Chrome และ smoke-test รายงานจริงหนึ่งรายการเพื่อยืนยันการแบ่งหมวดและ Console ไม่มี error.
-- ZIP 0.13.18 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
-
-
----
-
-## 2026-11-01 — Local Legacy 0.3.3: Assignment เป็นรายการเสริมทุกครั้งเรียน
-
-**สถานะ:** ตรวจแพ็กเกจที่ผู้ใช้ใช้งานจริง / แก้ source และสร้าง ZIP ใน workspace / ทดสอบกติกาเป้าหมายผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
-
-### คำขอและสาเหตุ
-- ผู้ใช้พบ Local Legacy 0.3.2 แสดง `ครบ 77 จาก 77 องค์ประกอบบังคับ` แต่ป้ายผลรวมยังเป็น `ไม่ผ่าน` โดยรายการที่ไม่มีเพียง Assignment ซึ่งตกลงไว้ว่าเป็นรายการ `ถ้ามี`.
-- ตรวจจาก `C:\Users\User\Downloads\SPU-Learning-Auditor-Local-Legacy-0.3.2.zip` โดยตรง พบว่าครั้งที่ 1 ยังคืน Assignment ที่ไม่พบเป็น `fail` ขณะที่ครั้งอื่นคืน `not_applicable`; teacher summary ยังสามารถสร้างคำแนะนำให้เพิ่ม Assignment และ `resolveLegacyResult()` ใช้คำแนะนำนั้นกดผลรวมเป็น fail.
-- ผลจึงขัดกันเองระหว่างตัวนับองค์ประกอบบังคับและป้ายสถานะรวม.
-
-### การแก้ไข
-- `background.js`: Assignment ที่ไม่พบคืน `not_applicable` ทุกครั้งเรียน รวมถึงครั้งที่ 1.
-- `legacy-policy.js`: `legacyCompleteness()` ตัดแถว Assignment ออกจากตัวหารองค์ประกอบบังคับทุกครั้งเรียน; รองรับรายงานเก่าที่เคยเก็บ Assignment ที่ไม่พบเป็น `fail`.
-- `teacher-summary.js`: Local Legacy GR/GS ไม่สร้างงานแก้ไขผู้สอนจากแถวกิจกรรมท้ายบท/Assignment เพราะเป็นรายการเสริม.
-- เพิ่ม regression ใน `tests/legacy-policy.test.mjs` และ `tests/teacher-summary.test.mjs`; อัปเดต version assertions, manifest, README, Release Notes และ Test Results เป็น **0.3.3**.
-- ไม่เปลี่ยน Dashboard, Supabase, Google Sheets, publication logic หรือข้อมูล production.
-
-### การตรวจสอบและ Artifact
-- `node --check` ผ่านสำหรับ `background.js`, `legacy-policy.js`, `teacher-summary.js`.
-- Regression เป้าหมายผ่าน: legacy policy, teacher summary และ internal-video/final-label.
-- ชุดทดสอบแพ็กเกจผ่าน 37/39; สองไฟล์ที่ล้มเหลวคือ stale baseline assertions (`evidence-package.test.mjs`, `media-batch.test.mjs`) และยืนยันว่าล้มเหลวแบบเดียวกันใน ZIP 0.3.2 เดิมก่อนการแก้ครั้งนี้.
-- Local artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-Legacy-0.3.3.zip`
-- ZIP: 132 entries, manifest `0.3.3`, SHA-256 `243E930116D25417D8D0181CEDDAF093202507AC28D82B3545223991DE609263`.
-
-### งานถัดไป
-- ให้ผู้ใช้ Load/Reload Local Legacy 0.3.3 แล้วเปิดรายงานเดิมหรือสั่งตรวจซ้ำเพื่อ smoke-test ว่าสถานะเปลี่ยนเป็นผ่านเมื่อองค์ประกอบบังคับอื่นครบ.
-- ZIP 0.3.3 ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด; ห้ามอ้างว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL สำเร็จ.
+### ประเด็นสำคัญที่ตรวจพบระหว่างงาน แต่ยังไม่ได้แก้ใน 0.3.7
+- หน้ารายงาน Local (`report.js`) และ `background.js` ยังตัดสิน GR/GS ผ่าน `legacyCompleteness()` ขณะที่ `evidence-package.js` และ Apps Script ใช้ `legacyScorecard()` 100 คะแนน ผ่านที่ 80
+- ทำให้ PDF ที่พิมพ์จากหน้า Extension อาจแสดงไม่ผ่านจากองค์ประกอบขาด แม้คะแนนภายในถึง 80; ส่วนผลที่ส่งเข้า Google Sheet ใช้คะแนนภายใน
+- พบรายงาน PHY121 `(L)-(L)` แสดง track เป็นทฤษฎี ทั้งที่ profile ควรเป็นปฏิบัติ; ระบบคิวต้องป้องกันค่าชนิดวิชาที่ขัดกับ suffix ของ Course Profile
+- ห้ามลดผลที่ประกาศผ่านแล้ว งานถัดไปต้องรวมเส้นทางตัดสิน Local ให้ใช้ `legacyScorecard()` และตรวจเฉพาะผลไม่ผ่าน/ต้องตรวจทานเดิมเพื่อหาผลลบเท็จ
 
 
----
+## 46. Local Legacy 0.3.8 — ยืนยันว่าไม่มีวิดีโอแบบข้ามแพลตฟอร์มและป้องกันเน็ตช้า (2026-11-04)
 
-## 2026-11-01 — Local Legacy 0.3.4: คืนเกณฑ์คะแนนภายใน 80/100 เป็นตัวตัดสินผลรวม
+**สถานะ: แก้ source แล้ว / tests 43/43 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
 
-**สถานะ:** วิเคราะห์ภาพจากผู้ใช้และ source 0.3.3 / แก้ source และสร้าง ZIP ใน workspace / regression เป้าหมายผ่าน / ยังไม่ได้อัปโหลดหรือเผยแพร่ ZIP บน GitHub
+### เป้าหมายและหลักการตัดสิน
+- ขยายจาก Google Photos ไปยังลิงก์วิดีโอทุกแพลตฟอร์ม เช่น Drive/Photos, YouTube, OneDrive/SharePoint, Loom, Vimeo, Vidyard, Wistia, Kaltura, H5P, NotebookLM และหน้าเว็บที่ฝังตัวเล่นแบบทั่วไป
+- ห้ามสรุปว่า `ไม่มีวิดีโอ` จากการเปิดครั้งเดียวหรือเพียงเพราะยังไม่เห็นตัวเล่น เพราะอาจเกิดจากอินเทอร์เน็ตช้า ตัวเล่นโหลดภายหลัง หรือหน้าเว็บยังไม่สมบูรณ์
+- กรณีแพลตฟอร์มส่งสัญญาณชัดเจนอยู่แล้ว เช่น ลิงก์เสีย ติดสิทธิ์ วิดีโอถูกลบ หรืออัลบั้มว่าง ยังคงใช้ definitive failure ตามกฎเฉพาะของแพลตฟอร์มนั้น
 
-### คำขอและสาเหตุ
-- ผู้ใช้ยืนยันข้อตกลงเดิมว่า Local Legacy ไม่แสดงตัวเลขคะแนนในรายงานผู้สอน แต่ต้องคำนวณคะแนน 100 คะแนนเบื้องหลัง และคะแนนตั้งแต่ 80 ขึ้นไปต้องเป็น `ผ่าน`.
-- ภาพจาก 0.3.3 แสดงครบ 63/63 องค์ประกอบบังคับ แต่สถานะรวม `ไม่ผ่าน`.
-- ตรวจ source พบความไม่สอดคล้อง: `evidence-package.js` ใช้ `legacyScorecard()` อยู่แล้ว แต่ `background.js` และ `report.js` ใช้ `legacyCompleteness()`/คำแนะนำผู้สอนเป็นตัวตัดสินสถานะรวม ทำให้หน้าแต่ละส่วนและขั้นยืนยันผลใช้คนละกติกา.
+### การยืนยันกรณีเปิดหน้าได้แต่ไม่มีตัวเล่น
+- หน้าต้องโหลดเสร็จ (`readyState=complete`) มีเนื้อหาจริง และไม่มี spinner/progress/`aria-busy`
+- ต้องไม่พบปัญหาออฟไลน์/เครือข่าย ไม่พบ `video`, `audio`, iframe หรือตัวครอบ player และไม่พบ metadata/ระยะเวลา/สัญญาณ media
+- สถานะหน้าและลายเซ็นเนื้อหาต้องคงที่อย่างน้อย **3 ครั้งต่อการเปิดหนึ่งรอบ**; หากมีการโหลดต่อ เน็ตผิดปกติ หรือตัวเล่นปรากฏ ตัวนับจะเริ่มใหม่
+- ต้องยืนยันแบบเดียวกันจากแท็บใหม่อย่างน้อย **2 รอบ** และยังทำ foreground/play/refresh recovery ก่อนสรุปผล
+- เมื่อครบทุกเงื่อนไขจึงกำหนด `mediaStatus=no_video`, ไม่นับเวลา และไม่สร้างงานให้ผู้ตรวจมายืนยันสิ่งที่ไม่มีอยู่จริง
+- ข้อความผู้สอน: `เปิดลิงก์ได้แต่ไม่พบวิดีโอ กรุณาเพิ่มวิดีโอหรือเปลี่ยนลิงก์`
+- หน้าว่าง หน้ายังโหลดไม่ครบ เน็ตหลุด/ช้า หรือพบตัวครอบ player แต่ยังอ่านเวลาไม่ได้ จะคงเป็นสถานะยังยืนยันไม่ได้ ไม่ถูกตีความเป็น `no_video`
 
-### การแก้ไข
-- `background.js`: GR/GS ใน `preliminaryScore()` ใช้ `legacyScorecard()` เป็น source of truth สำหรับผลรวมและ finalization.
-- `report.js`: ทั้งรายงานใหม่และรายงานเก่าคำนวณสถานะจากคะแนนภายใน; ยังคงใช้ `legacyCompleteness()` เฉพาะแสดงจำนวนองค์ประกอบ ไม่ใช้กดสถานะรวม.
-- หน้ารายงานไม่แสดงตัวเลขคะแนนจริง แต่แจ้งว่า `คำนวณคะแนนภายในโดยไม่แสดงตัวเลขในรายงานนี้`.
-- `rules.js`: ระบุ scoring mode เป็น `legacy_100_internal`.
-- Assignment ยังเป็นคะแนนเสริม: เมื่อไม่มี Assignment แต่ส่วนอื่นครบ คะแนนภายในเป็น 85/100 และผลต้องเป็น `ผ่าน`.
-- เพิ่ม/ปรับ regression สำหรับ private-score pass, report wording, final-label, review recalculation และ version 0.3.4.
-- ไม่เปลี่ยน Dashboard, Supabase, Google Sheets หรือข้อมูล production.
+### Source และการทดสอบ
+- เพิ่ม state machine `updateNoVideoProbe()` ใน `media-review.js`
+- ปรับ `probeMedia()` และ `readMedia()` ใน `background.js` ให้รวบรวมสถานะการโหลด ตัวบอกกำลังโหลด ปัญหาเครือข่าย จำนวนตัวเล่น และลายเซ็นหน้า พร้อมยืนยันจากแท็บใหม่ 2 รอบ
+- เพิ่ม `no_video` เป็น definitive media failure และเพิ่มข้อความแก้ไขสำหรับผู้สอน
+- อัปเดต `manifest.json`, `README.md`, `RELEASE-NOTES.md`, `TEST-RESULTS.txt` และ regression tests เป็น version **0.3.8**
+- Regression ครอบคลุมหน้าโหลดช้า ออฟไลน์ ตัวเล่นโหลดภายหลัง หน้าเปล่า หน้าไม่ complete และกรณีไม่มีตัวเล่นที่คงที่จริง
 
-### การตรวจสอบและ Artifact
-- Syntax checks ผ่านสำหรับ `background.js`, `report.js`, `rules.js`, `legacy-policy.js`.
-- Regression เป้าหมายผ่าน รวมกรณีไม่มี Assignment ได้ 85 คะแนนภายในและสถานะผ่าน.
-- ชุดทดสอบแพ็กเกจผ่าน 37/39; สองไฟล์เดิม `evidence-package.test.mjs` และ `media-batch.test.mjs` ยังคงเป็น stale baseline failures ที่พิสูจน์แล้วว่าล้มเหลวเหมือนกันใน ZIP 0.3.2 ต้นฉบับ.
-- Artifact: `C:\Users\User\Documents\Codex\2026-09-25\https-chatgpt-com-s-cx-6ab5e2aa1bec8191867602df501a3453\outputs\SPU-Learning-Auditor-Local-Legacy-0.3.4.zip`
-- Size: 9,508,898 bytes; 132 entries; manifest `0.3.4`.
-- SHA-256: `68C03CB5B5303EA0ED16ED341F754FDF9D75CB294941C7B027C296DE569DD655`.
+### การแก้เพิ่มเติมในแพ็กเกจ 0.3.8 รอบเดียวกัน
+- เปลี่ยนเส้นทางตัดสิน GR/GS ใน `background.js` และ `report.js` จาก `legacyCompleteness()` เป็น `legacyScorecard()` ตามเกณฑ์ภายใน 100 คะแนน ผ่านที่ 80 คะแนน
+- รายงานผู้สอนแสดงเฉพาะ `ผ่าน/ไม่ผ่าน/ต้องตรวจทาน` พร้อมข้อความว่าใช้เกณฑ์คะแนนภายใน แต่ไม่แสดงตัวเลขคะแนน
+- `dashboard-export.js` อ่าน `score.total` และ `potentialTotal` ของ Legacy โดยตรง จึงไม่ตีคะแนนเป็นศูนย์เมื่อต้องส่งผล/หลักฐาน
+- ปรับความผ่อนปรนวิดีโอ GR/GS ตามหน่วยกิต: 1 หน่วยกิต 5 นาที, 2 หน่วยกิต 10 นาที, 3 หน่วยกิตขึ้นไป 20 นาที และเพิ่ม guard ให้เวลา `0:00` ไม่สามารถผ่านแบบผ่อนปรนได้
+- URL แบบทดสอบทั่วไป เช่น `แบบทดสอบการดูดซึมความชื้น` จะเป็นกิจกรรมท้ายบทเมื่อไม่มีชื่อหรือป้ายท้องถิ่นที่ยืนยันว่าเป็น Pre-test/Post-test; หลักฐาน Pre/Post ที่ชัดเจนยังมีลำดับสูงกว่า
+- Automated tests ผ่าน **44/44**, fail 0 รวม regression ตรงจากอาการที่ผู้ใช้รายงาน
 
-### งานถัดไป
-- Load/Reload 0.3.4 แล้วเปิดรายงานเดิมในภาพ; ควรเปลี่ยนเป็น `ผ่าน` พร้อมข้อความว่าคะแนนภายในถึงเกณฑ์ โดยไม่แสดงเลขคะแนน.
-- หากผลเดิมในคิว/ชีตเคยถูกส่งเป็นไม่ผ่าน ต้องสั่งตรวจซ้ำหรือยืนยัน/ส่งผลใหม่หลังใช้ 0.3.4 เพื่อให้ปลายทางรับสถานะที่คำนวณด้วยกติกาถูกต้อง.
-- ZIP ยังไม่ได้อัปโหลด GitHub หรือเปลี่ยนลิงก์ดาวน์โหลด.
+### Artifact และการส่งต่อ
+- Local ZIP: `C:\\Users\\Administrator\\Documents\\Codex\\2026-08-24\\new-chat\\SPU-Learning-Auditor-Local-Legacy-0.3.8.zip`
+- ZIP size: **9,518,345 bytes**, 134 entries
+- SHA-256: `29ACEC6AB9D88EBFCBAA92DE896CF56AEC47BD03E2B431542AD7386E7A3FA476`
+- เปิดตรวจ ZIP จริงแล้ว: `manifest.json` เป็น `0.3.8`, มี `updateNoVideoProbe`, เงื่อนไข `confirmedNoPlayerAttempts >= 2`, ผล `mediaStatus: "no_video"`, การตัดสินผ่านด้วย `legacyScorecard`, การซ่อนคะแนน, กฎผ่อนปรนตามหน่วยกิต และ guard เวลา 0:00
+- ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ห้ามกล่าวว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL ดาวน์โหลดจริง
+
+
+## 57. Dashboard 0.13.28 — ปิดงานตกหล่นและเผยแพร่จริง (2026-11-09)
+
+**สถานะ: source/tests ผ่าน / Supabase hardening ใช้งานจริง / release workflow ผ่าน / GitHub Pages แสดง 0.13.28**
+
+### Dashboard และไฟล์ติดตั้ง
+- อัปเดตหน้า Download, ข้อความ fallback ในหน้าหลักฐาน และคำแปลทั้งหมดจาก 0.13.21/รุ่นเก่าเป็น 0.13.28
+- แก้ regression test หลังเพิ่มบทบาท owner, evidence decisions รายรายการ และการซ่อนคะแนนตามสิทธิ์; ชุดทดสอบเว็บผ่านครบ 7 ไฟล์ รวม 33 tests
+- ชุดทดสอบ Extension ภายใน artifact ผ่าน 36/36 และ manifest เป็น version 0.13.28
+- พบไฟล์ `SPU-Learning-Auditor-Dashboard-0.13.21.zip` เดิมเสียจริงและไม่ควรนำกลับมาใช้เป็นฐาน build
+- สร้าง release จาก payload 0.13.28 ที่ตรวจ SHA-256 ก่อนประกอบ; GitHub Actions run #5 ผ่าน และสร้าง commit `80bf7298beade461134038d619f67ec3dd753391`
+- ไฟล์บน branch `main`: 9,330,876 bytes, SHA-256 `111AD46C11464C249E896B466E927828DEA7472A7BCF5334BD262F5F8DF2A0B8`
+- หน้า production ตรวจแล้วพบข้อความ 0.13.28 และไม่พบ 0.13.21
+
+### Supabase production hardening
+- Applied migration `dashboard_release_hardening` ใน project `nwupjnkotdkodyxnraie`; ไฟล์ migration คือ `supabase/migrations/202611090001_dashboard_release_hardening.sql`
+- เปลี่ยน `is_spu_user` และ `is_audit_reviewer` เป็น security invoker; anon เรียกไม่ได้ และ authenticated เรียกได้เฉพาะฟังก์ชันที่ต้องใช้
+- จำกัด `enqueue_missing_audits`/`enqueue_refresh_audits` ให้ service role; ปิด public/authenticated execute ของ trigger/event-trigger helpers
+- เพิ่ม foreign-key indexes 5 จุด และแก้ RLS policy ให้ใช้ `(select auth.uid())` เพื่อลดการประเมินซ้ำ
+- หลัง deploy: security advisor เหลือเพียง INFO สองตาราง service-only ที่เปิด RLS แต่จงใจไม่มี policy, performance advisor เหลือเพียง INFO ว่าดัชนีใหม่ยังไม่ถูกใช้ทันที, health advisor ไม่มีข้อเตือน
+- Public API smoke test: `/v1/public/results` และ course history ยังตอบ 200 และไม่มี score/threshold/internal fields รั่วไป public payload
+
+### ข้อควรจำ
+- อย่าเผยแพร่ ZIP โดยอัปโหลดก้อนใหญ่จากเครื่องตรง ๆ เมื่อช่องทาง git ใช้ไม่ได้; workflow ปัจจุบัน reconstruct จาก `release-b64/dashboard-0.13.28/part-*.b64`, ตรวจ SHA-256, รัน tests, ตรวจ ZIP แล้วจึง commit artifact
+- หากแก้ Extension รุ่นถัดไป ให้สร้าง payload ใหม่และเปลี่ยน hash/version ใน workflow ห้าม reuse payload 0.13.28
+
+## 49. Local Legacy 0.3.10 — ความถูกต้องของคอมเมนต์สรุปผู้สอน (2026-11-05)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ปัญหาที่แก้
+- คอมเมนต์สรุปเคยอ่านคำว่า “ลิงก์เปิดไม่ได้” จากลิงก์สำรอง/รายการซ้ำ แม้แถวนั้นมี PDF ที่ใช้ได้และผลสุดท้ายผ่านแล้ว ทำให้ข้อความขัดกับตารางรายละเอียด
+- Pre-test กับ Post-test เคยถูกรวมเป็นคำแนะนำเดียว จึงบอกครั้งที่ขาดผิดประเภทและทำให้ Week 8 ของ PHY212 ดูเหมือนไม่มี Post-test
+- สรุปวิดีโอเคยบอกเพียงจำนวนที่ผ่านและติดป้าย “ส่วนแนะนำรายวิชา” โดยไม่ระบุครั้งที่เวลายังไม่ครบจริง
+- ป้ายภาพ Post-test อาจแพ้ข้อความ Label ทั่วไปที่อยู่ใกล้กิจกรรม ทำให้ Quiz ถูกจัดหมวดผิด
+
+### หลักการใหม่
+- สถานะสุดท้ายของแถวเป็นฐานสำหรับคอมเมนต์: ถ้าแถวเอกสาร `pass/pass_tolerance` จะไม่สร้างคำสั่งแก้จากลิงก์ส่วนเกินที่เสียหาย
+- แยก action เป็น `pre_test` และ `post_test` พร้อม session ของแต่ละประเภท
+- `legacyVideoCoverage` ส่งคืน `failedSessions` และ summary แสดงครั้งที่ไม่ผ่าน/รอยืนยันจริง; ไม่ใช้ “ภาพรวมรายวิชา” หรือ “ส่วนแนะนำรายวิชา” แทนตำแหน่ง
+- ป้ายภาพ Pre/Post ที่ระบุชัดและอยู่กับกิจกรรมมีลำดับสูงกว่า adjacent text label ทั่วไป
+- คงกฎเดิมว่าการอัปโหลดวิดีโอภายใน Moodle ต้องแจ้งย้ายไปลิงก์ภายนอก แม้คลิปภายนอกอื่นทำให้เวลารวมของแถวนั้นผ่านแล้ว
+
+### การทดสอบและ Artifact
+- Automated tests: **40/40**, fail 0
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.10.zip`
+- Size: **9,520,807 bytes**, 134 entries
+- SHA-256: `3F625631319BEA7317EE3EB7C7E7721252417D2BDEE1E8F14330ECC1D3849CC2`
+- เปิด ZIP และตรวจ `manifest.json` แล้วเป็น version `0.3.10`
+- รายงานเก่าจะไม่เปลี่ยนย้อนหลัง ต้อง Reload รุ่น 0.3.10 และตรวจรายวิชานั้นใหม่เพื่อสร้างคอมเมนต์ชุดใหม่
+- Backport กฎลำดับป้าย Pre/Post ไป Dashboard **0.13.23** และ Local **0.13.20** แล้ว; ทั้งสองรุ่นผ่าน tests **36/36** และตรวจ manifest ใน ZIP แล้ว
+- Dashboard ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.23.zip` — 9,351,274 bytes, 120 entries, SHA-256 `F673D93631191459F68DCF328F755189A4F98D5F44CDE4449C5B514A43CA93EC`
+- Local ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.20.zip` — 9,343,248 bytes, 120 entries, SHA-256 `C4DEDB26CD712215B54093159A471B237C8E465289D1E85F050F1D00C4E8C19D`
+- ส่วน teacher summary เป็นหน้ารายงานเฉพาะ Legacy จึงไม่คัดลอก UI ไปอีกสองรุ่นโดยตรง
+
+## 50. PHY212 — Pre-test แบบคำสั่งข้อความและ Post-test แบบไฟล์ (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ข้อตัดสิน
+- ข้อความครั้งที่ 13 ที่ระบุ `Pre-test` และสั่งให้นักศึกษาทำกิจกรรมโดยตอบคำถาม นับเป็น Pre-test ได้ เพราะมีทั้งประเภทและการตอบสนองที่ผู้เรียนต้องทำ ไม่ใช่มีเพียงหัวข้อเปล่า
+- ไฟล์ `แบบทดสอบอัตนัย...` ที่อยู่ใต้ป้าย Post-test โดยตรง นับเป็น Post-test แม้เป็น Moodle Resource/PDF เพราะ MIME เป็นเพียงรูปแบบส่งมอบ ส่วนป้ายท้องถิ่นที่ชัดเจนกำหนดหมวดการประเมิน
+- เอกสาร PDF ทั่วไปใต้ป้ายที่คลุมเครือยังคงเป็นเอกสารประกอบ ไม่ถูกยกเป็น Pre/Post โดยอัตโนมัติ
+
+### Regression และ Artifact
+- Local Legacy **0.3.11**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.11.zip`; 9,521,322 bytes; SHA-256 `9B6D3550F75DAD486A9870CB2FF2D8F12A2E62A6B3490115B44FEAC7F1629659`
+- Dashboard **0.13.24**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.24.zip`; 9,351,534 bytes; SHA-256 `38B473F8BD1137ADD97A4CD44E91F323F9E856D32EC25DD9791EB96826207D6B`
+- Local **0.13.21**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.21.zip`; 9,343,497 bytes; SHA-256 `01456A42A45F2C1CF97FC1736058E85616EEDF0F8F7FD2CCB17E3A8FACBC5458`
+- เปิด ZIP ทั้งสามและตรวจ `manifest.json` แล้วตรงกับเลขรุ่น
+- ต้อง Reload รุ่นใหม่และตรวจ PHY212 ใหม่ รายงานเดิมไม่แก้ย้อนหลัง
+
+## 51. Guard ป้องกันข้อความทั่วไปถูกนับเป็น Pre/Post (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / regression ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### เงื่อนไขที่ต้องครบ
+- มีป้ายหรือหัวข้อ Pre-test/Post-test ที่อยู่ในบริบทเดียวกับหลักฐาน
+- มีประโยคสั่งให้ผู้เรียนลงมือทำจริง
+- มีอย่างน้อยหนึ่งสัญญาณยืนยันงาน: โจทย์เฉพาะ/การคำนวณ/คำถามเชิงรูปธรรม, คะแนน, URL หรือข้อความลิงก์/ช่องทางตอบและส่งงาน
+- คำทั่วไป เช่น `Pre-test`, `ตอบคำถาม`, `กิจกรรม`, ข้อความอธิบาย หรือข้อความเตรียมตัว เพียงอย่างเดียวไม่นับ
+- ตัวอย่าง PHY212 ครั้งที่ 13 ยังนับ เพราะมี `Pretest` + คำสั่งตอบคำถาม + `Link ที่วางไว้`
+
+### Regression และ Artifact
+- เพิ่ม negative regression สำหรับข้อความบรรยายทั่วไปและข้อความกิจกรรมกำกวมที่ไม่มีโจทย์ คะแนน หรือลิงก์
+- Local Legacy **0.3.12**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.12.zip`; 9,521,942 bytes; SHA-256 `C00B606F9FF4DD62BFCD14E81663743E61FDE0648B06C107C1346C69617093B0`
+- Dashboard **0.13.25**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.25.zip`; 9,351,630 bytes; SHA-256 `9D4E437B800C139FBD9C89DF5FA767A4D667A3EA470C49382B3DAE7772418566`
+- Local **0.13.22**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.22.zip`; 9,343,595 bytes; SHA-256 `32CE07A301E69544BE7BEEC203BBA161B3AF01682EFF5238806A247C8492791B`
+- เปิด ZIP ทั้งสามและตรวจ manifest/version แล้ว
+
+## 52. แก้ความเข้าใจ Guard Pre/Post: เป็นหลายเส้นทางทางเลือก ไม่ใช่ข้อบังคับ 3 ชั้น (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### กติกาที่ถูกต้อง
+- ไม่บังคับให้ผู้สอนต้องมี `ป้าย + คำสั่ง + ลิงก์/คะแนน/ไฟล์` ครบพร้อมกัน
+- เส้นทางที่นับได้เป็นทางเลือก ได้แก่ (1) ชื่อกิจกรรมระบุ Pre/Post ชัดเจน (2) กิจกรรม/ไฟล์อยู่ใต้ป้าย Pre/Post ที่ยืนยันตำแหน่งได้ หรือ (3) ข้อความระบุ Pre/Post และเป็นประโยคคำสั่ง/กิจกรรมที่ให้ผู้เรียนลงมือทำจริง
+- เส้นทางข้อความไม่บังคับลิงก์ คะแนน หรือไฟล์โจทย์ หากภาษาระบุชัดว่าผู้เรียนต้องทำกิจกรรม/แบบทดสอบ/ตอบคำถาม
+- Guard มีหน้าที่ตัดเฉพาะข้อความบรรยายทั่วไป การกล่าวถึงคำว่า Pre/Post หรือการตอบคำถามแบบไม่มีลักษณะเป็นคำสั่ง/กิจกรรม ไม่ใช่กำหนดรูปแบบการสร้างรายวิชา
+
+### Regression และ Artifact
+- ทดสอบ title-only, local-label, text instruction แบบไม่มีลิงก์ และข้อความบรรยายที่ต้องไม่ถูกนับ
+- Local Legacy **0.3.13**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.13.zip`; 9,522,170 bytes; SHA-256 `832B6595647E829C4EE1FE495A48071DE0D55B7095FEA63589CE30CA19B7924B`
+- Dashboard **0.13.26**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.26.zip`; 9,351,712 bytes; SHA-256 `C945009F597F609AB0AB5C2409F830842B84BF84CECD98057EC22BAB35C0E3D5`
+- Local **0.13.23**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.23.zip`; 9,343,674 bytes; SHA-256 `A028C032912CA42ED281E61BD6D4F492FD8DC516EF5E7A174F572D7A904A7629`
+
+## 53. ป้าย Pre/Post ห้ามทับเอกสารประกอบและไฟล์เฉลย (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### กติกา
+- ชื่อรายการที่ชัดว่าเป็น `เอกสารประกอบ`, แผน, `เฉลย`, `แนวทางตอบ`, `Answer Key` หรือ `Solution` ต้องคงเป็นไฟล์เอกสาร แม้อยู่ใกล้ข้อความหรือป้าย Pre/Post
+- เฉพาะไฟล์คำถาม/แบบทดสอบจริงที่ชื่อมีลักษณะ assessment และอยู่ใต้ป้าย Pre/Post ที่ยืนยันตำแหน่งได้จึงรับหมวดจากป้ายนั้น
+- กฎนี้แก้ false positive จาก PHY212: `เอกสารประกอบการสอนครั้งที่ 2 : ทบทวนพื้นฐานก่อนเรียน...` และ `เฉลยแนวทางตอบแบบทดสอบ...` ไม่เป็น Quiz อีกต่อไป
+
+### Regression และ Artifact
+- Local Legacy **0.3.14**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.14.zip`; 9,522,700 bytes; SHA-256 `6AB94005661967F45D30A83282F37053DC0680AF5AA651F0A3D0113AFCEE023F`
+- Dashboard **0.13.27**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.27.zip`; 9,352,043 bytes; SHA-256 `8D3D195050FD6C3DC282E54F623B83F9DD23A3DC2743E5C9382A78FC7FC54545`
+- Local **0.13.24**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.24.zip`; 9,344,010 bytes; SHA-256 `9CC0E0D00B29CF2A202DC35DB7AE5DF36F66C3DDC826BC63398064EDA5658290`
+
+## 54. ล็อกหัวข้อรายงานผู้สอนเป็น “ผลการตรวจ” (2026-11-05)
+
+**สถานะ: Local Legacy แก้แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+- การ์ดบนสุดของรายงานผู้สอนแสดงหัวข้อคงที่ `ผลการตรวจ`
+- ลบข้อความเปิดเผยเกณฑ์คะแนนภายใน, 80%, สูตรทฤษฎี/ปฏิบัติ และองค์ประกอบบังคับออกจากการ์ดและข้อความสรุปผู้สอน
+- สถานะยังแสดง `ผ่าน / ไม่ผ่าน / ต้องตรวจทาน` พร้อมข้อความกลาง เช่น `ผลการตรวจผ่าน` หรือ `โปรดตรวจสอบรายการที่ต้องแก้ไขด้านล่าง`
+- การคำนวณและข้อมูลคะแนนหลังบ้านไม่เปลี่ยน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.15.zip`; 9,522,504 bytes; 134 entries; SHA-256 `31E9A26E257893E5FC85F7222601AEC6A406E6DC284E3CFE5B14935F5950A5B2`
+
+## 55. กิจกรรมท้ายบทแบบเตรียม/พิมพ์/สแกน WORKSHEET (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+- คำสั่งใต้ป้ายกิจกรรมท้ายบทที่ให้ผู้เรียนเตรียม พิมพ์ ปริ้นท์ พริ้นท์ หรือสแกน WORKSHEET/ใบงาน ถือเป็นกิจกรรมท้ายบท แม้ไม่มี Moodle Assignment แยก
+- ต้องมีคำสั่งที่ผู้เรียนต้องลงมือทำ; การกล่าวถึง WORKSHEET หรือเอกสารเฉย ๆ ไม่นับ
+- ไฟล์ PDF/เอกสารที่วางใต้คำสั่งยังคงเป็นเอกสารประกอบ ไม่ถูกเปลี่ยนชนิดเป็น Assignment; ตัวกิจกรรมเกิดจากคำสั่งข้อความ
+- Local Legacy **0.3.16**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.16.zip`; 9,522,916 bytes; SHA-256 `DAA864DCD3A4549C86948DC19896CFDECE08B062FD372D00BF3FE8F1984CF77B`
+- Dashboard **0.13.28**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.28.zip`; 9,352,288 bytes; SHA-256 `2B2597EFAB2271F3D0070EE30514954535BD20F50925C1952AB4BE517DA71F6B`
+- Local **0.13.25**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.25.zip`; 9,344,254 bytes; SHA-256 `7B3E738E33B23B995D3EAB959343A19F5CB15904736B8D9C69614FBB269F6BDD`
+
+
+## 56. Local Legacy 0.3.17 — เพิ่ม GN แบบตัด Podcast และ AI Tutor (2026-11-05)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy / Apps Script ต้องสร้าง Deployment รุ่นใหม่ก่อนดึง GN ผ่านบริการเดิม**
+
+- เพิ่ม `GN` ในหน้าคิว การเพิ่มด้วยมือ การนำเข้า JSON การอ่าน Google Sheet โดยตรง และ Apps Script catalog
+- เกณฑ์ GN ครั้งที่ 1: ข้อมูล/รูปผู้สอนและช่องทางติดต่อ, เอกสารประกอบการสอน, วิดีโอแนะนำหรือบันทึกการสอน
+- เกณฑ์ GN ครั้งที่ 2–15: แผนการจัดการเรียนการสอน, เอกสารประกอบการสอน, วิดีโอบันทึกการสอนล่วงหน้า
+- ตัด Podcast และ AI Tutor ออกจากแถวตรวจ ข้อความแนะนำผู้สอน งานรอยืนยัน และผลผ่าน–ไม่ผ่านของ GN; หลักฐานประเภทดังกล่าวอาจยังอยู่ในภาคผนวกหลักฐาน แต่ไม่ถูกเปิดตรวจปลายทางและไม่คิดผล
+- GN ไม่ใช้คะแนน 100/110: ตัดสินด้วย checklist และความครอบคลุมวิดีโอ โดยทฤษฎีต้องผ่านครบ 15 ครั้ง ปฏิบัติต้องผ่านอย่างน้อย 7 ครั้ง; วิดีโอ GN ใช้ 15 นาทีต่อหน่วยกิตและค่าผ่อนปรนตามกฎ GN เดิม
+- แก้ผลตัดสิน backend ให้ GN สามารถได้ `pass/fail/needs_review` จริง ไม่ค้างสถานะ “รอผู้ตรวจสรุป” และทำให้การยืนยันผล/ส่งหลักฐานใช้สถานะเดียวกับหน้ารายงาน
+- Apps Script `getCatalog_` รองรับ Course Profile `683GN-...` และ service version เพิ่มเป็น 3; ถ้ายังใช้ Web app deployment เก่า บริการจะยังไม่ส่ง GN จนกว่าจะสร้าง Deployment รุ่นใหม่
+- Regression ครอบคลุม GN theory/practical ผ่าน–ไม่ผ่าน–ต้องตรวจทาน, รายงาน/PDF ไม่มี Podcast/AI Tutor เป็นเกณฑ์, queue มีตัวเลือก GN, Sheet parser รับ GN และ Apps Script regex รับ GN
+- Tests: **40/40**, fail 0
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.17.zip`
+- Size: **9,524,186 bytes**, 134 entries
+- SHA-256: `4A9C82AF501E0A52B33531FCF9177BE9D92C93B97B77D06C5F4704C0019A0B2C`
+- เปิด ZIP จริงและยืนยัน `manifest.json` เป็น version `0.3.17`, ตัวเลือก GN อยู่ใน `queue.html`, GN checklist ไม่มี Podcast/AI Tutor, rubric เป็น `GN-CLASSROOM-CHECKLIST-1.0` และ Apps Script มี `(GN|GR|GS)`
+
+
+## 48. Local Legacy 0.3.9 — เกณฑ์คะแนนเฉพาะวิชาปฏิบัติ (2026-11-04)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### เหตุผลและขอบเขต
+- ผลที่ประกาศก่อนหน้านี้ไม่มีวิชาปฏิบัติ จึงไม่กระทบผลผ่านเดิม
+- วิชาทฤษฎียังคงสูตรเดิม 100 คะแนน ผ่านที่ 80
+- วิชาปฏิบัติใช้สูตรใหม่ 50 คะแนน ผ่านที่ 40 แต่ต้องผ่านองค์ประกอบบังคับด้วย การหารคะแนนเดิมครึ่งหนึ่งอย่างเดียวไม่ใช้ เพราะไม่ปิดช่องโหว่
+
+### สูตรวิชาปฏิบัติ
+- ข้อมูลรายวิชาและผู้สอน 5 คะแนน (อย่างละ 2.5)
+- แผนการสอน 7.5 คะแนน
+- เอกสารประกอบ 7.5 คะแนน
+- วิดีโอ 7.5 คะแนน
+- Pre-test 5 คะแนน และ Post-test 5 คะแนน
+- กิจกรรม/งานปฏิบัติ 12.5 คะแนน
+- รวม 50 คะแนน ผ่านที่ 40 คะแนน (80%); คะแนนองค์ประกอบปัดเป็นช่วง .5 และเปอร์เซ็นต์สุดท้ายเป็นจำนวนเต็ม
+
+### องค์ประกอบบังคับ
+- ข้อมูลผู้สอนครบ
+- แผนการสอนอย่างน้อย 12/15 ครั้ง
+- เอกสารประกอบอย่างน้อย 12/15 ครั้ง
+- วิดีโอผ่านอย่างน้อย 7/15 ครั้ง
+- Pre-test อย่างน้อย 7/14 ครั้ง และ Post-test อย่างน้อย 7/14 ครั้ง
+- กิจกรรมปฏิบัติอย่างน้อย 7/15 ครั้ง
+- คะแนนถึง 40 อย่างเดียวไม่พอ หากองค์ประกอบบังคับข้อใดไม่ผ่าน ผลยังเป็นไม่ผ่าน
+
+### Regression สำคัญ
+- กรณีเทียบเท่า CEG111: วิดีโอผ่าน 7 ครั้ง, แผน/เอกสาร/กิจกรรมครบ แต่ไม่มีข้อมูลผู้สอนและไม่มี Pre/Post ได้ 37.5/50 = 75% และไม่ผ่าน
+- กรณีได้ 40/50 แต่ไม่มี Pre/Post ยังไม่ผ่านเพราะติด mandatory gate
+- วิชาทฤษฎี full-score ยังคง 100/100 และเส้นทางตัดสินเดิม
+- รายงานผู้สอนไม่แสดงตัวเลขคะแนน แต่ระบุว่าใช้เกณฑ์วิชาปฏิบัติ 80% พร้อมองค์ประกอบบังคับ
+- rubric ในรายงานเป็น `GR/GS-LEGACY-PRACTICAL-50-1.0` สำหรับวิชาปฏิบัติ และคง `SCORE-100-1.0` สำหรับทฤษฎี
+
+### Artifact
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.9.zip`
+- Size: **9,519,707 bytes**, 134 entries
+- SHA-256: `596BC8E15E5676BC31B75E715F9C5BA2EEC969B6C993A066C4B195E5C89F37F6`
+- เปิด ZIP จริงและตรวจ `manifest.json` แล้วเป็น version `0.3.9`
+- ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ต้อง Load/Reload รุ่น 0.3.9 และตรวจ CEG111 ใหม่เพื่อให้รายงานใช้สูตรใหม่
+- รายงานและงานยืนยันที่สร้างไว้ก่อนอัปเดตจะไม่เปลี่ยนย้อนหลัง ต้อง Reload/Load Unpacked รุ่น 0.3.8 แล้วตรวจรายวิชาที่เกี่ยวข้องใหม่
+- ประเด็นการตัดสินผ่านแบบคะแนนจากหัวข้อ 45 แก้แล้วใน 0.3.8 รอบล่าสุด; ประเด็นชนิดวิชา PHY121 `(L)-(L)` ต้องตรวจข้อมูลต้นทาง/การอนุมาน suffix แยก และห้ามลดผลที่ประกาศผ่านแล้ว
+
+
+## 47. Backport ระบบตรวจร่วมสู่ Dashboard 0.13.22 และ Local 0.13.19 (2026-11-04)
+
+**สถานะ: แก้ source แล้ว / Dashboard tests 36/36 ผ่าน / Local tests 36/36 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ขอบเขตและหลักการแยกรุ่น
+- ย้ายเฉพาะกติกาตรวจหลักฐานที่ใช้ร่วมกันจากรอบ Local Legacy ไปยัง Dashboard และ Local โดยไม่ยกเกณฑ์คะแนน Legacy 100/80 หรือรูปแบบรายงาน Legacy มาปะปน
+- Dashboard และ Local ยังคงระบบประเมินเดิม 110 คะแนน ผ่านที่ 80 และพฤติกรรมการเก็บ/ส่งผลของแต่ละรุ่นตามเดิม
+- การแก้ทำแบบ marker-by-marker ไม่แทนไฟล์ทั้งก้อน เพื่อรักษาความสามารถที่ Dashboard/Local มีใหม่กว่า Legacy และลดโอกาส regression
+
+### สิ่งที่ย้ายไปทั้ง Dashboard และ Local
+- รองรับ `ก่อนการเรียน/หลังการเรียน` เพิ่มจาก `ก่อนเรียน/หลังเรียน`; ป้าย Pre/Post ที่ยืนยันว่าอยู่ติดรายการจริงชนะชื่อแบบทดสอบที่คัดลอกผิด
+- URL ชื่อแบบทดสอบทั่วไปที่ไม่มีป้าย Pre/Post ชัดเจนถูกจัดเป็นกิจกรรมท้ายบท ไม่ถูกนับเป็น Pre/Post โดยอัตโนมัติ
+- ความผ่อนปรนเวลาวิดีโอตามหน่วยกิต: 1 หน่วยกิต 5 นาที, 2 หน่วยกิต 10 นาที, 3 หน่วยกิตขึ้นไป 20 นาที; เวลา 0:00 ห้ามผ่านแบบผ่อนปรน
+- Google Photos ที่ยืนยันว่าอัลบั้มว่างหลังรีเฟรชตรวจซ้ำเป็น `empty_media` และไม่สร้างงานผู้ตรวจ
+- หน้าเว็บทุกแพลตฟอร์มที่เปิดได้แต่ไม่มีตัวเล่นจริง ต้องคงที่ 3 probe ต่อแท็บและยืนยัน 2 แท็บ จึงเป็น `no_video`; spinner, หน้าไม่ complete, ปัญหาเครือข่าย และตัวครอบ player จะยกเลิกการสรุปนี้เพื่อป้องกันผลลบเท็จจากเน็ตช้า
+- ข้อมูลผู้สอนที่พบรูป ชื่อ และช่องทางติดต่อครบ ตัดสิน `complete` อัตโนมัติ; เมื่อสแกน DOM+OCR จบรอบแล้วและหลักฐานไม่ครบ ตัดสิน `missing` แทนการทิ้งเป็นงานค้างผู้ตรวจ
+- รักษาการใช้ผลยืนยันสื่อเดิมจาก fingerprint/ปลายทางเดิมของแต่ละรุ่น; definitive failure เช่น `empty_media` และ `no_video` ไม่สร้างงานยืนยันซ้ำ
+
+### การปรับเฉพาะรุ่น
+- **Dashboard 0.13.22:** รักษาการตรวจหน้าแชท AI ที่มีอยู่แล้ว, การส่ง Supabase, ระบบคิวกลาง และการแสดงคะแนนตามสิทธิ์เดิม
+- **Local 0.13.19:** เพิ่มตัวตรวจ AI Tutor ให้เทียบเท่า Dashboard; SPU AI/SPU-KM ผ่านได้จากโดเมนที่มหาวิทยาลัยอนุมัติโดยไม่บังคับล็อกอิน ส่วน ChatGPT, Poe, Gemini, Copilot, Claude, Perplexity, Character AI, Botpress, Chatbase, Voiceflow, Dify/Udify และ Coze ต้องพบโครงสร้างหน้าแชทจริงก่อนผ่าน
+- Local ยังเก็บผลในเครื่องและส่งออกไฟล์ตามเดิม ไม่มีการเพิ่มการส่งข้อมูลไป Supabase
+
+### การประหยัดโควตาและเวลา
+- ใช้กฎ deterministic จาก DOM/ชื่อ/ป้ายก่อน ไม่เรียกบริการ AI ภายนอกเพื่อจัดประเภท
+- เปิดปลายทางเพิ่มเฉพาะรายการที่ต้องยืนยันสื่อหรือหน้าแชท; SPU AI ที่เชื่อถือได้ไม่เปิดแท็บเพื่อล็อกอิน
+- การยืนยัน 2 แท็บใช้เฉพาะกรณีที่หน้าเปิดได้แต่ไม่มีตัวเล่นและผ่านเงื่อนไขสะอาดครบ; หน้าเสีย/ติดสิทธิ์/อัลบั้มว่างใช้เส้นทางสั้นกว่า
+- คง cache/fingerprint ของผลเดิมเพื่อไม่ให้ผู้ตรวจยืนยัน Podcast/วิดีโอซ้ำเมื่อปลายทางไม่เปลี่ยน
+
+### การทดสอบ
+- Dashboard automated tests **36/36**, fail 0
+- Local automated tests **36/36**, fail 0
+- Regression ใหม่ครอบคลุม: Pre/Post ภาษาไทยแบบมีคำว่า `การ`, แบบทดสอบทั่วไปเป็นกิจกรรมท้ายบท, Google Photos อัลบั้มว่าง, no-player stable probe, การยกเลิกเมื่อโหลด/เน็ต/ตัวเล่นยังอยู่, ข้อมูลผู้สอน complete/missing/pending, ความผ่อนปรน 5/10/20 นาที และ guard 0:00
+- Local เพิ่ม AI chat tests ครอบคลุม trusted SPU AI, ผู้ให้บริการภายนอก, หน้า marketing ที่ไม่ใช่แชท และสิทธิ์โดเมนใน manifest
+
+### Artifact
+- Dashboard ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.22.zip`
+- Dashboard size: **9,351,116 bytes**, 120 entries, version `0.13.22`
+- Dashboard SHA-256: `F11D0A48ABA9188D3F2B01FE0AF13BC998DA89DD66A43F6FD8D42EC89FE05266`
+- Local ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.19.zip`
+- Local size: **9,343,090 bytes**, 120 entries, version `0.13.19`
+- Local SHA-256: `6F3657B7F7ABF207E7380010717A604D3AC9D4D01EB691CFBAC72E25A9141B70`
+- เปิด ZIP จริงและอ่าน `manifest.json` ภายในแล้วทั้งสองไฟล์
+- ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ห้ามกล่าวว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL ดาวน์โหลดจริง
+
