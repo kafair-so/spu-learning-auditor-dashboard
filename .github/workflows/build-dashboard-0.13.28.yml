@@ -1,0 +1,70 @@
+name: Build Dashboard Extension 0.13.28
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - release-src/dashboard-0.13.28/.ready
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild the release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/dashboard-0.13.28
+          mkdir -p build/dashboard-0.13.28
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          source = Path("SPU-Learning-Auditor-Dashboard-0.13.21.zip")
+          target = Path("build/dashboard-0.13.28")
+          with ZipFile(source) as archive:
+              archive.extractall(target)
+          PY
+          cp -R release-src/dashboard-0.13.28/. build/dashboard-0.13.28/
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/chi_tra.traineddata \
+            --output build/dashboard-0.13.28/vendor/lang/chi_tra.traineddata
+          echo "529c5b5797d64b126065cd55f2bb4c7fd7b15790798091b1ff259941a829330b  build/dashboard-0.13.28/vendor/lang/chi_tra.traineddata" | sha256sum --check
+
+      - name: Test the rebuilt extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p "require('./build/dashboard-0.13.28/manifest.json').version")" = "0.13.28"
+          for test_file in build/dashboard-0.13.28/tests/*.test.mjs; do
+            node "$test_file"
+          done
+
+      - name: Package and verify the archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f SPU-Learning-Auditor-Dashboard-0.13.28.zip
+          (cd build/dashboard-0.13.28 && zip -q -r -9 ../../SPU-Learning-Auditor-Dashboard-0.13.28.zip .)
+          unzip -t SPU-Learning-Auditor-Dashboard-0.13.28.zip
+          sha256sum SPU-Learning-Auditor-Dashboard-0.13.28.zip
+
+      - name: Publish the verified archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add SPU-Learning-Auditor-Dashboard-0.13.28.zip
+          if git diff --cached --quiet; then
+            echo "Archive is already current."
+          else
+            git commit -m "release: publish Dashboard Extension 0.13.28"
+            git push
+          fi
+
