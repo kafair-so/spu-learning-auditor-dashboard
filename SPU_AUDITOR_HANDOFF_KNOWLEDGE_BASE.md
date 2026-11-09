@@ -1689,15 +1689,16 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - เมื่อตรวจหลาย frame ให้ frame ที่พบชื่อไฟล์เสียงหรือวิดีโอชัดเจนชนะ frame `<video>` ทั่วไปของผู้ให้บริการ
 - backend ปรับชนิดกิจกรรมจากนามสกุลไฟล์เสียงซ้ำอีกชั้นก่อนบันทึกผล เพื่อกันข้อมูลผิดจากส่วนขยายรุ่นเก่า
 - ข้อมูลผู้สอนถือว่าผ่านอัตโนมัติเมื่อ `identityComplete`, `contactComplete` และ `reviewStatus=evidence_found` (หรือมี flag รูปผู้สอน) จากนั้นเปลี่ยน criterion เป็นผ่านและลบงานยืนยันข้อมูลผู้สอนออก
+- รายงานเดิมที่หลักฐานครบจะคำนวณสถานะแถวและสีของกล่องจากผลอัตโนมัติทันที พร้อมซ่อนตัวเลือกยืนยันข้อมูลผู้สอนที่ไม่จำเป็น
 - ป้องกันคะแนนซ้ำ: เพิ่ม 1 คะแนนเฉพาะเมื่อ criterion เดิมยังเป็น `needs_review`; หากคะแนนขึ้นแล้วแต่ `reviewableCriteria` ค้าง จะลบเฉพาะงานค้างและคำนวณสถานะใหม่
 
 ### การตรวจสอบและ Artifact
 - Extension tests ผ่าน **41/41**, fail 0 ทั้ง source และ ZIP ที่แตกตรวจจริง
 - Dashboard tests ผ่าน **37/37**, fail 0
 - Supabase Edge Function `api` version **43**, ACTIVE
-- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,353,240 bytes
-- SHA-256: `CBE9CD8915A7CBA4FA8C1ECFF67F770DF6CC26FB438C714DBE80EE01FDD88DF5`
-- GitHub ZIP blob: `71f2ae22f801a116af14c44dd916186a20e65c81`
-- GitHub release commit: `6a3b8a9325fc7b97bd4d87a86ec33eb046381e87`
+- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,353,370 bytes
+- SHA-256: `B03D7BE26D727099158BB044B3A5AB951A8B42D6C1BCC93102BCABAED291CD81`
+- GitHub ZIP blob: `75e45ba1ea70c577dd549215afaf92b6c5c60304`
+- GitHub release commit: `d8e218211f8f719bcf85eb4cb7c1a2548c4610ca`
 - รายงานที่สร้างค้างไว้ก่อนติดตั้ง/Reload ส่วนขยายยังเก็บผลเดิม; ต้องตรวจรายวิชานั้นใหม่หนึ่งครั้งเพื่อให้กิจกรรม `.m4a` ถูกสร้างเป็น Podcast เสียงและให้สถานะข้อมูลผู้สอนถูกคำนวณใหม่
 
