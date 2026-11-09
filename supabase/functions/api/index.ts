@@ -456,7 +456,7 @@ async function decideAdminResult(request, runId) {
     .select("run_id,course_id,internal_status,score,passing_score,reviewable_points,audited_at,evidence_object_path,source_payload")
     .eq("run_id", runId).single();
   if (currentRunError) throw currentRunError;
-  if (currentRun.internal_status !== "needs_review") {
+  if (!["needs_review", "has_content"].includes(currentRun.internal_status) || Number(currentRun.reviewable_points || 0) <= 0) {
     throw Object.assign(new Error("review_decision_not_available"), { status:409 });
   }
   const minimum = Math.max(0, Number(currentRun.score || 0));
@@ -471,10 +471,11 @@ async function decideAdminResult(request, runId) {
   const manualKeys = String(source.group || "").toUpperCase() === "GN" ? [] : [
     "student_meetings", "video_quality", "media_placement", "submission_policy", "backup"
   ];
-  const reviewKeys = [
-    ...reviewableCriteria.map((item) => `criterion:${item.session}:${item.criterion}`),
-    ...manualKeys.map((key) => `manual:${key}`)
-  ].slice(0, Math.round(maximum - minimum));
+  const reviewCount = Math.round(maximum - minimum);
+  const criterionKeys = reviewableCriteria.map((item) => `criterion:${item.session}:${item.criterion}`);
+  const manualReviewKeys = manualKeys.map((key) => `manual:${key}`);
+  const criterionLimit = manualReviewKeys.length ? Math.max(0, reviewCount - manualReviewKeys.length) : reviewCount;
+  const reviewKeys = [...criterionKeys.slice(0, criterionLimit), ...manualReviewKeys].slice(0, reviewCount);
   if (!reviewKeys.length || reviewKeys.length !== Math.round(maximum - minimum)) {
     throw Object.assign(new Error("review_items_not_available"), { status:409 });
   }
