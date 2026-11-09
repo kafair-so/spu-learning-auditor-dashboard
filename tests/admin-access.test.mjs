@@ -4,8 +4,7 @@ import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const api = read("supabase/functions/api/index.ts");
-const migration = read("supabase/migrations/202610020001_admin_roles.sql");
-const scoreMigration = read("supabase/migrations/202610020002_audit_score_max_110.sql");
+const migration = read("supabase/migrations/202610150001_owner_access_management.sql");
 const page = read("audit-review.html");
 const review = read("audit-review.js");
 const auth = read("auth.js");
@@ -13,22 +12,24 @@ const dashboard = read("index.html");
 
 test("system owner is bootstrapped as the only protected role", () => {
   assert.match(migration, /siraprah\.so@spu\.ac\.th/);
-  assert.match(migration, /'super_admin'/);
-  assert.match(api, /user\.role !== "super_admin"/);
-  assert.match(api, /super_admin_record_protected/);
+  assert.match(migration, /role = 'owner'/);
+  assert.match(migration, /reviewer_emails_single_owner_idx/);
+  assert.match(api, /existing\.role === "owner"/);
+  assert.match(api, /owner_record_protected/);
 });
 
 test("admin management routes require a super admin", () => {
   assert.match(api, /await superAdmin\(request\)/);
   assert.match(api, /v1\/admin\/access-users/);
   assert.match(api, /cannot_change_own_access/);
-  assert.match(api, /\["admin", "super_admin"\]\.includes/);
+  assert.match(api, /\["admin", "super_admin", "owner"\]\.includes/);
 });
 
-test("super admin page exposes self-service access management", () => {
+test("owner and super admin page exposes role-scoped access management", () => {
   assert.match(page, /id="accessPanel"/);
   assert.match(page, /id="adminEmail"/);
-  assert.match(review, /role!=="super_admin"/);
+  assert.match(page, /data-owner-option/);
+  assert.match(review, /\["owner","super_admin"\]\.includes/);
   assert.match(review, /AuditApi\.saveAccessUser/);
   assert.match(review, /AuditApi\.setAccessUserStatus/);
 });
@@ -55,17 +56,16 @@ test("owners and super admins can inspect pending evidence and possible scores",
   assert.match(api, /Math\.min\(AUDIT_MAX_SCORE, score \+ reviewable\)/);
   assert.match(api, /hasConfirmedScore \? confirmedScore : null/);
   assert.match(api, /scoreModel !== "weekly_criterion_v2"/);
-  assert.match(review, /ตรวจใหม่ด้วย Extension 0\.13\.10 ก่อนตัดสิน/);
-  assert.match(scoreMigration, /score between 0 and 110/);
+  assert.match(review, /ตรวจใหม่ด้วย Extension 0\.13\.28 ก่อนตัดสิน/);
   assert.match(api, /adminHistory/);
   assert.match(api, /adminEvidence/);
-  assert.match(api, /user\.role !== "super_admin"/);
+  assert.match(api, /\["owner", "super_admin"\]\.includes\(user\.role\)/);
   assert.match(review, /audit-evidence\.html\?admin=1/);
   assert.match(evidence, /AuditApi\.adminCourseHistory/);
   assert.match(evidence, /\["owner","super_admin"\]\.includes\(\(await AuditApi\.session\(\)\)\.role\)/);
   assert.match(evidence, /Math\.min\(maximum,Number\(run\.possibleScore\)\)/);
   assert.match(evidence, /ผลตรวจตามครั้ง\/สัปดาห์/);
-  assert.match(evidence, /Extension รุ่น 0\.13\.11/);
+  assert.match(evidence, /Extension รุ่น 0\.13\.28/);
 });
 
 test("non-super-admin and public payloads redact every numeric score", () => {
@@ -82,7 +82,7 @@ test("non-super-admin and public payloads redact every numeric score", () => {
   assert.doesNotMatch(publicRun, /confirmedScore|maxScore|threshold/);
   assert.match(api, /map\(\(\{ score, \.\.\.record \}\) => record\)/);
   assert.doesNotMatch(review.slice(review.indexOf("if\(!superAdmin\)return"),review.indexOf("return `<tr",review.indexOf("if\(!superAdmin\)return")+25)), /confirmedScore|threshold/);
-  assert.match(evidence, /const possibleFact=superAdmin/);
+  assert.match(evidence, /const scoreFacts=superAdmin/);
 });
 
 test("a super admin confirms each pending criterion and the server calculates the final score", () => {
@@ -92,8 +92,8 @@ test("a super admin confirms each pending criterion and the server calculates th
   assert.match(evidence, /data-review-save/);
   assert.match(evidence, /ยืนยันผลที่ระบบคำนวณ/);
   assert.match(evidence, /data-review-item/);
-  assert.match(evidence, /AuditApi\.decideResult\(runId,reviewDecisions,note\)/);
-  assert.match(auditApi, /decideResult:\(runId,reviewDecisions,note=""\)/);
+  assert.match(evidence, /AuditApi\.decideResult\(runId,reviewDecisions,note,evidenceDecisions\)/);
+  assert.match(auditApi, /decideResult:\(runId,reviewDecisions,note="",evidenceDecisions=\[\]\)/);
   assert.match(api, /review_decisions_incomplete/);
   assert.match(api, /const actor = await superAdmin\(request\)/);
   assert.match(api, /reviewConfirmation/);
