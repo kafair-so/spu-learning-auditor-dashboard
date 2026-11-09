@@ -38,10 +38,18 @@ test("completed legacy review is reused when score envelope and evidence destina
 
 test("complete instructor evidence closes the criterion before result ingestion", () => {
   assert.match(api,/function resolveAutomaticInstructorCriterion/);
-  assert.match(api,/summary\.identityComplete === true && summary\.contactComplete === true && summary\.hasInstructorPhoto === true/);
+  assert.match(api,/summary\.identityComplete === true && summary\.contactComplete === true/);
+  assert.match(api,/summary\.reviewStatus === "evidence_found"/);
   assert.match(api,/criterion\.status = "pass"/);
   assert.match(api,/payload\.reviewableCriteria = reviewable\.filter/);
   assert.ok(api.indexOf("resolveAutomaticInstructorCriterion\(submittedPayload\)") < api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)"));
+});
+
+test("cloud audio extensions override generic SharePoint video shells before ingestion", () => {
+  assert.match(api,/function normalizeCloudAudioEvidence/);
+  assert.match(api,/m4a\|mp3\|wav/);
+  assert.match(api,/item\.mediaType = "audio"/);
+  assert.ok(api.indexOf("normalizeCloudAudioEvidence\(submittedPayload\)") < api.indexOf("resolveAutomaticInstructorCriterion\(submittedPayload\)"));
 });
 
 test("table 3 keeps all five manual items and remains confirmable below threshold", () => {
