@@ -829,6 +829,27 @@ function canonicalEvidenceTarget(value = "") {
   } catch { return String(value || "").trim(); }
 }
 
+function resolveAutomaticInstructorCriterion(payload) {
+  const snapshot = payload?.evidenceSnapshot || {};
+  const summary = snapshot.instructorSummary || {};
+  const complete = summary.identityComplete === true && summary.contactComplete === true && summary.hasInstructorPhoto === true;
+  if (!complete) return payload;
+  const firstWeek = Array.isArray(snapshot.weeks) ? snapshot.weeks.find((week) => Number(week?.session) === 1) : null;
+  const criterion = Array.isArray(firstWeek?.criteria) ? firstWeek.criteria.find((item) => Number(item?.criterion) === 2) : null;
+  if (!criterion || criterion.status !== "needs_review") return payload;
+  criterion.status = "pass";
+  const reviewable = Array.isArray(payload.reviewableCriteria) ? payload.reviewableCriteria : [];
+  payload.reviewableCriteria = reviewable.filter((item) => !(Number(item?.session) === 1 && Number(item?.criterion) === 2));
+  const confirmed = Math.max(0, Number(payload.confirmedScore ?? payload.score ?? 0)) + 1;
+  const possible = Math.max(confirmed, Number(payload.possibleScore ?? confirmed));
+  const threshold = Number(payload.threshold ?? 80);
+  payload.confirmedScore = confirmed;
+  payload.possibleScore = possible;
+  payload.internalStatus = confirmed >= threshold ? "pass" : possible >= threshold ? "needs_review" : "has_content";
+  payload.automaticInstructorResolution = { resolved:true, basis:"complete_instructor_summary", resolvedAt:new Date().toISOString() };
+  return payload;
+}
+
 function evidenceTargetSet(payload) {
   const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
   return new Set(activities.map((item) => canonicalEvidenceTarget(item.externalUrl || item.href || "")).filter(Boolean));
@@ -916,6 +937,7 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
+  resolveAutomaticInstructorCriterion(submittedPayload);
   const course = String(submittedPayload.courseId || "").trim();
   await attachPriorEvidenceDecisions(course, submittedPayload);
   const { payload, gate } = applyAutomaticPublicationGate(submittedPayload);
