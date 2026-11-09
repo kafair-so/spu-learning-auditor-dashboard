@@ -822,47 +822,106 @@ function canonicalEvidenceTarget(value = "") {
   try {
     const url = new URL(String(value || ""));
     url.hash = "";
-    for (const key of [...url.searchParams.keys()]) if (/^(?:utm_|fbclid|gclid|si$|feature$|t$)/i.test(key)) url.searchParams.delete(key);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(?:utm_.*|fbclid|gclid|si|feature|t|nav|ga|referrer|referrerscenario|usp)$/i.test(key)) url.searchParams.delete(key);
+    }
     return url.toString();
   } catch { return String(value || "").trim(); }
+}
+
+function evidenceTargetSet(payload) {
+  const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
+  return new Set(activities.map((item) => canonicalEvidenceTarget(item.externalUrl || item.href || "")).filter(Boolean));
+}
+
+function preservesConfirmedEvidenceTargets(currentPayload, previousPayload) {
+  const current = evidenceTargetSet(currentPayload);
+  const previous = evidenceTargetSet(previousPayload);
+  if (!current.size || !previous.size) return false;
+  for (const target of previous) if (!current.has(target)) return false;
+  return true;
+}
+
+function sameReviewScoreEnvelope(currentPayload, previousPayload) {
+  const priorEnvelope = previousPayload?.reviewReuseEnvelope || previousPayload || {};
+  const fields = ["confirmedScore", "possibleScore", "threshold"];
+  return fields.every((field) => Number.isFinite(Number(currentPayload?.[field]))
+    && Number(currentPayload?.[field]) === Number(priorEnvelope?.[field]));
 }
 
 async function attachPriorEvidenceDecisions(courseId, payload) {
   const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
   if (!activities.length) return payload;
-  const { data:previous, error } = await db.from("audit_runs").select("source_payload")
-    .eq("course_id", courseId).order("audited_at", { ascending:false }).limit(1).maybeSingle();
+  const { data:recentRuns, error } = await db.from("audit_runs")
+    .select("run_id,score,passing_score,source_payload")
+    .eq("course_id", courseId).order("audited_at", { ascending:false }).limit(10);
   if (error) throw error;
-  const confirmation = previous?.source_payload?.reviewConfirmation || {};
+  const previous = (recentRuns || []).find((run) => run?.source_payload?.reviewConfirmation?.decisions);
+  if (!previous) return payload;
+  const previousPayload = previous.source_payload || {};
+  const confirmation = previousPayload.reviewConfirmation || {};
   const decisions = Array.isArray(confirmation.evidenceDecisions) ? confirmation.evidenceDecisions : [];
-  if (!decisions.length) return payload;
-  const byTarget = new Map(decisions.map((item) => [canonicalEvidenceTarget(item.key), item]));
-  const failures = new Set(["access_denied","login_required","link_unavailable","link_error","reviewer_confirmed_unreadable"]);
-  const reused = [];
-  for (const item of activities) {
-    if (failures.has(item.mediaStatus) || /broken|unavailable|denied|login/i.test(String(item.linkStatus || ""))) continue;
-    const target = canonicalEvidenceTarget(item.externalUrl || item.href || "");
-    const prior = byTarget.get(target);
-    if (!prior) continue;
-    item.reviewReused = true;
-    item.reviewerConfirmedAt = confirmation.confirmedAt || null;
-    item.priorEvidenceDecision = prior.decision;
-    if (prior.seconds > 0) item.reviewerDurationSeconds = prior.seconds;
-    reused.push({ ...prior, key:target, reviewer:confirmation.reviewer || "", confirmedAt:confirmation.confirmedAt || null });
+  if (decisions.length) {
+    const byTarget = new Map(decisions.map((item) => [canonicalEvidenceTarget(item.key), item]));
+    const failures = new Set(["access_denied","login_required","link_unavailable","link_error","reviewer_confirmed_unreadable"]);
+    const reused = [];
+    for (const item of activities) {
+      if (failures.has(item.mediaStatus) || /broken|unavailable|denied|login/i.test(String(item.linkStatus || ""))) continue;
+      const target = canonicalEvidenceTarget(item.externalUrl || item.href || "");
+      const prior = byTarget.get(target);
+      if (!prior) continue;
+      item.reviewReused = true;
+      item.reviewerConfirmedAt = confirmation.confirmedAt || null;
+      item.priorEvidenceDecision = prior.decision;
+      if (prior.seconds > 0) item.reviewerDurationSeconds = prior.seconds;
+      reused.push({ ...prior, key:target, reviewer:confirmation.reviewer || "", confirmedAt:confirmation.confirmedAt || null });
+    }
+    if (reused.length) payload.priorEvidenceDecisions = reused;
   }
-  if (reused.length) payload.priorEvidenceDecisions = reused;
+
+  // Older dashboard confirmations were stored at criterion level. Section numbering can
+  // change between Auditor versions, so key equality would incorrectly create repeat work.
+  // Reuse the completed result only when the scoring envelope is unchanged and every
+  // previously confirmed destination is still present. Newly added evidence does not make
+  // an unchanged prior confirmation become repeat work.
+  const priorDecisions = confirmation.decisions && typeof confirmation.decisions === "object" ? confirmation.decisions : {};
+  if (Object.keys(priorDecisions).length && sameReviewScoreEnvelope(payload, previousPayload)
+    && preservesConfirmedEvidenceTargets(payload, previousPayload)) {
+    payload.reviewReuseEnvelope = {
+      confirmedScore:Number(payload.confirmedScore),
+      possibleScore:Number(payload.possibleScore),
+      threshold:Number(payload.threshold)
+    };
+    const confirmedScore = Math.max(0, Math.min(AUDIT_MAX_SCORE, Number(previous.score ?? previousPayload.confirmedScore ?? 0)));
+    const threshold = Number(payload.threshold ?? previous.passing_score ?? 80);
+    payload.confirmedScore = confirmedScore;
+    payload.possibleScore = confirmedScore;
+    payload.internalStatus = confirmedScore >= threshold ? "pass" : "has_content";
+    payload.reviewConfirmation = {
+      ...confirmation,
+      reusedFromRunId:previous.run_id,
+      reusedAt:new Date().toISOString(),
+      reuseBasis:"same_score_envelope_and_prior_evidence_preserved"
+    };
+    payload.priorReviewReuse = {
+      runId:previous.run_id,
+      confirmedAt:confirmation.confirmedAt || null,
+      reviewer:confirmation.reviewer || "",
+      basis:"same_score_envelope_and_prior_evidence_preserved"
+    };
+  }
   return payload;
 }
 
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
+  const course = String(submittedPayload.courseId || "").trim();
+  await attachPriorEvidenceDecisions(course, submittedPayload);
   const { payload, gate } = applyAutomaticPublicationGate(submittedPayload);
   const externalId = String(payload.auditId || payload.runId || "").trim();
-  const course = String(payload.courseId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
   if (!externalId || !course || !allowed.has(payload.internalStatus)) throw Object.assign(new Error("invalid_audit_result"), { status: 400 });
-  await attachPriorEvidenceDecisions(course, payload);
   const path = `evidence/${course}/${externalId}.json`;
   const bytes = new TextEncoder().encode(JSON.stringify(payload.evidenceSnapshot || {}));
   const { error: uploadError } = await db.storage.from("audit-evidence").upload(path, bytes, {
