@@ -830,18 +830,43 @@ function canonicalEvidenceTarget(value = "") {
   } catch { return String(value || "").trim(); }
 }
 
+function normalizeCloudAudioEvidence(payload) {
+  const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
+  for (const item of activities) {
+    const raw = [item?.externalUrl, item?.href, item?.title, item?.resource?.target, item?.resource?.name].filter(Boolean).join(" ");
+    let decoded = raw;
+    for (let index = 0; index < 3; index += 1) {
+      try { decoded = decodeURIComponent(decoded); } catch { break; }
+    }
+    if (!/\.(?:m4a|mp3|wav|ogg|oga|aac|flac|opus|wma)(?:$|[?#&\s])/i.test(decoded)) continue;
+    item.mediaType = "audio";
+    if (item.kind === "podcast") {
+      item.mediaStatus = "podcast_audio";
+      item.accessNote = "ยืนยันว่าเป็นคลิปเสียงจากชนิดไฟล์ — ให้ผู้ตรวจกรอกและยืนยันเวลา";
+    }
+  }
+  return payload;
+}
+
 function resolveAutomaticInstructorCriterion(payload) {
   const snapshot = payload?.evidenceSnapshot || {};
   const summary = snapshot.instructorSummary || {};
-  const complete = summary.identityComplete === true && summary.contactComplete === true && summary.hasInstructorPhoto === true;
+  const complete = summary.identityComplete === true && summary.contactComplete === true
+    && (summary.hasInstructorPhoto === true || summary.reviewStatus === "evidence_found");
   if (!complete) return payload;
   const firstWeek = Array.isArray(snapshot.weeks) ? snapshot.weeks.find((week) => Number(week?.session) === 1) : null;
-  const criterion = Array.isArray(firstWeek?.criteria) ? firstWeek.criteria.find((item) => Number(item?.criterion) === 2) : null;
-  if (!criterion || criterion.status !== "needs_review") return payload;
-  criterion.status = "pass";
+  const criterion = Array.isArray(firstWeek?.criteria) ? firstWeek.criteria.find((item) => Number(item?.criterion) === 2 || /ข้อมูลผู้สอน/.test(String(item?.title || item?.label || ""))) : null;
   const reviewable = Array.isArray(payload.reviewableCriteria) ? payload.reviewableCriteria : [];
-  payload.reviewableCriteria = reviewable.filter((item) => !(Number(item?.session) === 1 && Number(item?.criterion) === 2));
-  const confirmed = Math.max(0, Number(payload.confirmedScore ?? payload.score ?? 0)) + 1;
+  const instructorReview = (item) => Number(item?.session) === 1 && (Number(item?.criterion) === 2 || /ข้อมูลผู้สอน/.test(String(item?.title || item?.label || "")));
+  const hadReviewableInstructor = reviewable.some(instructorReview);
+  const criterionNeededReview = criterion?.status === "needs_review";
+  if (criterion) criterion.status = "pass";
+  payload.reviewableCriteria = reviewable.filter((item) => !instructorReview(item));
+  // Some 0.13.x payloads already included the instructor point but retained a
+  // stale reviewable row.  Add the point only when the criterion itself was
+  // still pending (or when the old payload had no criterion row at all).
+  const addPoint = criterionNeededReview || (!criterion && hadReviewableInstructor);
+  const confirmed = Math.max(0, Number(payload.confirmedScore ?? payload.score ?? 0)) + (addPoint ? 1 : 0);
   const possible = Math.max(confirmed, Number(payload.possibleScore ?? confirmed));
   const threshold = Number(payload.threshold ?? 80);
   payload.confirmedScore = confirmed;
@@ -938,6 +963,7 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
+  normalizeCloudAudioEvidence(submittedPayload);
   resolveAutomaticInstructorCriterion(submittedPayload);
   const course = String(submittedPayload.courseId || "").trim();
   await attachPriorEvidenceDecisions(course, submittedPayload);
