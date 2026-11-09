@@ -1628,3 +1628,29 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Supabase Edge Function `api` deploy เป็น version **40** และสถานะ ACTIVE
 - ฐานข้อมูลยืนยัน SOC119 ล่าสุดเป็น `pass`, score 93 และ published run เป็น run วันที่ 9 พฤศจิกายน 2569
 
+
+## 59. Dashboard 0.13.28 — ข้อมูลผู้สอนครบต้องผ่านอัตโนมัติ (2026-11-09)
+
+**สถานะ: แก้ Extension + backend + หน้าหลักฐานแล้ว / Deploy Edge Function แล้ว / ซ่อมผลล่าสุดแล้ว / ZIP 0.13.28 เผยแพร่ใหม่แล้ว**
+
+### สาเหตุ
+- `checklistForWeek()` สร้าง `instructorResult` ถูกต้องจาก `identityComplete && contactComplete` แล้ว
+- แต่เส้นทาง GR/GS ครั้งที่ 1 กลับใส่ `result("needs_review", instructorDetail)` แบบค่าคงที่แทน `instructorResult`
+- จึงเกิดผลขัดแย้ง: รายละเอียดเขียนว่า `พบข้อมูลผู้สอนครบอัตโนมัติ` แต่สถานะยังเป็น `รอตรวจ` และหน้า Dashboard แสดงปุ่มให้ผู้ตรวจตัดสิน
+- หน้า `audit-evidence.js` ยังแสดงปุ่มตัดสิน criterion แม้สถานะรวมของ run ไม่ใช่ `needs_review` ทำให้เห็นปุ่มที่บันทึกไม่ได้ในผล `has_content`
+
+### การแก้ไข
+- Extension ใช้ `instructorResult` จริงในแถวข้อมูลผู้สอนครั้งที่ 1 ของ GR/GS
+- Backend `resolveAutomaticInstructorCriterion()` ตรวจ `identityComplete`, `contactComplete`, `hasInstructorPhoto`; หากครบจะเปลี่ยน criterion 1:2 เป็น `pass`, ตัดออกจาก `reviewableCriteria`, คืนคะแนนยืนยัน 1 คะแนน และคำนวณสถานะใหม่ก่อนบันทึก
+- หน้า Dashboard แสดงปุ่มยืนยัน criterion เฉพาะ run ที่มี `internalStatus=needs_review` เท่านั้น
+- ซ่อมผลล่าสุดของ IGD211, IGD371 และ MAT320: เปลี่ยนข้อมูลผู้สอนเป็นผ่านอัตโนมัติ ตัดงานยืนยัน และคืนคะแนนหลังบ้านวิชาละ 1 คะแนน
+
+### การตรวจสอบและ Artifact
+- Extension tests ผ่าน **41/41**, fail 0
+- Dashboard tests ผ่าน **35/35**, fail 0
+- เปิด ZIP จริงและรัน tests จากไฟล์ที่แตกออกมาแล้วผ่าน **41/41**
+- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,352,449 bytes
+- SHA-256: `7E1C1BABE6DA741686C57E0FFD3C1FF69F7DA2160F922089CC772BAD736951BE`
+- Supabase Edge Function `api` version **41**, ACTIVE
+- GitHub release commit: `3192ef0cc4b08637ed5592481cad1bc095d9be92`
+
