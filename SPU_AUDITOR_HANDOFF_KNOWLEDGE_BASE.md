@@ -1599,3 +1599,32 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - เปิด ZIP จริงและอ่าน `manifest.json` ภายในแล้วทั้งสองไฟล์
 - ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ห้ามกล่าวว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL ดาวน์โหลดจริง
 
+
+## 58. Dashboard — ใช้ผลยืนยันเดิมโดยไม่สร้างงานซ้ำ (2026-11-09)
+
+**สถานะ: แก้ backend และ Deploy Supabase Edge Function แล้ว / tests 34/34 ผ่าน / แก้ผลล่าสุด SOC119 แล้ว**
+
+### อาการและสาเหตุ
+- SOC119 เคยยืนยันผลรอบ Auditor 0.13.16 แล้ว ได้ 93/110 และผ่าน แต่รอบ 0.13.28 กลับเป็น 76/110 `needs_review` และขอให้ผู้ตรวจยืนยัน 17 คะแนนซ้ำ
+- ผลยืนยันรุ่นเดิมเก็บเป็น `reviewConfirmation.decisions` ระดับ criterion ซึ่งผูกกับเลขครั้ง/เลขหัวข้อ
+- ตัวจัด Section รุ่นใหม่ย้ายหลักฐานเดิมไปอยู่คนละเลขครั้ง จึงทำให้ key เดิมไม่ตรง ทั้งที่ปลายทางหลักฐานเดิมยังอยู่ครบ
+- backend เดิมรองรับการใช้ซ้ำเฉพาะ `evidenceDecisions` รายลิงก์จากรุ่นใหม่ และค้นเฉพาะ run ก่อนหน้าทันที จึงไม่พบผลยืนยันเก่าหากมี run `needs_review` คั่นอยู่
+
+### การแก้ไขถาวร
+- ค้นย้อนสูงสุด 10 run และเลือก run ล่าสุดที่มีผลยืนยันเสร็จสมบูรณ์ ไม่ให้ run รอตรวจที่คั่นอยู่บังผลเดิม
+- canonicalize URL โดยตัด tracking parameters (`utm_*`, `fbclid`, `gclid`, `si`, `feature`, `t`, `nav`, `ga`, `referrer`, `referrerscenario`, `usp`) แต่รักษาตัวระบุปลายทางจริง เช่น SharePoint `id`
+- ใช้ผลเดิมเมื่อ score envelope ก่อนยืนยันตรงกัน (`confirmedScore`, `possibleScore`, `threshold`) และหลักฐานปลายทางทุกตัวที่เคยยืนยันยังอยู่ครบ
+- ยอมรับหลักฐานใหม่ที่เพิ่มเข้ามาโดยไม่ล้างผลยืนยันเดิม แต่หากปลายทางเดิมหายหรือเปลี่ยน หรือ score envelope เปลี่ยน จะไม่ใช้ผลเดิมอัตโนมัติ
+- เก็บ `reviewReuseEnvelope`, `priorReviewReuse`, `reusedFromRunId`, `reusedAt` และ `reuseBasis` ใน payload เพื่อให้ตรวจสอบย้อนหลังและใช้ซ้ำต่อเนื่องในรอบถัดไปได้
+- ทำ reuse ก่อนคำนวณ publication gate และก่อนบันทึก run เพื่อให้ `reviewable_points=0`, สถานะ และผลเผยแพร่สอดคล้องกัน
+
+### การแก้ข้อมูล SOC119
+- เทียบ run เดิม `3fc5a93f-8f5c-44a9-90f0-b336fd641bd1` กับ run ล่าสุด `5893ba7f-36af-4651-b2c9-dc3ccaf53f9d`
+- score envelope ตรงกัน: 76/93 ผ่านที่ 80 และหลักฐานปลายทางเดิมไม่หายแม้มีหลักฐานใหม่เพิ่ม
+- แก้ run ล่าสุดเป็น 93/110, `pass`, `reviewable_points=0` และตั้งเป็น published run ล่าสุดแล้ว จึงไม่ควรปรากฏเป็นงานรอตรวจอีก
+
+### การตรวจสอบ
+- Dashboard tests ผ่าน **34/34**, fail 0
+- Supabase Edge Function `api` deploy เป็น version **40** และสถานะ ACTIVE
+- ฐานข้อมูลยืนยัน SOC119 ล่าสุดเป็น `pass`, score 93 และ published run เป็น run วันที่ 9 พฤศจิกายน 2569
+
