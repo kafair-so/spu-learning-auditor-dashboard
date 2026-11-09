@@ -36,6 +36,14 @@ test("completed legacy review is reused when score envelope and evidence destina
   assert.ok(api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)") < api.indexOf("applyAutomaticPublicationGate\(submittedPayload\)"));
 });
 
+test("complete instructor evidence closes the criterion before result ingestion", () => {
+  assert.match(api,/function resolveAutomaticInstructorCriterion/);
+  assert.match(api,/summary\.identityComplete === true && summary\.contactComplete === true && summary\.hasInstructorPhoto === true/);
+  assert.match(api,/criterion\.status = "pass"/);
+  assert.match(api,/payload\.reviewableCriteria = reviewable\.filter/);
+  assert.ok(api.indexOf("resolveAutomaticInstructorCriterion\(submittedPayload\)") < api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)"));
+});
+
 test("numeric scores are absent from public and ordinary-admin payloads", () => {
   const publicRun = api.slice(api.indexOf("function publicHistoryRunRecord"),api.indexOf("function limitedAdminResultRecord"));
   const limited = api.slice(api.indexOf("function limitedAdminResultRecord"),api.indexOf("// Only the current"));
