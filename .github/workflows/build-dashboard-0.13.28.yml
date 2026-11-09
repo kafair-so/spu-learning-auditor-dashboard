@@ -28,7 +28,13 @@ jobs:
           source = Path("SPU-Learning-Auditor-Dashboard-0.13.21.zip")
           target = Path("build/dashboard-0.13.28")
           with ZipFile(source) as archive:
-              archive.extractall(target)
+              for member in archive.infolist():
+                  try:
+                      archive.extract(member, target)
+                  except (OSError, ValueError) as error:
+                      if member.filename != "vendor/lang/chi_tra.traineddata":
+                          raise
+                      print(f"Skipping damaged legacy OCR file: {error}")
           PY
           cp -R release-src/dashboard-0.13.28/. build/dashboard-0.13.28/
           curl --fail --location --retry 3 \
