@@ -1654,3 +1654,23 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Supabase Edge Function `api` version **41**, ACTIVE
 - GitHub release commit: `3192ef0cc4b08637ed5592481cad1bc095d9be92`
 
+
+## 60. Dashboard — คืนการยืนยันตารางที่ 3 และรักษา 5 ข้อ (2026-11-09)
+
+**สถานะ: แก้หน้า Dashboard + backend แล้ว / tests 36/36 ผ่าน / Deploy Edge Function แล้ว**
+
+### อาการ
+- หลังปิดงานข้อมูลผู้สอนอัตโนมัติ หน้า evidence ซ่อนปุ่มยืนยันทั้งหมดเมื่อสถานะรวมเป็น `has_content` แม้ยังมีคะแนนตารางที่ 3 รอผู้ตรวจ
+- `reviewCandidates()` รวม criterion ก่อน manual แล้วตัดรายการด้วย `.slice(0,count)` เมื่อจำนวนคลาดเคลื่อน 1 ข้อจึงตัด manual ตัวท้ายสุด คือ `การสำรองเนื้อหา`
+
+### การแก้ไข
+- ตารางที่ 3 แสดงครบ 5 ข้อเสมอ: การพบนักศึกษา, คุณภาพวิดีโอ, การวางสื่อ, การส่งงาน, การสำรองเนื้อหา
+- กันพื้นที่ 5 ข้อ manual ก่อนจำกัดจำนวน criterion ทั้งในหน้าเว็บและ backend จึงไม่ตัดข้อที่ 5 จากท้ายรายการอีก
+- เปิดปุ่ม `ผ่าน/ไม่ผ่าน` และแผงยืนยันสำหรับทั้ง `needs_review` และ `has_content` เมื่อ `possibleScore > confirmedScore`
+- backend อนุญาตการบันทึกผลของ `has_content` ที่ยังมี `reviewable_points > 0`; หลังยืนยันครบจะคำนวณคะแนนและสถานะใหม่ตามเกณฑ์เดิม
+- เปลี่ยนหัวข้อเป็น `ตารางที่ 3 — ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน` และระบุชัดว่ามีครบ 5 ข้อ
+
+### การตรวจสอบ
+- Dashboard tests ผ่าน **36/36**, fail 0
+- Supabase Edge Function `api` version **42**, ACTIVE
+
