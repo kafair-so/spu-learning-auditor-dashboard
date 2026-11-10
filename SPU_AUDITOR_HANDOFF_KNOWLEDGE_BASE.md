@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 61202)
-Total output lines: 1726
+Warning: truncated output (original token count: 61325)
+Total output lines: 1728
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,8 +687,7 @@ Total output lines: 1726
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…11202 tokens truncated…ซ่อมข้อมูลใน Sheet จริง: รวมผล 134 รายวิชาให้ต่อเนื่องที่แถว 3–136; ตรวจซ้ำแล้วไม่มีช่องว่าง ไม่มีแถวที่ Course Profile เลื่อนไปอยู่คอลัมน์ A และไม่มีข้อมูลตกค้างหลังแถวสุดท้าย
-- Deploy Apps Script production สำเร็จเป็น **Version 5** เวลา 2026-10-22 16:05 Asia/Bangkok โดยคง Deployment ID และ Web App URL เดิม
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…11325 tokens truncated…จเป็น **Version 5** เวลา 2026-10-22 16:05 Asia/Bangkok โดยคง Deployment ID และ Web App URL เดิม
 
 ### เวอร์ชันและการทดสอบ
 - Extension/package version: **0.2.8**
@@ -1376,6 +1375,8 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 
 ### การตรวจสอบ
 - Dashboard tests ผ่าน **39/39**, fail 0
-- test ประกอบไฟล์สองส่วนกลับเป็น ZIP ได้ 9,353,370 bytes และ hash ตรงต้นฉบับทุก byte
+- ดาวน์โหลดทั้ง 24 ส่วนจาก GitHub Pages จริงแล้วได้ขนาดตรงทุกส่วน ประกอบกลับเป็น ZIP 9,353,370 bytes และ hash ตรงต้นฉบับทุก byte
+- เปิด ZIP จากข้อมูลที่ดาวน์โหลดจริงได้ 120 entries, `manifest.json` เป็น 0.13.28 และตรวจ CRC ทุกไฟล์ผ่าน (`testzip()` ไม่พบไฟล์เสีย)
 - test ตรวจว่าปุ่มใน HTML และ JavaScript ชี้ผ่านตัวดาวน์โหลดที่ตรวจ hash แล้ว
+- GitHub Pages deploy run `42744789904` สำเร็จ; release commit `6fba7f27ce82067bb27003c53f1b9f1a79a93b3e`
 
