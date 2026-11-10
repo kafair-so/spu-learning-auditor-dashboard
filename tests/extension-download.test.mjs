@@ -6,11 +6,9 @@ import test from "node:test";
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url));
 
 test("extension download page reconstructs the complete verified ZIP", () => {
-  const first = read("extension-0.13.28.part1");
-  const second = read("extension-0.13.28.part2");
-  assert.equal(first.length, 4500000);
-  assert.equal(second.length, 4853370);
-  const archive = Buffer.concat([first, second]);
+  const parts = Array.from({ length: 24 }, (_, index) => read(`extension-0.13.28.part${index + 1}`));
+  assert.deepEqual(parts.map(part => part.length), [...Array(23).fill(400000), 153370]);
+  const archive = Buffer.concat(parts);
   assert.equal(archive.length, 9353370);
   assert.equal(crypto.createHash("sha256").update(archive).digest("hex").toUpperCase(), "B03D7BE26D727099158BB044B3A5AB951A8B42D6C1BCC93102BCABAED291CD81");
   assert.equal(archive.subarray(0, 2).toString("ascii"), "PK");

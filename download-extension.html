@@ -19,8 +19,8 @@
   </main>
   <script>
     const PARTS=[
-      {url:"extension-0.13.28.part1",size:4500000},
-      {url:"extension-0.13.28.part2",size:4853370}
+      ...Array.from({length:23},(_,index)=>({url:`extension-0.13.28.part${index+1}`,size:400000})),
+      {url:"extension-0.13.28.part24",size:153370}
     ];
     const EXPECTED_SIZE=9353370;
     const EXPECTED_SHA256="B03D7BE26D727099158BB044B3A5AB951A8B42D6C1BCC93102BCABAED291CD81";
@@ -36,7 +36,7 @@
           if(!response.ok)throw new Error(`ดาวน์โหลดส่วนที่ ${index+1} ไม่สำเร็จ (${response.status})`);
           const bytes=new Uint8Array(await response.arrayBuffer());
           if(bytes.byteLength!==PARTS[index].size)throw new Error(`ส่วนที่ ${index+1} ได้ข้อมูลไม่ครบ`);
-          chunks.push(bytes);bar.style.width=`${45*(index+1)}%`;
+          chunks.push(bytes);bar.style.width=`${85*(index+1)/PARTS.length}%`;
         }
         const merged=new Uint8Array(EXPECTED_SIZE);let offset=0;
         for(const chunk of chunks){merged.set(chunk,offset);offset+=chunk.byteLength;}
