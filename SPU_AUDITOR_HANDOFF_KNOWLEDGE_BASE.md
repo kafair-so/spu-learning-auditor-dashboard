@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 64811)
-Total output lines: 1812
+Warning: truncated output (original token count: 65634)
+Total output lines: 1832
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,37 +687,7 @@ Total output lines: 1812
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…14811 tokens truncated…วน `คณะ` และ `Course Profile` อยู่แถว 2; ข้อมูลรายวิชาเริ่มแถว 3
-- Apps Script Version 6 ตรวจเฉพาะ A1:B1 จึงปฏิเสธโครงสร้างที่ยังถูกต้องนี้ก่อนเขียนผล
-
-### การแก้ไข
-- ปรับ `ensureInternalScoreSheet_` ให้อ่าน A1:B2 และยอมรับเมื่อพบ `คณะ` กับ `Course Profile` ในแถว 1 **หรือ** แถว 2
-- ยังปฏิเสธชีตที่ไม่พบหัวคอลัมน์ดังกล่าวในทั้งสองแถว
-- ไม่ย้ายหัวตาราง ไม่แก้คะแนนเดิม ไม่เปลี่ยนข้อมูลใน Google Sheet และข้อมูลรายวิชายังเริ่มแถว 3
-- อัปเดต source ที่ `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16/apps-script/Code.gs`, README และ RELEASE-NOTES
-
-### การทดสอบและ Production
-- Automated test ผ่านครบ **39 test files, 0 fail**; regression เฉพาะ Apps Script retention/certification ผ่าน
-- Deploy สำเร็จเป็น **Version 7** เวลา 26/10/2026 13:17 น. Asia/Bangkok
-- Deployment ID เดิม: `AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA`
-- Web App URL เดิม: `https://script.google.com/macros/s/AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA/exec`
-- ตรวจ doGet หลัง Deploy แล้วตอบ `{"ok":true,"service":"SPU Learning Auditor Evidence","version":"2"}`
-
-### วิธีดำเนินการกับรายการที่เคยส่งไม่สำเร็จ
-- ไม่ต้องตรวจรายวิชาใหม่และไม่ต้อง Reload/Load Unpacked Extension
-- กด `ส่ง PDF ใหม่` ที่การ์ดเดิม ระบบจะส่งข้อมูลผ่าน Version 7 ไปยัง URL เดิม
-
-
-## 41. วินิจฉัย Dashboard ไม่แสดงจำนวนตรวจเสร็จระหว่างคิว GR 120 วิชา (2026-10-26)
-
-**สถานะ: พบสาเหตุแล้ว / ยืนยันผลตรวจไม่สูญหาย / ยังไม่ได้แก้ source หรือ deploy**
-
-### อาการ
-- Dashboard แสดงว่าสร้างคิว GR 120 วิชา; ภาพผู้ใช้ขณะนั้นเป็น queued 109, running 1, completed 0, failed 0 แม้เครื่องตรวจทำไปแล้ว 10 วิชา
-- ระหว่างตรวจฐานข้อมูลจำนวนงาน completed เพิ่มต่อเนื่องจาก 13 เป็น 14 แสดงว่า worker และ RPC บันทึกผลจริง แต่ตัวสรุปคิวเลือกแถวผิด
-
-### หลักฐานจาก Production Supabase
-- `record_audit_result` เปลี่ยนงานที่ส่งผลสำเร็จเป็น `completed` ถูกต้อง
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…15634 tokens truncated…t_result` เปลี่ยนงานที่ส่งผลสำเร็จเป็น `completed` ถูกต้อง
 - ตรวจ 13 งาน completed ชุดแรกแล้ว ทั้ง 13 วิชามี `latest_internal_run_id` และพบ `audit_runs` ครบ: pass 3, has_content 7, no_content 1, needs_review 1, audit_failed 1
 - ทุกวิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
 
@@ -1357,4 +1327,24 @@ Total output lines: 1812
 - GitHub release commits: `2efa74d0fc742e1d05360ff30883e34a55bd1e08`, `b6ad96fee518e03110d01f6992d40d9ad90a290d`
 - GitHub Pages deploy runs `42953503335` และ `42953838318` สำเร็จ
 - ตรวจจาก GitHub Pages จริง: หน้า Download แสดง 0.13.30, ทั้ง 24 ส่วนมีขนาดถูกต้อง, ประกอบได้ 9,353,971 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+
+
+## 66. Legacy 0.3.19 / Dashboard 0.13.31 — ป้องกันหัวข้อ “แนะนำผู้สอน” กลืนชื่อจริง (2026-11-11)
+
+**สถานะ: แก้ source และสร้าง ZIP แล้ว / Legacy tests 44/44 / Dashboard tests 42/42 / รอเผยแพร่ Dashboard**
+
+### อาการและสาเหตุ
+- กล่องครั้งที่ 1 มีข้อความหัวข้อ `แนะนำรายวิชา แนะนำผู้สอน แนะนำกิจกรรม และการประเมินผล` แล้วตามด้วย `ผู้สอน อาจารย์จรรยา ผลประเสริฐ`
+- regex เดิมเริ่มจับจากคำว่า `ผู้สอน` ในหัวข้อและกินข้อความต่อเนื่องจนรวมชื่อจริงไว้ในก้อนเดียว จากนั้นตัวกรองพบคำว่า `กิจกรรม` จึงทิ้งก้อนทั้งหมด ทำให้ชื่อจริงไม่มีโอกาสถูกจับรอบใหม่
+- รูปบุคคลอาจถูกพบอยู่แล้ว แต่ `identityComplete` บังคับให้มีทั้งชื่อและรูป จึงตกเป็นไม่ครบ และข้อความรวมเดิมทำให้ดูเหมือนไม่พบทั้งชื่อและรูป
+- Dashboard 0.13.30 ใช้รูปแบบ regex เดียวกัน จึงมีความเสี่ยงเดียวกัน แม้มีตัวทำความสะอาดชื่อเพิ่มเติมแล้ว
+
+### การแก้ไข
+- เปลี่ยนเป็นตรวจทุกตำแหน่งของ marker `ผู้สอน/อาจารย์/Instructor` แยกจากกัน ไม่ให้ marker ในหัวข้อกิน marker และชื่อจริงที่ตามมา
+- อ่านเฉพาะคู่ชื่อ–นามสกุลหลัง marker และปฏิเสธคำขึ้นต้นที่เป็นหัวข้อ เช่น `แนะนำ`, `กิจกรรม`, `ข้อมูล`, `การประเมิน`, `ช่องทาง` และ `รายวิชา`
+- เพิ่ม regression จากข้อความจริง ต้องได้ `จรรยา ผลประเสริฐ`; หัวข้อ `ผู้สอน แนะนำกิจกรรม และการประเมินผล` ลำพังต้องไม่ถูกนับเป็นชื่อ
+
+### Artifact
+- Legacy 0.3.19 source tests **44/44**, fail 0; ZIP 9,525,890 bytes, 135 entries, SHA-256 `EEEF1CF01CFDDC0F8B78BEABEFA54AA2FD5AC3AEE5FF6366FAB7A28F3E4A3275`
+- Dashboard 0.13.31 source tests **42/42**, fail 0; ZIP 9,355,337 bytes, 122 entries, SHA-256 `AB4274AD2D3B7C9C360EE8ADCA07459DF3693B064E1BB7172A5990B18B9C65C4`
 
