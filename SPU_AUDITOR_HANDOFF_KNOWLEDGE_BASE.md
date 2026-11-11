@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 63015)
-Total output lines: 1776
+Warning: truncated output (original token count: 63255)
+Total output lines: 1780
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,15 +687,7 @@ Total output lines: 1776
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…13015 tokens truncated…เบียนรับรอง: ทำงานตามกติกาเดิม รวมการเก็บ PDF สูงสุด 2 ไฟล์ต่อวิชา
-- แก้ `normalizeUrl_` ให้ใช้ string parsing ที่รองรับ Apps Script V8 โดยไม่พึ่ง browser URL API
-- Deploy production สำเร็จเป็น **Version 6** เมื่อ 26/10/2026 เวลา 11:27 น. (Asia/Bangkok), คง Deployment ID/Web App URL เดิม
-- doGet หลัง Deploy ตอบ `{"ok":true,"service":"SPU Learning Auditor Evidence","version":"2"}`
-
-### Source และการทดสอบ
-- Source หลัก: `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16/apps-script/Code.gs`
-- เพิ่ม `tests/apps-script-certification.test.mjs` และปรับ retention regression test ให้รองรับ schema 19 คอลัมน์
-- Automated tests ผ่าน **42/42**, 0 fail
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…13255 tokens truncated…น **42/42**, 0 fail
 - อัปเดต README, Apps Script README และ RELEASE-NOTES แล้ว
 - Extension/package ยังคงเป็น **0.2.8**; การเปลี่ยนครั้งนี้อยู่ที่ Apps Script และ Google Sheet จึง **ไม่ต้อง Reload หรือ Load Unpacked ใหม่**
 
@@ -1357,7 +1349,7 @@ Total output lines: 1776
 
 ## 64. Dashboard 0.13.29 — ตรวจพบ “แบบฝึกหัดท้ายบทเรียน” ที่เป็น Moodle File (2026-11-11)
 
-**สถานะ: แก้ source แล้ว / tests source และ ZIP ผ่าน 36/36 / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้เผยแพร่ขึ้นหน้าเว็บ**
+**สถานะ: แก้ source แล้ว / tests source และ ZIP ผ่าน 36/36 / Dashboard tests ผ่าน 39/39 / เผยแพร่และตรวจจาก GitHub Pages จริงแล้ว**
 
 ### อาการและสาเหตุ
 - รายวิชามีป้าย `กิจกรรม ท้ายบทเรียน` และไฟล์ชื่อ `แบบฝึกหัดท้ายบทเรียนครั้งที่ 1 ...` ชัดเจน แต่ผลตรวจครั้งที่ 1 แจ้งว่าไม่พบกิจกรรมท้ายบท
@@ -1376,4 +1368,8 @@ Total output lines: 1776
 - ZIP size: **9,353,632 bytes**, 120 entries
 - SHA-256: `C3A8EDB18767C6AD7A4C7D8FC692DC0D941A704FFB425ABE9ED0D57CA4474111`
 - เปิด ZIP จริง ยืนยัน manifest version 0.13.29 และรัน test files จากไฟล์ที่แตกออกมาแล้วผ่าน **36/36**, fail 0
+- ตัวดาวน์โหลดบนหน้าเว็บประกอบไฟล์จาก 24 ส่วน ตรวจขนาดรวมและ SHA-256 ก่อนปล่อย ZIP; Dashboard tests ผ่าน **39/39**, fail 0
+- GitHub release commits: `b870999b06a34de7ccaa7f211f04271d006f2873`, `c026005c72044190b9f81297a00d6eaba345db31`
+- GitHub Pages deploy run `42949712654` สำเร็จ และทดสอบดาวน์โหลดทั้ง 24 ส่วนจาก Pages จริงแล้วได้ 9,353,632 bytes, hash ตรง และ ZIP magic เป็น `PK`
+- รายงานที่สร้างด้วย 0.13.28 หรือต่ำกว่ายังคงผลเดิม ต้องติดตั้ง/Reload 0.13.29 แล้วตรวจรายวิชาใหม่จึงจะจำแนกรายการนี้เป็นกิจกรรมท้ายบท
 
