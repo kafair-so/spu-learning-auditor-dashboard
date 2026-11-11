@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 64685)
-Total output lines: 1809
+Warning: truncated output (original token count: 64811)
+Total output lines: 1812
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,9 +687,7 @@ Total output lines: 1809
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…14685 tokens truncated…ะสาเหตุ
-- เครื่องตรวจแสดง `ส่งหลักฐานไม่สำเร็จ: โครงสร้างชีตคะแนนภายในไม่ถูกต้อง: ต้องเริ่มด้วย คณะ และ Course Profile`
-- แท็บ `ผลคะแนนภายใน (Local Legacy)` ใช้หัวตารางสองชั้น: แถว 1 เป็นชื่อกลุ่มคะแนน ส่วน `คณะ` และ `Course Profile` อยู่แถว 2; ข้อมูลรายวิชาเริ่มแถว 3
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…14811 tokens truncated…วน `คณะ` และ `Course Profile` อยู่แถว 2; ข้อมูลรายวิชาเริ่มแถว 3
 - Apps Script Version 6 ตรวจเฉพาะ A1:B1 จึงปฏิเสธโครงสร้างที่ยังถูกต้องนี้ก่อนเขียนผล
 
 ### การแก้ไข
@@ -1331,7 +1329,7 @@ Total output lines: 1809
 
 ## 65. Dashboard 0.13.30 — ใช้ผลยืนยันเดิมเป็นรายหลักฐานและแก้ข้อมูลผู้สอนสลับกัน (2026-11-11)
 
-**สถานะ: แก้ Extension + backend แล้ว / tests ผ่าน / Edge Function version 44 ACTIVE / รอเผยแพร่ GitHub Pages**
+**สถานะ: แก้ Extension + backend แล้ว / tests ผ่าน / Edge Function version 44 ACTIVE / เผยแพร่และตรวจ GitHub Pages จริงแล้ว**
 
 ### อาการและสาเหตุ
 - MKT453 รอบ Auditor 0.13.16 เคยยืนยันแล้วและผ่าน 91/110 แต่รอบ 0.13.28 กลับเป็น 72/110 `needs_review` ทั้งที่ลิงก์ Podcast ทั้ง 15 ครั้งยังเหมือนเดิมทุกตัว
@@ -1356,4 +1354,7 @@ Total output lines: 1809
 - ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.30.zip`
 - ZIP size: **9,353,971 bytes**, 120 entries
 - SHA-256: `321265EFEF62BB8345F28F3DB92510957634A14EA3391B573D16ABB949E0EC24`
+- GitHub release commits: `2efa74d0fc742e1d05360ff30883e34a55bd1e08`, `b6ad96fee518e03110d01f6992d40d9ad90a290d`
+- GitHub Pages deploy runs `42953503335` และ `42953838318` สำเร็จ
+- ตรวจจาก GitHub Pages จริง: หน้า Download แสดง 0.13.30, ทั้ง 24 ส่วนมีขนาดถูกต้อง, ประกอบได้ 9,353,971 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 
