@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const evidence = read("audit-evidence.js");
 const api = read("supabase/functions/api/index.ts");
+const reusePolicy = read("supabase/functions/api/review-reuse.js");
 const auditApi = read("audit-api.js");
 
 test("video and Podcast review is itemized with links, duration and use decisions", () => {
@@ -19,21 +20,27 @@ test("video and Podcast review is itemized with links, duration and use decision
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
-  assert.match(api,/function canonicalEvidenceTarget/);
-  assert.match(api,/referrerscenario/);
+  assert.match(reusePolicy,/function canonicalReviewTarget/);
+  assert.match(reusePolicy,/referrerscenario/);
   assert.match(api,/attachPriorEvidenceDecisions/);
   assert.match(api,/item\.reviewReused = true/);
   assert.match(api,/failures\.has\(item\.mediaStatus\)/);
 });
 
-test("completed legacy review is reused when score envelope and evidence destinations are unchanged", () => {
-  assert.match(api,/function preservesConfirmedEvidenceTargets/);
-  assert.match(api,/function sameReviewScoreEnvelope/);
-  assert.match(api,/reusedFromRunId:previous\.run_id/);
-  assert.match(api,/reuseBasis:"same_score_envelope_and_prior_evidence_preserved"/);
-  assert.match(api,/previousPayload\?\.reviewReuseEnvelope/);
-  assert.match(api,/payload\.possibleScore = confirmedScore/);
+test("prior review decisions are reused per criterion and canonical destination even when the score envelope changes", () => {
+  assert.match(reusePolicy,/function matchingPriorReviewDecisions/);
+  assert.match(reusePolicy,/function evidenceTargetsForCriterion/);
+  assert.match(reusePolicy,/basis:"same_criterion_and_canonical_destinations"/);
+  assert.match(reusePolicy,/currentPayload\.reviewConfirmation/);
+  assert.match(api,/reusePriorReviewDecisions\(payload, previousPayload, previous\.run_id\)/);
   assert.ok(api.indexOf("attachPriorEvidenceDecisions\(course, submittedPayload\)") < api.indexOf("applyAutomaticPublicationGate\(submittedPayload\)"));
+});
+
+test("saved reviewer decisions replace stale pending criterion states", () => {
+  assert.match(api,/applyReviewDecisionStatuses\(source, reviewConfirmation\.decisions/);
+  assert.match(api,/source_payload:resolvedSource/);
+  assert.match(api,/const savedDecisions = source\?\.reviewConfirmation\?\.decisions/);
+  assert.match(reusePolicy,/item\.status = decisions\[key\] \? "pass" : "fail"/);
 });
 
 test("complete instructor evidence closes the criterion before result ingestion", () => {
