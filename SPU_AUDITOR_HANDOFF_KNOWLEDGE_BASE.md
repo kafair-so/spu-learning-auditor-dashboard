@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 65729)
-Total output lines: 1834
+Warning: truncated output (original token count: 66254)
+Total output lines: 1854
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,23 +687,7 @@ Total output lines: 1834
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…15729 tokens truncated…วิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
-
-### สาเหตุในโค้ด
-- `enqueue_selected_audits` ใช้ job_key เดิมและ requeue แถวเก่าด้วยการอัปเดต `updated_at`; ค่า `created_at` ของงานยังเป็นวันที่สร้างครั้งแรก
-- `queueOverview()` ดึง `audit_jobs` เรียง `created_at desc` แล้วเลือก terminal job แรกต่อวิชา
-- เมื่อแถว completed ที่เพิ่งตรวจเสร็จมี created_at เก่ากว่าแถว cancelled ในอดีต Dashboard จึงนับ cancelled แทน completed
-- หน้า UI ไม่มีการ์ดแสดง cancelled ทำให้ผู้ใช้เห็น completed=0 ทั้งที่ผลถูกเก็บแล้ว
-
-### แนวทางแก้ที่เสนอ (รอผู้ใช้อนุมัติ)
-- เปลี่ยนการเลือก terminal job ใน `queueOverview()` ให้เรียงตามเวลาสถานะล่าสุด เช่น `updated_at/completed_at` แทน `created_at` โดยยังให้ queued/running มีลำดับความสำคัญสูงสุด
-- เพิ่ม regression test กรณี requeue job เดิมแล้ว completed แต่มี cancelled job ที่ created_at ใหม่กว่า
-- Deploy Supabase Edge Function `api` และตรวจ production ว่า completed เพิ่มตามจำนวนจริงโดยไม่แก้หรือลบ audit history
-
-
-## 42. แก้ Dashboard ให้แสดงจำนวนตรวจเสร็จจากคิว GR ถูกต้อง (2026-10-26)
-
-**สถานะ: แก้ source แล้ว / regression checks ผ่าน / Deploy Supabase Edge Function Version 33 / Production ตรวจแล้ว**
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…16254 tokens truncated…านะ: แก้ source แล้ว / regression checks ผ่าน / Deploy Supabase Edge Function Version 33 / Production ตรวจแล้ว**
 
 ### การแก้ไข
 - ใน `queueOverview()` เพิ่ม `updated_at` ในข้อมูล `audit_jobs`
@@ -1347,4 +1331,24 @@ Total output lines: 1834
 - Dashboard 0.13.31 source tests **42/42**, fail 0; ZIP 9,355,337 bytes, 122 entries, SHA-256 `AB4274AD2D3B7C9C360EE8ADCA07459DF3693B064E1BB7172A5990B18B9C65C4`
 - GitHub release commit `afa14014cf7ddcad7c807aaa8cfcc46982ada561`; Pages run `42977105150` สำเร็จ
 - ตรวจหน้า Download และประกอบ 24 ส่วนจาก GitHub Pages จริงแล้วได้ 9,355,337 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+
+
+## 67. Legacy 0.3.20 / Dashboard 0.13.32 — ตรวจรูป Lazy Load และทำความสะอาดชื่อผู้สอน ARC204 (2026-11-11)
+
+**สถานะ: แก้ source + tests ผ่าน + สร้าง ZIP แล้ว / รอเผยแพร่ Dashboard**
+
+### หลักฐานจาก Structure Scan
+- 0.3.19 พบชื่อเป็น `จรรยา ผลประเสริฐคำอธิบายรายวิชา` และ false positive `General Announcements`
+- `hasInstructorPhoto=false`, `hasIntroductionImage=false`, `identityComplete=false` แต่ช่องทางติดต่อครบ
+- รูปที่ผู้ใช้เห็นจึงถูกตัดก่อนประเมินตัวตน โดยกรณีมี URL ของภาพแต่ขนาดยังเป็นศูนย์ระหว่าง Moodle Lazy Loading ไม่ผ่านเงื่อนไขเดิม
+
+### การแก้ไข
+- รูปในบริบทผู้สอนที่มี `src`, `currentSrc`, `data-src`, `data-lazy-src` หรือ `srcset` นับเป็นหลักฐานภาพได้แม้ขนาดยังไม่พร้อม
+- ยังคงตัด completion icon, activity icon, logo, badge และภาพควบคุมออกก่อน
+- ตัดหัวข้อที่ติดท้ายนามสกุล เช่น `คำอธิบายรายวิชา` และกรอง `General Announcements`
+- regression ใช้ค่าจาก ARC204 จริงและตรวจทั้งรูป Lazy Load กับไอคอนที่ต้องไม่ถูกนับ
+
+### Artifact
+- Legacy 0.3.20: tests **44/44**, ZIP 9,526,466 bytes, SHA-256 `20F7C1B18F8DCA008AFC89F61E9A95BE74A9FE5627A4F18BC813A0D8AB703628`
+- Dashboard 0.13.32: tests **42/42**, ZIP 9,355,824 bytes, SHA-256 `30DD11E0BE0079A32F59E725F67EEE1C825302BD3AD67E6D239C0772A7F9EA71`
 
