@@ -22,5 +22,6 @@ test("dashboard routes the download button through the verified assembler", () =
   assert.match(script, /link\.href="download-extension\.html"/);
   assert.match(downloader, /crypto\.subtle\.digest\("SHA-256",merged\)/);
   assert.match(downloader, /bytes\.byteLength!==PARTS\[index\]\.size/);
+  assert.match(downloader, /const EXPECTED_SIZE=9353632/);
 });
 

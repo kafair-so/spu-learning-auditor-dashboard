@@ -11,7 +11,7 @@
 <body>
   <main class="card">
     <h1>กำลังเตรียม Extension 0.13.29</h1>
-    <p>ระบบจะดาวน์โหลดไฟล์ทั้งสองส่วน ตรวจความครบถ้วน แล้วรวมเป็น ZIP ที่สมบูรณ์ให้อัตโนมัติ</p>
+    <p>ระบบจะดาวน์โหลดไฟล์ทุกส่วน ตรวจความครบถ้วน แล้วรวมเป็น ZIP ที่สมบูรณ์ให้อัตโนมัติ</p>
     <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
     <div class="status" id="status">กำลังเริ่มดาวน์โหลด…</div>
     <button id="retry" type="button" hidden>ลองดาวน์โหลดอีกครั้ง</button>
@@ -22,7 +22,7 @@
       ...Array.from({length:23},(_,index)=>({url:`extension-0.13.29.part${index+1}`,size:400000})),
       {url:"extension-0.13.29.part24",size:153632}
     ];
-    const EXPECTED_SIZE=9353370;
+    const EXPECTED_SIZE=9353632;
     const EXPECTED_SHA256="C3A8EDB18767C6AD7A4C7D8FC692DC0D941A704FFB425ABE9ED0D57CA4474111";
     const status=document.querySelector("#status"),bar=document.querySelector("#bar"),retry=document.querySelector("#retry");
     const hex=buffer=>[...new Uint8Array(buffer)].map(value=>value.toString(16).padStart(2,"0")).join("").toUpperCase();
