@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 65634)
-Total output lines: 1832
+Warning: truncated output (original token count: 65729)
+Total output lines: 1834
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,9 +687,7 @@ Total output lines: 1832
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…15634 tokens truncated…t_result` เปลี่ยนงานที่ส่งผลสำเร็จเป็น `completed` ถูกต้อง
-- ตรวจ 13 งาน completed ชุดแรกแล้ว ทั้ง 13 วิชามี `latest_internal_run_id` และพบ `audit_runs` ครบ: pass 3, has_content 7, no_content 1, needs_review 1, audit_failed 1
-- ทุกวิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…15729 tokens truncated…วิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
 
 ### สาเหตุในโค้ด
 - `enqueue_selected_audits` ใช้ job_key เดิมและ requeue แถวเก่าด้วยการอัปเดต `updated_at`; ค่า `created_at` ของงานยังเป็นวันที่สร้างครั้งแรก
@@ -1331,7 +1329,7 @@ Total output lines: 1832
 
 ## 66. Legacy 0.3.19 / Dashboard 0.13.31 — ป้องกันหัวข้อ “แนะนำผู้สอน” กลืนชื่อจริง (2026-11-11)
 
-**สถานะ: แก้ source และสร้าง ZIP แล้ว / Legacy tests 44/44 / Dashboard tests 42/42 / รอเผยแพร่ Dashboard**
+**สถานะ: แก้ source และสร้าง ZIP แล้ว / Legacy tests 44/44 / Dashboard tests 42/42 / เผยแพร่และตรวจ Dashboard จาก Pages จริงแล้ว**
 
 ### อาการและสาเหตุ
 - กล่องครั้งที่ 1 มีข้อความหัวข้อ `แนะนำรายวิชา แนะนำผู้สอน แนะนำกิจกรรม และการประเมินผล` แล้วตามด้วย `ผู้สอน อาจารย์จรรยา ผลประเสริฐ`
@@ -1347,4 +1345,6 @@ Total output lines: 1832
 ### Artifact
 - Legacy 0.3.19 source tests **44/44**, fail 0; ZIP 9,525,890 bytes, 135 entries, SHA-256 `EEEF1CF01CFDDC0F8B78BEABEFA54AA2FD5AC3AEE5FF6366FAB7A28F3E4A3275`
 - Dashboard 0.13.31 source tests **42/42**, fail 0; ZIP 9,355,337 bytes, 122 entries, SHA-256 `AB4274AD2D3B7C9C360EE8ADCA07459DF3693B064E1BB7172A5990B18B9C65C4`
+- GitHub release commit `afa14014cf7ddcad7c807aaa8cfcc46982ada561`; Pages run `42977105150` สำเร็จ
+- ตรวจหน้า Download และประกอบ 24 ส่วนจาก GitHub Pages จริงแล้วได้ 9,355,337 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 
