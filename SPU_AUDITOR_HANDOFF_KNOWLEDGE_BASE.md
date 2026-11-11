@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 66254)
-Total output lines: 1854
+Warning: truncated output (original token count: 66340)
+Total output lines: 1856
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,11 +687,7 @@ Total output lines: 1854
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…16254 tokens truncated…านะ: แก้ source แล้ว / regression checks ผ่าน / Deploy Supabase Edge Function Version 33 / Production ตรวจแล้ว**
-
-### การแก้ไข
-- ใน `queueOverview()` เพิ่ม `updated_at` ในข้อมูล `audit_jobs`
-- เปลี่ยนลำดับ query จาก `created_at desc` เป็น `updated_at desc, created_at desc`
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…16340 tokens truncated…ted_at desc` เป็น `updated_at desc, created_at desc`
 - queued/running ยังมีลำดับความสำคัญสูงสุดเหมือนเดิม แต่ terminal job ต่อวิชาจะเลือกจากเวลาที่สถานะถูกอัปเดตจริง
 - ไม่แก้หรือลบ `audit_jobs`, `audit_runs`, หลักฐาน หรือประวัติย้อนหลัง
 
@@ -1335,7 +1331,7 @@ Total output lines: 1854
 
 ## 67. Legacy 0.3.20 / Dashboard 0.13.32 — ตรวจรูป Lazy Load และทำความสะอาดชื่อผู้สอน ARC204 (2026-11-11)
 
-**สถานะ: แก้ source + tests ผ่าน + สร้าง ZIP แล้ว / รอเผยแพร่ Dashboard**
+**สถานะ: แก้ source + tests ผ่าน + สร้าง ZIP แล้ว / เผยแพร่และตรวจ Dashboard จาก Pages จริงแล้ว**
 
 ### หลักฐานจาก Structure Scan
 - 0.3.19 พบชื่อเป็น `จรรยา ผลประเสริฐคำอธิบายรายวิชา` และ false positive `General Announcements`
@@ -1351,4 +1347,6 @@ Total output lines: 1854
 ### Artifact
 - Legacy 0.3.20: tests **44/44**, ZIP 9,526,466 bytes, SHA-256 `20F7C1B18F8DCA008AFC89F61E9A95BE74A9FE5627A4F18BC813A0D8AB703628`
 - Dashboard 0.13.32: tests **42/42**, ZIP 9,355,824 bytes, SHA-256 `30DD11E0BE0079A32F59E725F67EEE1C825302BD3AD67E6D239C0772A7F9EA71`
+- GitHub release commit `9e3a3a66f52ea4aa6474bcd4d8b1cb285e637624`; Pages run `42993057489` สำเร็จ
+- ประกอบไฟล์จริงจาก GitHub Pages ครบ 24 ส่วน ได้ 9,355,824 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 
