@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const evidence = read("audit-evidence.js");
+const evidencePage = read("audit-evidence.html");
 const api = read("supabase/functions/api/index.ts");
 const reusePolicy = read("supabase/functions/api/review-reuse.js");
 const auditApi = read("audit-api.js");
@@ -17,6 +18,15 @@ test("video and Podcast review is itemized with links, duration and use decision
   assert.match(evidence,/ใช้ผลยืนยันเดิม/);
   assert.match(auditApi,/evidenceDecisions/);
   assert.match(api,/reviewConfirmation.*evidenceDecisions/);
+});
+
+test("each Podcast criterion exposes its own direct destination link", () => {
+  assert.match(evidence,/criterionEvidenceLinks/);
+  assert.match(evidence,/item\.externalUrl\|\|item\.href/);
+  assert.match(evidence,/เปิด Podcast:/);
+  assert.match(evidence,/ลิงก์ Podcast ของครั้งนี้/);
+  assert.match(evidence,/activitySession\(item\)===Number\(session\)/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261112a/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {

@@ -3,27 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ดาวน์โหลด SPU Learning Auditor 0.13.33</title>
+  <title>ดาวน์โหลด SPU Learning Auditor 0.13.34</title>
   <style>
     :root{font-family:system-ui,"Noto Sans Thai",sans-serif;color:#15375e;background:#eef4fb}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}.card{width:min(620px,100%);padding:32px;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,55,94,.14);text-align:center}h1{margin:0 0 10px;font-size:25px}p{line-height:1.65;color:#52667f}.progress{height:10px;margin:22px 0;border-radius:999px;background:#e6eef8;overflow:hidden}.bar{width:0;height:100%;background:#2167c7;transition:width .2s}.status{min-height:48px;font-weight:700}button{border:0;border-radius:10px;padding:12px 20px;background:#2167c7;color:#fff;font:inherit;font-weight:800;cursor:pointer}button:disabled{cursor:wait;opacity:.65}.error{color:#b42318}.ok{color:#08704a}.small{font-size:13px}
   </style>
 </head>
 <body>
   <main class="card">
-    <h1>กำลังเตรียม Extension 0.13.33</h1>
+    <h1>กำลังเตรียม Extension 0.13.34</h1>
     <p>ระบบจะดาวน์โหลดไฟล์ทุกส่วน ตรวจความครบถ้วน แล้วรวมเป็น ZIP ที่สมบูรณ์ให้อัตโนมัติ</p>
     <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
     <div class="status" id="status">กำลังเริ่มดาวน์โหลด…</div>
     <button id="retry" type="button" hidden>ลองดาวน์โหลดอีกครั้ง</button>
-    <p class="small">ไฟล์ที่ได้ชื่อ <b>SPU-Learning-Auditor-Dashboard-0.13.33.zip</b></p>
+    <p class="small">ไฟล์ที่ได้ชื่อ <b>SPU-Learning-Auditor-Dashboard-0.13.34.zip</b></p>
   </main>
   <script>
     const PARTS=[
-      ...Array.from({length:23},(_,index)=>({url:`extension-0.13.33.part${index+1}`,size:400000})),
-      {url:"extension-0.13.33.part24",size:159754}
+      ...Array.from({length:23},(_,index)=>({url:`extension-0.13.34.part${index+1}`,size:400000})),
+      {url:"extension-0.13.34.part24",size:160081}
     ];
-    const EXPECTED_SIZE=9359754;
-    const EXPECTED_SHA256="35548E8F5E2BDCDAA03C30B54B250F52B7DF892781DBF488163125E6A360E872";
+    const EXPECTED_SIZE=9360081;
+    const EXPECTED_SHA256="AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F";
     const status=document.querySelector("#status"),bar=document.querySelector("#bar"),retry=document.querySelector("#retry");
     const hex=buffer=>[...new Uint8Array(buffer)].map(value=>value.toString(16).padStart(2,"0")).join("").toUpperCase();
     async function downloadArchive(){
@@ -45,7 +45,7 @@
         const digest=hex(await crypto.subtle.digest("SHA-256",merged));
         if(digest!==EXPECTED_SHA256)throw new Error("ค่า SHA-256 ไม่ตรง ไฟล์อาจดาวน์โหลดไม่ครบ");
         const url=URL.createObjectURL(new Blob([merged],{type:"application/zip"}));
-        const link=document.createElement("a");link.href=url;link.download="SPU-Learning-Auditor-Dashboard-0.13.33.zip";document.body.append(link);link.click();link.remove();
+        const link=document.createElement("a");link.href=url;link.download="SPU-Learning-Auditor-Dashboard-0.13.34.zip";document.body.append(link);link.click();link.remove();
         setTimeout(()=>URL.revokeObjectURL(url),30000);bar.style.width="100%";status.className="status ok";status.textContent="ไฟล์สมบูรณ์และเริ่มดาวน์โหลดแล้ว";
       }catch(error){bar.style.width="0";status.className="status error";status.textContent=error.message||String(error);retry.hidden=false;retry.disabled=false;}
     }
