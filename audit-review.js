@@ -460,7 +460,7 @@
     const hero=document.querySelector(".extension-hero");
     if(hero){
       const copy=hero.querySelector("p");if(copy)copy.textContent="เครื่องมือตรวจรายวิชาออนไลน์ ช่วยรวบรวมผลตรวจและหลักฐานให้ทีมงานนำไปติดตามต่อได้อย่างเป็นระบบ";
-      hero.querySelectorAll("strong").forEach(item=>{if(/^0\.13\./.test(item.textContent.trim()))item.textContent="0.13.28";});const downloads=hero.querySelector(".extension-downloads");if(downloads){const link=downloads.querySelector("a");if(link){link.href="download-extension.html";link.removeAttribute("download");link.innerHTML="⇩ ดาวน์โหลด Dashboard 0.13.28";}}
+      hero.querySelectorAll("strong").forEach(item=>{if(/^0\.13\./.test(item.textContent.trim()))item.textContent="0.13.34";});const downloads=hero.querySelector(".extension-downloads");if(downloads){const link=downloads.querySelector("a");if(link){link.href="download-extension.html";link.removeAttribute("download");link.innerHTML="⇩ ดาวน์โหลด Dashboard 0.13.34";}}
       const note=hero.querySelector(".small");if(note)note.textContent="ใช้รุ่น Dashboard เพื่อส่งผลตรวจและหลักฐานเข้าสู่ระบบกลาง แล้วติดตั้งตามคู่มือด้านล่าง";
       const comparison=document.querySelector(".extension-compare");if(comparison){comparison.classList.add("capability-grid");comparison.innerHTML=`<article class="panel edition-card"><span class="edition-icon">⌁</span><h3>ตรวจโครงสร้างรายวิชา</h3><p>อ่านการจัดครั้งเรียน เอกสาร และกิจกรรมตามเกณฑ์ที่กำหนด</p></article><article class="panel edition-card"><span class="edition-icon">▶</span><h3>ตรวจสื่อและกิจกรรม</h3><p>ตรวจวิดีโอ Podcast แบบทดสอบ และกิจกรรมท้ายบทพร้อมหลักฐาน</p></article><article class="panel edition-card"><span class="edition-icon">✓</span><h3>สรุปเพื่อดำเนินการ</h3><p>แสดงสถานะ หลักฐาน และสรุปสิ่งที่ผู้สอนต้องแก้ไขอย่างอ่านง่าย</p></article>`;}
       const check=document.createElement("button");check.type="button";check.className="extension-check";check.innerHTML="⌕ ตรวจหา Extension บน Chrome เครื่องนี้";hero.querySelector(".extension-status").append(check);
@@ -486,7 +486,7 @@
       const runId=esc(record.runId||"");
       const courseId=encodeURIComponent(record.courseId||"");
       const evidence=record.runId&&record.courseId?`<a class="evidence-link" href="audit-evidence.html?admin=1&amp;courseId=${courseId}" target="_blank" rel="noopener"><span>▣</span> ดูผลตรวจ ↗</a>`:'<span class="muted">—</span>';
-      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.28 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">ไม่ผ่านเกณฑ์</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':`<div class="decision-result">${badge(record.internalStatus)}<small>ตัดสินอัตโนมัติแล้ว</small></div>`;
+      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.34 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">ไม่ผ่านเกณฑ์</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':`<div class="decision-result">${badge(record.internalStatus)}<small>ตัดสินอัตโนมัติแล้ว</small></div>`;
       const possible=Number.isFinite(Number(record.possibleScore))?Math.min(maxScore(record),Number(record.possibleScore)):null;
       const qualityWarning=record.qualityGate?.failures?.length?`ข้อควรระวังคุณภาพข้อมูล: ${record.qualityGate.failures.join(", ")}`:"";
       const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":reasonLabel(record.reason)||qualityWarning||"—";
@@ -627,6 +627,7 @@
   loadQueueOverview().catch(()=>{});
   setInterval(()=>loadQueueOverview().catch(()=>{}),15000);
 })();
+
 
 
 

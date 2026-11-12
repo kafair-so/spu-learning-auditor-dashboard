@@ -56,7 +56,7 @@ test("owners and super admins can inspect pending evidence and possible scores",
   assert.match(api, /Math\.min\(AUDIT_MAX_SCORE, score \+ reviewable\)/);
   assert.match(api, /hasConfirmedScore \? confirmedScore : null/);
   assert.match(api, /scoreModel !== "weekly_criterion_v2"/);
-  assert.match(review, /ตรวจใหม่ด้วย Extension 0\.13\.28 ก่อนตัดสิน/);
+  assert.match(review, /ตรวจใหม่ด้วย Extension 0\.13\.34 ก่อนตัดสิน/);
   assert.match(api, /adminHistory/);
   assert.match(api, /adminEvidence/);
   assert.match(api, /\["owner", "super_admin"\]\.includes\(user\.role\)/);
@@ -65,7 +65,7 @@ test("owners and super admins can inspect pending evidence and possible scores",
   assert.match(evidence, /\["owner","super_admin"\]\.includes\(\(await AuditApi\.session\(\)\)\.role\)/);
   assert.match(evidence, /Math\.min\(maximum,Number\(run\.possibleScore\)\)/);
   assert.match(evidence, /ผลตรวจตามครั้ง\/สัปดาห์/);
-  assert.match(evidence, /Extension รุ่น 0\.13\.28/);
+  assert.match(evidence, /Extension รุ่น 0\.13\.34/);
 });
 
 test("non-super-admin and public payloads redact every numeric score", () => {
@@ -117,6 +117,7 @@ test("the worker renews a session before expiry and pauses safely when Google re
   assert.match(review, /OOEAuth\.refreshCredential\(\{interactive:true\}\)/);
   assert.match(review, /กลับไปทำคิวเดิม/);
 });
+
 
 
 

@@ -30,8 +30,8 @@ test("queue course list supports dark mode, mobile layout and English", () => {
   assert.match(review, /@media\(max-width:650px\)/);
   assert.match(i18n, /"รายวิชาในคิวปัจจุบัน":"Courses currently in queue"/);
   assert.match(i18n, /"ไม่มีรายวิชาในคิวปัจจุบัน":"No courses are currently queued\."/);
-  assert.match(page, /ui-i18n\.js\?v=20261103a/);
-  assert.match(page, /audit-review\.js\?v=20261103a/);
+  assert.match(page, /ui-i18n\.js\?v=20261112b/);
+  assert.match(page, /audit-review\.js\?v=20261112b/);
 });
 
 test("reviewers can remove one waiting course or clear every waiting course", () => {
@@ -55,4 +55,5 @@ test("queue overview ranks reused terminal jobs by lifecycle update time", () =>
   assert.match(api, /created_at,updated_at,claimed_at,completed_at/);
   assert.match(api, /\.order\("updated_at", \{ ascending:false \}\)\.order\("created_at", \{ ascending:false \}\)/);
 });
+
 
