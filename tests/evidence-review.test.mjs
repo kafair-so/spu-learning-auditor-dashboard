@@ -20,13 +20,21 @@ test("video and Podcast review is itemized with links, duration and use decision
   assert.match(api,/reviewConfirmation.*evidenceDecisions/);
 });
 
-test("each Podcast criterion exposes its own direct destination link", () => {
+test("every reviewable criterion exposes matching direct evidence links", () => {
+  assert.match(evidence,/criterionEvidenceSpec/);
   assert.match(evidence,/criterionEvidenceLinks/);
-  assert.match(evidence,/item\.externalUrl\|\|item\.href/);
-  assert.match(evidence,/เปิด Podcast:/);
-  assert.match(evidence,/ลิงก์ Podcast ของครั้งนี้/);
-  assert.match(evidence,/activitySession\(item\)===Number\(session\)/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261112a/);
+  assert.match(evidence,/item\.externalUrl\|\|item\.href\|\|item\.imageUrl/);
+  assert.match(evidence,/openLabel:"เปิด Podcast"/);
+  assert.match(evidence,/เปิด AI Tutor/);
+  assert.match(evidence,/"ai_tutor"/);
+  assert.match(evidence,/"video","video_candidate","recording"/);
+  assert.match(evidence,/"pre_quiz"/);
+  assert.match(evidence,/"post_quiz"/);
+  assert.match(evidence,/"assignment","assignment_image_candidate","quiz","forum"/);
+  assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
+  assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
+  assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261112c/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {

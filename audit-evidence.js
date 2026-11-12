@@ -78,16 +78,34 @@
     return `<section class="fix-summary ${esc(status)}"><h3>สิ่งที่ผู้สอนต้องแก้ไขเพื่อให้ผ่านเกณฑ์</h3><p>รวมหัวข้อที่ต้องดำเนินการจากทุกครั้งไว้ในรายการเดียว</p><ol>${rows}</ol></section>`;
   };
   const activitySession=item=>Number(item?.auditSession)||Number(String(item?.section||"").match(/\d+/)?.[0])||0;
+  const criterionEvidenceSpec=(label,detail)=>{
+    const text=`${label||""} ${detail||""}`.toLowerCase();
+    if(/ai\s*tutor/.test(text))return {kinds:["ai_tutor"],openLabel:"เปิด AI Tutor",fallback:"AI Tutor"};
+    if(/podcast|คลิปเสียง/.test(text))return {kinds:["podcast"],openLabel:"เปิด Podcast",fallback:"Podcast"};
+    if(/วิดีโอ|video|record|บันทึกการสอน/.test(text))return {kinds:["video","video_candidate","recording"],openLabel:"เปิดวิดีโอ",fallback:"วิดีโอ"};
+    if(/แบบทดสอบก่อนเรียน|pre[ -]?test/.test(text))return {kinds:["pre_quiz"],openLabel:"เปิด Pre-test",fallback:"Pre-test"};
+    if(/แบบทดสอบหลังเรียน|post[ -]?test/.test(text))return {kinds:["post_quiz"],openLabel:"เปิด Post-test",fallback:"Post-test"};
+    if(/กิจกรรมท้ายบท|assignment/.test(text))return {kinds:["assignment","assignment_image_candidate","quiz","forum"],openLabel:"เปิดกิจกรรม",fallback:"กิจกรรมท้ายบท"};
+    if(/แผนการสอน/.test(text))return {kinds:["file","file_link"],openLabel:"เปิดแผนการสอน",fallback:"แผนการสอน",titlePattern:/แผนการสอน/i};
+    if(/เอกสารประกอบ/.test(text))return {kinds:["file","file_link"],openLabel:"เปิดเอกสาร",fallback:"เอกสารประกอบ"};
+    if(/ข้อมูลผู้สอน|การติดต่อ/.test(text))return {kinds:["url","forum"],openLabel:"เปิดช่องทางติดต่อ",fallback:"ข้อมูลผู้สอนและการติดต่อ",titlePattern:/ผู้สอน|อาจารย์|ติดต่อ|line|facebook|messenger|zoom|qr/i};
+    if(/ข้อมูลและแนะนำรายวิชา|แนะนำรายวิชา/.test(text))return {kinds:["file","file_link","url"],openLabel:"เปิดหลักฐาน",fallback:"ข้อมูลแนะนำรายวิชา",titlePattern:/แนะนำรายวิชา|course\s*outline|คำอธิบายรายวิชา/i};
+    return null;
+  };
   const criterionEvidenceLinks=(activities,session,label,detail)=>{
-    if(!/podcast|คลิปเสียง/i.test(`${label||""} ${detail||""}`))return"";
-    const seen=new Set(),items=(activities||[]).filter(item=>item?.kind==="podcast"&&activitySession(item)===Number(session)).map(item=>{
-      const href=AuditBridge.safeUrl(item.externalUrl||item.href);
+    const spec=criterionEvidenceSpec(label,detail);
+    if(!spec)return"";
+    const seen=new Set(),items=(activities||[]).filter(item=>{
+      if(!spec.kinds.includes(item?.kind)||activitySession(item)!==Number(session))return false;
+      return !spec.titlePattern||spec.titlePattern.test(`${item.title||""} ${item.groupContext||""}`);
+    }).map(item=>{
+      const href=AuditBridge.safeUrl(item.externalUrl||item.href||item.imageUrl);
       if(!href||seen.has(href))return"";
       seen.add(href);
-      const title=item.title||"Podcast",group=item.groupContext||"ไม่พบชื่อป้าย",seconds=Number(item.reviewerDurationSeconds||item.systemDurationSeconds||item.durationSeconds||0);
-      return `<li><a href="${esc(href)}" target="_blank" rel="noopener">เปิด Podcast: ${esc(title)} ↗</a><span>ป้าย: ${esc(group)} · เวลา: ${esc(mediaTime(seconds))}</span></li>`;
+      const title=item.title||spec.fallback,group=item.groupContext||"ไม่พบชื่อป้าย",seconds=Number(item.reviewerDurationSeconds||item.systemDurationSeconds||item.durationSeconds||0),time=seconds?` · เวลา: ${mediaTime(seconds)}`:"",note=item.accessNote?` · ${item.accessNote}`:"";
+      return `<li><a href="${esc(href)}" target="_blank" rel="noopener">${esc(spec.openLabel)}: ${esc(title)} ↗</a><span>ป้าย: ${esc(group)} · ประเภท: ${esc(item.kind||"—")}${esc(time)}${esc(note)}</span></li>`;
     }).filter(Boolean).join("");
-    return items?`<div class="criterion-evidence-links"><strong>ลิงก์ Podcast ของครั้งนี้</strong><ul>${items}</ul></div>`:"";
+    return items?`<div class="criterion-evidence-links"><strong>หลักฐานที่เกี่ยวข้องกับรายการนี้</strong><ul>${items}</ul></div>`:"";
   };
   const reviewPanel=(run,index,admin)=>{
     if(!admin||index!==0||!["needs_review","has_content"].includes(run.internalStatus)||!run.runId||Number(run.possibleScore||0)<=Number(run.confirmedScore||0))return"";
@@ -120,7 +138,7 @@
       const reviewChoice=(key,label,eligible=reviewKeys.has(key))=>superAdmin&&index===0&&canReviewResult&&eligible?`<div class="review-choice" data-review-control><span>ยืนยันผลรายการนี้</span><div class="review-buttons" role="group" aria-label="ยืนยัน ${esc(label)}"><button type="button" class="review-pass" data-review-pick="pass" data-review-key="${esc(key)}">ผ่าน</button><button type="button" class="review-fail" data-review-pick="fail" data-review-key="${esc(key)}">ไม่ผ่าน</button></div><label class="review-edit">แก้ไขผล<select data-review-item data-review-key="${esc(key)}" aria-label="แก้ไขผล ${esc(label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label></div>`:"";
       const weekRows=weeks.map((week,weekIndex)=>{
         const criteria=Array.isArray(week.criteria)?week.criteria:[];
-        const items=criteria.map((item,criterionIndex)=>{const visibleStatus=!superAdmin&&item.status==="needs_review"?"fail":item.status,label=item.label||`หัวข้อที่ ${item.criterion||"—"}`,session=week.session||weekIndex+1,key=`criterion:${session}:${item.criterion||criterionIndex+1}`,evidenceLinks=criterionEvidenceLinks(activities,session,label,item.detail);return `<li class="criterion ${esc(visibleStatus||"")}"><strong>${esc(label)}</strong><span class="criterion-badge">${esc(criterionStatus(visibleStatus))}</span><div class="muted">${esc(item.detail||"")}</div>${evidenceLinks}${reviewChoice(key,label)}</li>`;}).join("");
+        const items=criteria.map((item,criterionIndex)=>{const visibleStatus=!superAdmin&&item.status==="needs_review"?"fail":item.status,label=item.label||`หัวข้อที่ ${item.criterion||"—"}`,session=week.session||weekIndex+1,key=`criterion:${session}:${item.criterion||criterionIndex+1}`,evidenceLinks=superAdmin&&index===0&&item.status==="needs_review"?criterionEvidenceLinks(activities,session,label,item.detail):"";return `<li class="criterion ${esc(visibleStatus||"")}"><strong>${esc(label)}</strong><span class="criterion-badge">${esc(criterionStatus(visibleStatus))}</span><div class="muted">${esc(item.detail||"")}</div>${evidenceLinks}${reviewChoice(key,label)}</li>`;}).join("");
         return `<section class="week-evidence"><h4>${esc(week.section||`ครั้งที่ ${week.session||"—"}`)}</h4><ol>${items}</ol></section>`;
       }).join("");
       const manualCandidates=reviewCandidates(run).filter(item=>item.kind==="manual");
