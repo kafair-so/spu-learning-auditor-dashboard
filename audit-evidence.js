@@ -6,6 +6,8 @@
   const mediaTime=value=>{const seconds=Math.max(0,Math.round(Number(value)||0));if(!seconds)return"อ่านเวลาไม่ได้";const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;};
   const durationInput=value=>{const seconds=Math.max(0,Math.round(Number(value)||0));if(!seconds)return"";const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;};
   const parseDurationInput=value=>{const parts=String(value||"").trim().split(":");if(![2,3].includes(parts.length)||parts.some(part=>!/^(?:\d+)$/.test(part)))return 0;const numbers=parts.map(Number),seconds=numbers.at(-1),minutes=numbers.at(-2);if(seconds>59||parts.length===3&&minutes>59)return 0;return parts.length===3?numbers[0]*3600+minutes*60+seconds:minutes*60+seconds;};
+  const validDurationInput=value=>{const text=String(value||"").trim(),parts=text.split(":");if(![2,3].includes(parts.length)||parts.some(part=>!/^(?:\d+)$/.test(part)))return false;const numbers=parts.map(Number);return numbers.at(-1)<60&&(parts.length!==3||numbers.at(-2)<60);};
+  const continuousPodcastTime=value=>{const digits=String(value||"").replace(/\D/g,"").slice(-6);if(!digits)return"";const seconds=digits.slice(-2).padStart(2,"0"),minutes=digits.slice(0,-2);return `${minutes?Number(minutes):0}:${seconds}`;};
   const criterionStatus=value=>({pass:"ผ่าน",pass_tolerance:"ผ่านตามค่าผ่อนปรน",needs_review:"รอตรวจ",fail:"ไม่ผ่าน",not_applicable:"ไม่มีข้อบังคับ/ไม่มี"}[value]||value||"—");
   const MANUAL_REVIEW_ITEMS=[
     ["student_meetings","การจัดให้มีการพบนักศึกษา","กำหนดตารางพบนักศึกษารวม 3 ครั้ง"],
@@ -111,8 +113,8 @@
       if(!href||seen.has(href))return"";
       seen.add(href);
       const title=item.title||spec.fallback,group=item.groupContext||"ไม่พบชื่อป้าย",seconds=Number(item.reviewerDurationSeconds||item.systemDurationSeconds||item.durationSeconds||0),time=seconds?` · เวลา: ${mediaTime(seconds)}`:"",note=item.accessNote?` · ${item.accessNote}`:"";
-      const priorDecision=item.priorEvidenceDecision||"";
-      const control=itemized?`<div class="evidence-item-review" data-evidence-item data-criterion-key="${esc(criterionKey)}" data-required="${required}"><label>นำรายการนี้มานับหรือไม่<select data-evidence-decision data-evidence-key="${esc(href||`item:${activityIndex}`)}"><option value=""${!priorDecision?" selected":""}>ยังไม่ตัดสิน</option><option value="use"${priorDecision==="use"?" selected":""}>ใช้รายการนี้</option><option value="not_use"${priorDecision==="not_use"?" selected":""}>ไม่ใช้รายการนี้</option></select></label><label>เวลาที่ใช้คำนวณ<input type="text" inputmode="numeric" data-evidence-time value="${esc(durationInput(seconds))}" placeholder="นาที:วินาที เช่น 13:19"></label><span class="muted">กรอกแบบ นาที:วินาที หรือ ชั่วโมง:นาที:วินาที · ต้องรวมอย่างน้อย ${esc(mediaTime(required))}</span></div>`:"";
+      const priorDecision=item.priorEvidenceDecision||"",podcastTimeOnly=item.kind==="podcast";
+      const control=itemized?`<div class="evidence-item-review" data-evidence-item data-criterion-key="${esc(criterionKey)}" data-required="${required}"${podcastTimeOnly?' data-podcast-time-only="1"':""}>${podcastTimeOnly?`<label>เวลา Podcast (นาที:วินาที)<input type="text" inputmode="numeric" autocomplete="off" data-evidence-time data-podcast-time data-evidence-key="${esc(href||`item:${activityIndex}`)}" value="${esc(durationInput(seconds))}" placeholder="__:__"></label><span class="muted">พิมพ์ตัวเลขต่อเนื่องได้ เช่น 1319 จะแสดงเป็น 13:19 · ตั้งแต่ ${esc(mediaTime(required))} ขึ้นไปผ่าน ต่ำกว่านี้ไม่ผ่าน</span>`:`<label>นำรายการนี้มานับหรือไม่<select data-evidence-decision data-evidence-key="${esc(href||`item:${activityIndex}`)}"><option value=""${!priorDecision?" selected":""}>ยังไม่ตัดสิน</option><option value="use"${priorDecision==="use"?" selected":""}>ใช้รายการนี้</option><option value="not_use"${priorDecision==="not_use"?" selected":""}>ไม่ใช้รายการนี้</option></select></label><label>เวลาที่ใช้คำนวณ<input type="text" inputmode="numeric" data-evidence-time value="${esc(durationInput(seconds))}" placeholder="นาที:วินาที เช่น 13:19"></label><span class="muted">กรอกแบบ นาที:วินาที หรือ ชั่วโมง:นาที:วินาที · ต้องรวมอย่างน้อย ${esc(mediaTime(required))}</span>`}</div>`:"";
       return `<li><a href="${esc(href)}" target="_blank" rel="noopener">${esc(spec.openLabel)}: ${esc(title)} ↗</a><span>ป้าย: ${esc(group)} · ประเภท: ${esc(item.kind||"—")}${esc(time)}${esc(note)}</span>${control}</li>`;
     }).filter(Boolean).join("");
     return items?`<div class="criterion-evidence-links"><strong>หลักฐานที่เกี่ยวข้องกับรายการนี้</strong><ul>${items}</ul></div>`:"";
@@ -142,7 +144,7 @@
       }).join("");
       const canReviewResult=["needs_review","has_content"].includes(run.internalStatus)&&Number(run.possibleScore||0)>Number(run.confirmedScore||0);
       const reviewChoice=(key,label,eligible=reviewKeys.has(key))=>superAdmin&&index===0&&canReviewResult&&eligible?`<div class="review-choice" data-review-control><span>ยืนยันผลรายการนี้</span><div class="review-buttons" role="group" aria-label="ยืนยัน ${esc(label)}"><button type="button" class="review-pass" data-review-pick="pass" data-review-key="${esc(key)}">ผ่าน</button><button type="button" class="review-fail" data-review-pick="fail" data-review-key="${esc(key)}">ไม่ผ่าน</button></div><label class="review-edit">แก้ไขผล<select data-review-item data-review-key="${esc(key)}" aria-label="แก้ไขผล ${esc(label)}"><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></label></div>`:"";
-      const itemizedReviewChoice=(key,label)=>superAdmin&&index===0&&canReviewResult&&reviewKeys.has(key)?`<div class="review-choice itemized-review" data-review-control><span data-itemized-result>เลือกใช้/ไม่ใช้และระบุเวลาของหลักฐานด้านบนให้ครบ ระบบจะสรุปหัวข้อนี้อัตโนมัติ</span><select data-review-item data-review-key="${esc(key)}" aria-label="ผลอัตโนมัติ ${esc(label)}" hidden><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></div>`:"";
+      const itemizedReviewChoice=(key,label)=>superAdmin&&index===0&&canReviewResult&&reviewKeys.has(key)?`<div class="review-choice itemized-review" data-review-control><span data-itemized-result>กรอกเวลา Podcast หรือเลือกการใช้หลักฐานวิดีโอด้านบนให้ครบ ระบบจะสรุปหัวข้อนี้อัตโนมัติ</span><select data-review-item data-review-key="${esc(key)}" aria-label="ผลอัตโนมัติ ${esc(label)}" hidden><option value="">ยังไม่ตัดสิน</option><option value="pass">ผ่าน</option><option value="fail">ไม่ผ่าน</option></select></div>`:"";
       const weekRows=weeks.map((week,weekIndex)=>{
         const criteria=Array.isArray(week.criteria)?week.criteria:[];
         const items=criteria.map((item,criterionIndex)=>{const visibleStatus=!superAdmin&&item.status==="needs_review"?"fail":item.status,label=item.label||`หัวข้อที่ ${item.criterion||"—"}`,session=week.session||weekIndex+1,key=`criterion:${session}:${item.criterion||criterionIndex+1}`,evidenceLinks=superAdmin&&index===0&&item.status==="needs_review"?criterionEvidenceLinks(activities,session,label,item.detail,key):"",itemized=evidenceLinks.includes("data-evidence-item"),decisionControl=itemized?itemizedReviewChoice(key,label):reviewChoice(key,label);return `<li class="criterion ${esc(visibleStatus||"")}"><strong>${esc(label)}</strong><span class="criterion-badge">${esc(criterionStatus(visibleStatus))}</span><div class="muted">${esc(item.detail||"")}</div>${evidenceLinks}${decisionControl}</li>`;}).join("");
@@ -159,7 +161,7 @@
       return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">${date(run.auditedAt)} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts">${scoreFacts}<div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.34</div>'}${manualRows}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
     }).join("");
     document.querySelectorAll(".run>h3").forEach(heading=>{const content=heading.nextElementSibling;if(!content||!["ผลตรวจตามครั้ง/สัปดาห์","หลักฐานที่ตรวจพบ"].includes(heading.textContent.trim()))return;const details=document.createElement("details");details.className="evidence-details";const summary=document.createElement("summary");summary.textContent=heading.textContent;heading.replaceWith(details);details.append(summary,content);});
-    $("runs").querySelectorAll("[data-evidence-decision]").forEach(select=>{if(select.value)select.dispatchEvent(new Event("change",{bubbles:true}));});
+    $("runs").querySelectorAll("[data-evidence-decision],[data-podcast-time]").forEach(control=>{if(control.value)control.dispatchEvent(new Event("change",{bubbles:true}));});
     updateReviewTotal($("runs").querySelector("[data-review-run]"));
     window.OOEI18n?.translate(document);
   }
@@ -191,7 +193,7 @@
   const updateReviewTotal=panel=>{
     if(!panel)return;
     const picks=[...$("runs").querySelectorAll("select[data-review-item]")],base=Number(panel.dataset.reviewBase||0),threshold=Number(panel.dataset.reviewThreshold||80),done=picks.filter(select=>select.value).length,earned=picks.filter(select=>select.value==="pass").length,total=base+earned;
-    const evidenceRows=[...$("runs").querySelectorAll("[data-evidence-item]")],evidenceDone=evidenceRows.filter(row=>{const decision=row.querySelector("[data-evidence-decision]")?.value||"";return Boolean(decision)&&!(decision==="use"&&!parseDurationInput(row.querySelector("[data-evidence-time]")?.value));}).length;
+    const evidenceRows=[...$("runs").querySelectorAll("[data-evidence-item]")],evidenceDone=evidenceRows.filter(row=>{const time=row.querySelector("[data-evidence-time]")?.value||"";if(row.dataset.podcastTimeOnly==="1")return validDurationInput(time);const decision=row.querySelector("[data-evidence-decision]")?.value||"";return Boolean(decision)&&!(decision==="use"&&!validDurationInput(time));}).length;
     const totalNode=panel.querySelector("[data-review-total]"),result=panel.querySelector("[data-review-result]"),progress=panel.querySelector("[data-evidence-progress]"),button=panel.querySelector("[data-review-save]");
     if(totalNode)totalNode.textContent=`${score(total)} / 110`;
     if(result)result.textContent=done===picks.length?(total>=threshold?"ระบบคำนวณผล: ผ่าน":"ระบบคำนวณผล: ไม่ผ่านเกณฑ์"):`เลือกแล้ว ${done.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} / ${picks.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} หัวข้อ`;
@@ -202,18 +204,25 @@
     const select=control?.querySelector("select[data-review-item]");if(!select)return;
     select.value=value;control.classList.toggle("is-selected",Boolean(value));control.dataset.reviewValue=value;
     control.querySelectorAll("button[data-review-pick]").forEach(button=>button.classList.toggle("selected",button.dataset.reviewPick===value));
-    const itemizedResult=control.querySelector("[data-itemized-result]");if(itemizedResult)itemizedResult.textContent=value==="pass"?"ผลจากหลักฐานรายลิงก์: ผ่าน":value==="fail"?"ผลจากหลักฐานรายลิงก์: ไม่ผ่าน":"เลือกใช้/ไม่ใช้และระบุเวลาของหลักฐานด้านบนให้ครบ ระบบจะสรุปหัวข้อนี้อัตโนมัติ";
+    const itemizedResult=control.querySelector("[data-itemized-result]");if(itemizedResult)itemizedResult.textContent=value==="pass"?"ผลจากหลักฐานรายลิงก์: ผ่าน":value==="fail"?"ผลจากหลักฐานรายลิงก์: ไม่ผ่าน":"กรอกเวลา Podcast หรือเลือกการใช้หลักฐานวิดีโอด้านบนให้ครบ ระบบจะสรุปหัวข้อนี้อัตโนมัติ";
     updateReviewTotal($("runs").querySelector("[data-review-run]"));
   };
+  $("runs").addEventListener("input",event=>{
+    if(!event.target.matches("[data-podcast-time]"))return;
+    const formatted=continuousPodcastTime(event.target.value);
+    if(event.target.value!==formatted)event.target.value=formatted;
+    event.target.setSelectionRange?.(event.target.value.length,event.target.value.length);
+    event.target.dispatchEvent(new Event("change",{bubbles:true}));
+  });
   $("runs").addEventListener("change",event=>{
     if(event.target.matches("select[data-review-item]")){setReviewChoice(event.target.closest("[data-review-control]"),event.target.value);return;}
     if(!event.target.matches("[data-evidence-decision],[data-evidence-time]"))return;
     const row=event.target.closest("[data-evidence-item]"),key=row?.dataset.criterionKey;if(!key)return;
     const rows=[...$("runs").querySelectorAll(`[data-evidence-item][data-criterion-key="${CSS.escape(key)}"]`)];
-    const complete=rows.every(item=>{const decision=item.querySelector("[data-evidence-decision]")?.value||"";return Boolean(decision)&&!(decision==="use"&&!parseDurationInput(item.querySelector("[data-evidence-time]")?.value));});
+    const complete=rows.every(item=>{const time=item.querySelector("[data-evidence-time]")?.value||"";if(item.dataset.podcastTimeOnly==="1")return validDurationInput(time);const decision=item.querySelector("[data-evidence-decision]")?.value||"";return Boolean(decision)&&!(decision==="use"&&!validDurationInput(time));});
     const select=$("runs").querySelector(`select[data-review-key="${CSS.escape(key)}"]`);
     if(!complete){if(select)setReviewChoice(select.closest("[data-review-control]"),"");else updateReviewTotal($("runs").querySelector("[data-review-run]"));return;}
-    const seconds=rows.filter(item=>item.querySelector("[data-evidence-decision]")?.value==="use").reduce((sum,item)=>sum+parseDurationInput(item.querySelector("[data-evidence-time]")?.value),0);
+    const seconds=rows.filter(item=>item.dataset.podcastTimeOnly==="1"||item.querySelector("[data-evidence-decision]")?.value==="use").reduce((sum,item)=>sum+parseDurationInput(item.querySelector("[data-evidence-time]")?.value),0);
     const required=Math.max(...rows.map(item=>Number(item.dataset.required||0)));
     if(select)setReviewChoice(select.closest("[data-review-control]"),seconds>=required?"pass":"fail");
   });
@@ -226,9 +235,9 @@
     if(!runId)return;
     if(error)error.textContent="";
     const reviewDecisions=[...$("runs").querySelectorAll("select[data-review-item]")].map(select=>({key:select.dataset.reviewKey,accepted:select.value==="pass"}));
-    const evidenceDecisions=[...$("runs").querySelectorAll("[data-evidence-item]")].map(row=>({key:row.querySelector("[data-evidence-key]")?.dataset.evidenceKey||"",criterionKey:row.dataset.criterionKey||"",decision:row.querySelector("[data-evidence-decision]")?.value||"",seconds:parseDurationInput(row.querySelector("[data-evidence-time]")?.value)}));
+    const evidenceDecisions=[...$("runs").querySelectorAll("[data-evidence-item]")].map(row=>({key:row.querySelector("[data-evidence-key]")?.dataset.evidenceKey||"",criterionKey:row.dataset.criterionKey||"",decision:row.dataset.podcastTimeOnly==="1"?"use":row.querySelector("[data-evidence-decision]")?.value||"",seconds:parseDurationInput(row.querySelector("[data-evidence-time]")?.value),timeValid:validDurationInput(row.querySelector("[data-evidence-time]")?.value)}));
     if(reviewDecisions.some(item=>!item.key)||reviewDecisions.length!==Number(panel.dataset.reviewCount)){if(error)error.textContent="กรุณาเลือกผลยืนยันทุกหัวข้อก่อนบันทึก";return;}
-    if(evidenceDecisions.some(item=>!item.decision||item.decision==="use"&&!item.seconds)){if(error)error.textContent="กรุณาเลือกใช้/ไม่ใช้และกรอกเวลาแบบ นาที:วินาที สำหรับหลักฐานรายลิงก์ให้ครบ";return;}
+    if(evidenceDecisions.some(item=>!item.decision||item.decision==="use"&&!item.timeValid)){if(error)error.textContent="กรุณากรอกเวลา Podcast และเลือกใช้/ไม่ใช้หลักฐานวิดีโอให้ครบ";return;}
     button.disabled=true;
     try{await AuditApi.decideResult(runId,reviewDecisions,note,evidenceDecisions);await load();}
     catch(err){if(error)error.textContent=err.message||"บันทึกผลไม่สำเร็จ";button.disabled=false;}

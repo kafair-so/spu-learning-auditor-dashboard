@@ -9,12 +9,19 @@ const api = read("supabase/functions/api/index.ts");
 const reusePolicy = read("supabase/functions/api/review-reuse.js");
 const auditApi = read("audit-api.js");
 
-test("video and Podcast review is itemized with links, duration and use decisions", () => {
+test("video review is itemized while Podcast uses continuous time entry and automatic result", () => {
   assert.match(evidence,/data-evidence-item/);
   assert.match(evidence,/ชื่อป้าย/);
   assert.match(evidence,/data-evidence-decision/);
   assert.match(evidence,/data-evidence-time/);
   assert.match(evidence,/parseDurationInput/);
+  assert.match(evidence,/continuousPodcastTime/);
+  assert.match(evidence,/data-podcast-time-only/);
+  assert.match(evidence,/data-podcast-time/);
+  assert.match(evidence,/placeholder="__:__"/);
+  assert.match(evidence,/1319 จะแสดงเป็น 13:19/);
+  assert.match(evidence,/row\.dataset\.podcastTimeOnly==="1"\?"use"/);
+  assert.match(evidence,/seconds>=required\?"pass":"fail"/);
   assert.match(evidence,/นาที:วินาที หรือ ชั่วโมง:นาที:วินาที/);
   assert.match(evidence,/durationSecondsFromDetail/);
   assert.match(evidence,/เปิดหลักฐาน/);
@@ -42,7 +49,7 @@ test("every reviewable criterion exposes matching direct evidence links", () => 
   assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
   assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
   assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261112d/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261112e/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
