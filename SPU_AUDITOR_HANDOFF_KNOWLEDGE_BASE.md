@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 69529)
-Total output lines: 1921
+Warning: truncated output (original token count: 69621)
+Total output lines: 1922
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -836,10 +836,7 @@ Total output lines: 1921
   3. เอกสารประกอบการสอน
   4. วิดีโอแนะนำ/บันทึกการสอน
   5. กิจกรรมท้ายบท
-- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…9529 tokens truncated…ขอบเขตใน Section 38: จำนวนที่ถูกต้องสำหรับงาน KPI คือ **92 หนังสือรับรอง** ไม่ใช่ 96; 4 ฉบับที่เหลือถูกแยกออกจาก KPI แล้ว
-
-
-## 40. แก้การส่งผลล้มเหลวเมื่อหัวตารางคะแนนอยู่แถว 2 (2026-10-26)
+- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…9621 tokens truncated…หัวตารางคะแนนอยู่แถว 2 (2026-10-26)
 
 **สถานะ: แก้ไขและ Deploy สำเร็จ / Apps Script Production Version 7 / URL เดิม / tests ผ่าน**
 
@@ -1622,6 +1619,7 @@ Total output lines: 1921
 - Release commit `3fe6dbed5d09bf77a3406846d062a2cc43b8c50c`; Pages run `43180135362` สำเร็จ
 - ตรวจหน้าเว็บจริงแล้วพบเลขรุ่น 0.13.34 และข้อความลิงก์ Podcast รายครั้ง; ประกอบไฟล์จริงครบ 24 ส่วน ได้ 9,360,081 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 - แก้ตกหล่นหน้า `ดาวน์โหลด Extension` ในหลังบ้าน: ป้ายรุ่นล่าสุด ข้อความแนะนำ ปุ่มดาวน์โหลด ข้อความตรวจใหม่ และคำแปล เปลี่ยนจาก 0.13.28 เป็น 0.13.34 พร้อมเปลี่ยน cache-buster ของ `audit-review.js` และ `ui-i18n.js` เป็น `20261112b`
+- Version-alignment commit `ce65c415c6fffe7bbdae8dbfe31d9d11199af30e`; Pages run `43181161353` สำเร็จ และตรวจหน้า `audit-review.html` จริงแล้วพบ 0.13.34 ครบ 3 จุด ไม่พบ 0.13.28 พร้อมตรวจปุ่ม คำแปล และ cache-buster ผ่านทั้งหมด
 
 
 
