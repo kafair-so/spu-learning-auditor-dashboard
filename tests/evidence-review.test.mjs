@@ -29,7 +29,11 @@ test("video review is itemized while Podcast uses continuous time entry and auto
   assert.match(evidence,/itemizedReviewChoice/);
   assert.match(evidence,/evidenceLinks\.includes\("data-evidence-item"\)/);
   assert.match(evidence,/data-evidence-progress/);
-  assert.match(evidence,/button\.disabled=done!==picks\.length\|\|evidenceDone!==evidenceRows\.length/);
+  assert.match(evidence,/button&&!button\.dataset\.submitting/);
+  assert.match(evidence,/รับคำสั่งยืนยันผลแล้ว กำลังบันทึกและคำนวณผลใหม่/);
+  assert.match(evidence,/อัปเดตผลยืนยันเรียบร้อยแล้ว/);
+  assert.match(evidence,/missingReview=reviewControls\.filter/);
+  assert.match(evidencePage,/reviewActionNotice/);
   assert.doesNotMatch(evidence,/เวลาที่ใช้คำนวณ \(วินาที\)/);
   assert.match(auditApi,/evidenceDecisions/);
   assert.match(api,/reviewConfirmation.*evidenceDecisions/);
@@ -49,7 +53,7 @@ test("every reviewable criterion exposes matching direct evidence links", () => 
   assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
   assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
   assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261112e/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261112f/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {

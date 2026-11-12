@@ -8,6 +8,7 @@
   const parseDurationInput=value=>{const parts=String(value||"").trim().split(":");if(![2,3].includes(parts.length)||parts.some(part=>!/^(?:\d+)$/.test(part)))return 0;const numbers=parts.map(Number),seconds=numbers.at(-1),minutes=numbers.at(-2);if(seconds>59||parts.length===3&&minutes>59)return 0;return parts.length===3?numbers[0]*3600+minutes*60+seconds:minutes*60+seconds;};
   const validDurationInput=value=>{const text=String(value||"").trim(),parts=text.split(":");if(![2,3].includes(parts.length)||parts.some(part=>!/^(?:\d+)$/.test(part)))return false;const numbers=parts.map(Number);return numbers.at(-1)<60&&(parts.length!==3||numbers.at(-2)<60);};
   const continuousPodcastTime=value=>{const digits=String(value||"").replace(/\D/g,"").slice(-6);if(!digits)return"";const seconds=digits.slice(-2).padStart(2,"0"),minutes=digits.slice(0,-2);return `${minutes?Number(minutes):0}:${seconds}`;};
+  const reviewNotice=(message,type="")=>{const node=$("reviewActionNotice");if(!node)return;node.hidden=!message;node.className=`review-action-notice ${type}`.trim();node.textContent=message||"";};
   const criterionStatus=value=>({pass:"ผ่าน",pass_tolerance:"ผ่านตามค่าผ่อนปรน",needs_review:"รอตรวจ",fail:"ไม่ผ่าน",not_applicable:"ไม่มีข้อบังคับ/ไม่มี"}[value]||value||"—");
   const MANUAL_REVIEW_ITEMS=[
     ["student_meetings","การจัดให้มีการพบนักศึกษา","กำหนดตารางพบนักศึกษารวม 3 ครั้ง"],
@@ -198,7 +199,7 @@
     if(totalNode)totalNode.textContent=`${score(total)} / 110`;
     if(result)result.textContent=done===picks.length?(total>=threshold?"ระบบคำนวณผล: ผ่าน":"ระบบคำนวณผล: ไม่ผ่านเกณฑ์"):`เลือกแล้ว ${done.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} / ${picks.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} หัวข้อ`;
     if(progress)progress.textContent=evidenceRows.length?`หลักฐานรายลิงก์ครบ ${evidenceDone.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} / ${evidenceRows.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายการ`:"";
-    if(button)button.disabled=done!==picks.length||evidenceDone!==evidenceRows.length;
+    if(button&&!button.dataset.submitting)button.disabled=false;
   };
   const setReviewChoice=(control,value)=>{
     const select=control?.querySelector("select[data-review-item]");if(!select)return;
@@ -234,13 +235,14 @@
     const runId=panel?.dataset.reviewRun||"";
     if(!runId)return;
     if(error)error.textContent="";
-    const reviewDecisions=[...$("runs").querySelectorAll("select[data-review-item]")].map(select=>({key:select.dataset.reviewKey,accepted:select.value==="pass"}));
+    const reviewControls=[...$("runs").querySelectorAll("select[data-review-item]")],reviewDecisions=reviewControls.map(select=>({key:select.dataset.reviewKey,accepted:select.value==="pass"}));
     const evidenceDecisions=[...$("runs").querySelectorAll("[data-evidence-item]")].map(row=>({key:row.querySelector("[data-evidence-key]")?.dataset.evidenceKey||"",criterionKey:row.dataset.criterionKey||"",decision:row.dataset.podcastTimeOnly==="1"?"use":row.querySelector("[data-evidence-decision]")?.value||"",seconds:parseDurationInput(row.querySelector("[data-evidence-time]")?.value),timeValid:validDurationInput(row.querySelector("[data-evidence-time]")?.value)}));
-    if(reviewDecisions.some(item=>!item.key)||reviewDecisions.length!==Number(panel.dataset.reviewCount)){if(error)error.textContent="กรุณาเลือกผลยืนยันทุกหัวข้อก่อนบันทึก";return;}
-    if(evidenceDecisions.some(item=>!item.decision||item.decision==="use"&&!item.timeValid)){if(error)error.textContent="กรุณากรอกเวลา Podcast และเลือกใช้/ไม่ใช้หลักฐานวิดีโอให้ครบ";return;}
-    button.disabled=true;
-    try{await AuditApi.decideResult(runId,reviewDecisions,note,evidenceDecisions);await load();}
-    catch(err){if(error)error.textContent=err.message||"บันทึกผลไม่สำเร็จ";button.disabled=false;}
+    const missingReview=reviewControls.filter(select=>!select.dataset.reviewKey||!select.value),missingEvidence=evidenceDecisions.filter(item=>!item.decision||item.decision==="use"&&!item.timeValid);
+    if(missingReview.length||reviewDecisions.length!==Number(panel.dataset.reviewCount)){const remaining=Math.max(missingReview.length,Number(panel.dataset.reviewCount)-reviewDecisions.length,1),message=`ยังไม่ได้ส่งคำสั่ง: กรุณายืนยันผลอีก ${remaining} หัวข้อ`;missingReview.forEach(select=>select.closest("[data-review-control]")?.classList.add("review-missing"));if(error)error.textContent=message;reviewNotice(message,"error");missingReview[0]?.closest("[data-review-control]")?.scrollIntoView?.({behavior:"smooth",block:"center"});return;}
+    if(missingEvidence.length){const message=`ยังไม่ได้ส่งคำสั่ง: กรุณากรอกหรือยืนยันหลักฐานอีก ${missingEvidence.length} รายการ`;if(error)error.textContent=message;reviewNotice(message,"error");return;}
+    button.dataset.submitting="1";button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="กำลังบันทึกผล…";reviewNotice("รับคำสั่งยืนยันผลแล้ว กำลังบันทึกและคำนวณผลใหม่…","loading");
+    try{await AuditApi.decideResult(runId,reviewDecisions,note,evidenceDecisions);button.textContent="บันทึกแล้ว กำลังโหลดผลใหม่…";reviewNotice("บันทึกผลสำเร็จ กำลังโหลดสถานะล่าสุด…","loading");await load();reviewNotice("อัปเดตผลยืนยันเรียบร้อยแล้ว","success");}
+    catch(err){const message=err.message||"บันทึกผลไม่สำเร็จ";if(error)error.textContent=message;reviewNotice(`บันทึกผลไม่สำเร็จ: ${message}`,"error");button.dataset.submitting="";button.removeAttribute("aria-busy");button.textContent="ลองยืนยันผลอีกครั้ง";button.disabled=false;}
   });
   load();
 })();
