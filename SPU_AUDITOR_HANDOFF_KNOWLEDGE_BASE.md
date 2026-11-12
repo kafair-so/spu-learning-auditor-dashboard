@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 72441)
-Total output lines: 1969
+Warning: truncated output (original token count: 72531)
+Total output lines: 1971
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,12 +687,7 @@ Total output lines: 1969
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…22441 tokens truncated…67ec3dd753391`
-- ไฟล์บน branch `main`: 9,330,876 bytes, SHA-256 `111AD46C11464C249E896B466E927828DEA7472A7BCF5334BD262F5F8DF2A0B8`
-- หน้า production ตรวจแล้วพบข้อความ 0.13.28 และไม่พบ 0.13.21
-
-### Supabase production hardening
-- Applied migration `dashboard_release_hardening` ใน project `nwupjnkotdkodyxnraie`; ไฟล์ migration คือ `supabase/migrations/202611090001_dashboard_release_hardening.sql`
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…22531 tokens truncated…oject `nwupjnkotdkodyxnraie`; ไฟล์ migration คือ `supabase/migrations/202611090001_dashboard_release_hardening.sql`
 - เปลี่ยน `is_spu_user` และ `is_audit_reviewer` เป็น security invoker; anon เรียกไม่ได้ และ authenticated เรียกได้เฉพาะฟังก์ชันที่ต้องใช้
 - จำกัด `enqueue_missing_audits`/`enqueue_refresh_audits` ให้ service role; ปิด public/authenticated execute ของ trigger/event-trigger helpers
 - เพิ่ม foreign-key indexes 5 จุด และแก้ RLS policy ให้ใช้ `(select auth.uid())` เพื่อลดการประเมินซ้ำ
@@ -1283,7 +1278,7 @@ Total output lines: 1969
 
 ## 74. จัดระเบียบไฟล์ Extension part แยกตามรุ่น (2026-11-12)
 
-**สถานะ: จัดโครงสร้างและทดสอบแล้ว / รอเผยแพร่**
+**สถานะ: จัดโครงสร้าง ทดสอบ และเผยแพร่ GitHub Pages สำเร็จ**
 
 - ย้ายไฟล์ `extension-<version>.part<number>` ออกจากหน้าแรกของ repository ไปไว้ที่ `downloads/dashboard/<version>/parts/`
 - แยกครบ 7 รุ่นตั้งแต่ 0.13.28 ถึง 0.13.34 รุ่นละ 24 part รวม 168 ไฟล์ โดยไม่ลบรุ่นเก่า
@@ -1291,6 +1286,8 @@ Total output lines: 1969
 - หน้า `download-extension.html` ของ DB 0.13.34 เปลี่ยนไปอ่านจาก `downloads/dashboard/0.13.34/parts/`
 - Regression test อ่าน part จากตำแหน่งใหม่ ประกอบ ZIP ได้ 9,360,081 bytes, SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F` และ ZIP magic เป็น `PK`
 - ชุดทดสอบหน้าเว็บหลักผ่าน 44/44; หลังจัดโครงสร้าง หน้าแรกเหลือไฟล์ part 0 ไฟล์
+- Release commit `850650c3c74ca9c5c8f14aa4b69618c82fdcabb2`; Pages run `43195500060` สำเร็จ
+- ตรวจ tree หลังเผยแพร่แล้ว: root part 0, ตำแหน่งใหม่ 168 ไฟล์, แต่ละรุ่น 24 ไฟล์ และมี README กำกับโครงสร้าง
 
 
 
