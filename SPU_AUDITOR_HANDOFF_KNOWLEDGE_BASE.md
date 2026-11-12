@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 70023)
-Total output lines: 1926
+Warning: truncated output (original token count: 70133)
+Total output lines: 1927
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -836,11 +836,7 @@ Total output lines: 1926
   3. เอกสารประกอบการสอน
   4. วิดีโอแนะนำ/บันทึกการสอน
   5. กิจกรรมท้ายบท
-- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…10023 tokens truncated…นข้อมูลใน Google Sheet และข้อมูลรายวิชายังเริ่มแถว 3
-- อัปเดต source ที่ `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16/apps-script/Code.gs`, README และ RELEASE-NOTES
-
-### การทดสอบและ Production
-- Automated test ผ่านครบ **39 test files, 0 fail**; regression เฉพาะ Apps Script retention/certification ผ่าน
+- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…10133 tokens truncated…rtification ผ่าน
 - Deploy สำเร็จเป็น **Version 7** เวลา 26/10/2026 13:17 น. Asia/Bangkok
 - Deployment ID เดิม: `AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA`
 - Web App URL เดิม: `https://script.google.com/macros/s/AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA/exec`
@@ -1612,6 +1608,7 @@ Total output lines: 1926
 - จับคู่ด้วยเลขครั้งและชนิดหลักฐานก่อนเสมอ; หัวข้อที่ต้องกรองชื่อ เช่น แผนการสอน/ช่องทางติดต่อ ใช้คำสำคัญในชื่อหรือป้ายร่วมด้วย เพื่อไม่ดึงลิงก์คนละประเภทหรือคนละครั้ง
 - แต่ละลิงก์แสดงชื่อ ป้าย ประเภท เวลา (เมื่ออ่านได้) และหมายเหตุการเข้าถึง; แสดงเฉพาะหน้า Super Admin ของผลล่าสุดที่หัวข้อนั้นยังรอตรวจ เพื่อลดความรกในรายงานผู้สอน
 - อัปเดต cache-buster `audit-evidence.js` เป็น `20261112c`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Evidence-link commit `c1cd066ea45963fd1bb93980d043d2791ca49f76`; Pages run `43182275695` สำเร็จ และตรวจหน้าเว็บจริงผ่านครบทั้ง AI Tutor, วิดีโอ, Pre/Post-test, กิจกรรม, เอกสาร, ช่องทางติดต่อ, cache-buster และเงื่อนไขแสดงเฉพาะรายการรอตรวจ
 
 
 
