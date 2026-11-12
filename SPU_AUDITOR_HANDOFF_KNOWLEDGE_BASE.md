@@ -1896,8 +1896,8 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - รายการขาดและสรุปผู้สอนจะไม่แสดงว่าขาดแผนการสอนครั้งที่ 1
 - Regression test บังคับให้ครั้งที่ 1 ไม่มีแผนและต้องยังผ่านได้เมื่อครั้งที่ 2–15 ครบ พร้อมตรวจว่า `missingSessions` ไม่มีครั้งที่ 1
 - DB source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.34`
-- DB ZIP: 9,360,071 bytes, 123 entries, SHA-256 `A6B714EBD391D7F83F704AC97828ACA31C5A0C04FB6754DA7802CB80B7A8BB59`
+- DB ZIP: 9,360,081 bytes, 123 entries, SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F`
 - LC source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.27`
-- LC ZIP: 9,359,662 bytes, 124 entries, SHA-256 `5301670D1B5AD2CB5193F8E6E697866CE29E4D5146329A76A06B4B371CC1EEAB`
+- LC ZIP: 9,359,663 bytes, 124 entries, SHA-256 `6BDA6F6BAD02ABB34A487D0E07607B35BB0C526C0398237950A7C5DFA145E8C7`
 
 
