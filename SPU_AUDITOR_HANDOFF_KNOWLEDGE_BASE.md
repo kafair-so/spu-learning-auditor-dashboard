@@ -1885,4 +1885,19 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.26.zip`
 - ZIP 9,359,372 bytes, 124 entries, version `0.13.26`, SHA-256 `95AFF513F7EC7A7B6297212312B474BF534CE2E7D0236712A976CC564BDA76A0`
 
+## 70. DB 0.13.34 / LC 0.13.27 — ตัดแผนการสอนครั้งที่ 1 ออกจากข้อกำหนด (2026-11-12)
+
+**สถานะ: แก้ source แล้ว / DB tests 38/38 / LC tests 39/39 / สร้างและตรวจ ZIP ทั้งสองรุ่นแล้ว / ยังไม่ได้เผยแพร่หน้าเว็บ**
+
+- กำหนดคำเรียกรุ่นตั้งแต่นี้: Dashboard = **DB**, Local = **LC**, Local Legacy = **LL**
+- ครั้งที่ 1 ใช้เอกสารประกอบการสอนร่วมกัน จึงไม่บังคับและไม่นับแผนการสอนครั้งที่ 1
+- เกณฑ์ทฤษฎี: แผนการสอนนับเฉพาะครั้งที่ 2–15 รวม 14 ครั้ง; เอกสารประกอบและวิดีโอยังคงต้องครบ 15 ครั้ง; Pre/Post-test ยังคงครั้งที่ 2–15
+- เกณฑ์ปฏิบัติ: แผนการสอนยังต้องผ่านอย่างน้อย 7 ครั้ง แต่เลือกนับจากครั้งที่ 2–15 เท่านั้น
+- รายการขาดและสรุปผู้สอนจะไม่แสดงว่าขาดแผนการสอนครั้งที่ 1
+- Regression test บังคับให้ครั้งที่ 1 ไม่มีแผนและต้องยังผ่านได้เมื่อครั้งที่ 2–15 ครบ พร้อมตรวจว่า `missingSessions` ไม่มีครั้งที่ 1
+- DB source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.34`
+- DB ZIP: 9,360,071 bytes, 123 entries, SHA-256 `A6B714EBD391D7F83F704AC97828ACA31C5A0C04FB6754DA7802CB80B7A8BB59`
+- LC source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.27`
+- LC ZIP: 9,359,662 bytes, 124 entries, SHA-256 `5301670D1B5AD2CB5193F8E6E697866CE29E4D5146329A76A06B4B371CC1EEAB`
+
 
