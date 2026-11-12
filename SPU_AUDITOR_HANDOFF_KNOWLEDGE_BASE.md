@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 70588)
-Total output lines: 1931
+Warning: truncated output (original token count: 70744)
+Total output lines: 1932
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -836,12 +836,7 @@ Total output lines: 1931
   3. เอกสารประกอบการสอน
   4. วิดีโอแนะนำ/บันทึกการสอน
   5. กิจกรรมท้ายบท
-- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…10588 tokens truncated… บันทึกผลจริง แต่ตัวสรุปคิวเลือกแถวผิด
-
-### หลักฐานจาก Production Supabase
-- `record_audit_result` เปลี่ยนงานที่ส่งผลสำเร็จเป็น `completed` ถูกต้อง
-- ตรวจ 13 งาน completed ชุดแรกแล้ว ทั้ง 13 วิชามี `latest_internal_run_id` และพบ `audit_runs` ครบ: pass 3, has_content 7, no_content 1, needs_review 1, audit_failed 1
-- ทุกวิชาที่ completed ดังกล่าวมีแถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
+- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…10744 tokens truncated…แถว `cancelled` เก่าซึ่งมี `created_at` ใหม่กว่า จึงถูก `queueOverview()` เลือกแทนแถว completed
 
 ### สาเหตุในโค้ด
 - `enqueue_selected_audits` ใช้ job_key เดิมและ requeue แถวเก่าด้วยการอัปเดต `updated_at`; ค่า `created_at` ของงานยังเป็นวันที่สร้างครั้งแรก
@@ -1596,6 +1591,7 @@ Total output lines: 1931
 - ปุ่มบันทึกจะยังปิดอยู่จนทั้งหัวข้อทั่วไปและหลักฐานรายลิงก์ครบ พร้อมแสดงความคืบหน้า `หลักฐานรายลิงก์ครบ X / Y รายการ`; ไม่รอแจ้งข้อผิดพลาดหลังผู้ตรวจกดบันทึก
 - เปลี่ยนช่องเวลาออกจากหน่วยวินาทีเป็น `นาที:วินาที` หรือ `ชั่วโมง:นาที:วินาที` เช่น `13:19` และ `1:05:30`; หน้าเว็บแปลงเป็นวินาทีเฉพาะตอนส่งหลังบ้าน
 - อ่านเวลาเป้าหมายจากรายละเอียดเกณฑ์ของหัวข้อนั้น เช่น `0:00 / 1:30:00` แทนการใช้ค่าคงที่เมื่อมีข้อมูล และอัปเดต cache-buster เป็น `20261112d`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Single-review commit `445f945cf55d3e848b3fbd00f704b0bb54b39caa`; Pages run `43184867927` สำเร็จ และตรวจหน้าเว็บจริงแล้วพบแบบฟอร์มตัดสินรายลิงก์เพียง template เดียว ไม่มีช่องวินาทีเดิม พร้อมผ่านการตรวจรูปแบบเวลา ความคืบหน้าก่อนบันทึก การสรุปหัวข้ออัตโนมัติ และเวลาเป้าหมายแบบ dynamic
 
 
 
