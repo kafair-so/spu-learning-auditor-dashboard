@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 72100)
-Total output lines: 1958
+Warning: truncated output (original token count: 72441)
+Total output lines: 1969
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -687,16 +687,7 @@ Total output lines: 1958
 4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
 5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
 6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
-7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…22100 tokens truncated…ดงานตกหล่นและเผยแพร่จริง (2026-11-09)
-
-**สถานะ: source/tests ผ่าน / Supabase hardening ใช้งานจริง / release workflow ผ่าน / GitHub Pages แสดง 0.13.28**
-
-### Dashboard และไฟล์ติดตั้ง
-- อัปเดตหน้า Download, ข้อความ fallback ในหน้าหลักฐาน และคำแปลทั้งหมดจาก 0.13.21/รุ่นเก่าเป็น 0.13.28
-- แก้ regression test หลังเพิ่มบทบาท owner, evidence decisions รายรายการ และการซ่อนคะแนนตามสิทธิ์; ชุดทดสอบเว็บผ่านครบ 7 ไฟล์ รวม 33 tests
-- ชุดทดสอบ Extension ภายใน artifact ผ่าน 36/36 และ manifest เป็น version 0.13.28
-- พบไฟล์ `SPU-Learning-Auditor-Dashboard-0.13.21.zip` เดิมเสียจริงและไม่ควรนำกลับมาใช้เป็นฐาน build
-- สร้าง release จาก payload 0.13.28 ที่ตรวจ SHA-256 ก่อนประกอบ; GitHub Actions run #5 ผ่าน และสร้าง commit `80bf7298beade461134038d619f67ec3dd753391`
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…22441 tokens truncated…67ec3dd753391`
 - ไฟล์บน branch `main`: 9,330,876 bytes, SHA-256 `111AD46C11464C249E896B466E927828DEA7472A7BCF5334BD262F5F8DF2A0B8`
 - หน้า production ตรวจแล้วพบข้อความ 0.13.28 และไม่พบ 0.13.21
 
@@ -1289,6 +1280,17 @@ Total output lines: 1958
 - แก้การตรวจหัวข้อที่ยังว่างให้ดูค่าจริงของตัวเลือก ไม่ถือว่ามี key แล้วเท่ากับยืนยันครบ
 - อัปเดต cache-buster เป็น `20261112f`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
 - Release commit `21cf77f40761ad1026b39721e600b22e4cf158bf`; Pages run `43191241424` สำเร็จ
+
+## 74. จัดระเบียบไฟล์ Extension part แยกตามรุ่น (2026-11-12)
+
+**สถานะ: จัดโครงสร้างและทดสอบแล้ว / รอเผยแพร่**
+
+- ย้ายไฟล์ `extension-<version>.part<number>` ออกจากหน้าแรกของ repository ไปไว้ที่ `downloads/dashboard/<version>/parts/`
+- แยกครบ 7 รุ่นตั้งแต่ 0.13.28 ถึง 0.13.34 รุ่นละ 24 part รวม 168 ไฟล์ โดยไม่ลบรุ่นเก่า
+- เพิ่ม `downloads/dashboard/README.md` อธิบายโครงสร้างและระบุรุ่นปัจจุบัน
+- หน้า `download-extension.html` ของ DB 0.13.34 เปลี่ยนไปอ่านจาก `downloads/dashboard/0.13.34/parts/`
+- Regression test อ่าน part จากตำแหน่งใหม่ ประกอบ ZIP ได้ 9,360,081 bytes, SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F` และ ZIP magic เป็น `PK`
+- ชุดทดสอบหน้าเว็บหลักผ่าน 44/44; หลังจัดโครงสร้าง หน้าแรกเหลือไฟล์ part 0 ไฟล์
 
 
 

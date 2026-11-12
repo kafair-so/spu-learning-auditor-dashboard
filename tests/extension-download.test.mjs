@@ -6,7 +6,7 @@ import test from "node:test";
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url));
 
 test("extension download page reconstructs the complete verified ZIP", () => {
-  const parts = Array.from({ length: 24 }, (_, index) => read(`extension-0.13.34.part${index + 1}`));
+  const parts = Array.from({ length: 24 }, (_, index) => read(`downloads/dashboard/0.13.34/parts/extension-0.13.34.part${index + 1}`));
   assert.deepEqual(parts.map(part => part.length), [...Array(23).fill(400000), 160081]);
   const archive = Buffer.concat(parts);
   assert.equal(archive.length, 9360081);
@@ -23,5 +23,6 @@ test("dashboard routes the download button through the verified assembler", () =
   assert.match(downloader, /crypto\.subtle\.digest\("SHA-256",merged\)/);
   assert.match(downloader, /bytes\.byteLength!==PARTS\[index\]\.size/);
   assert.match(downloader, /const EXPECTED_SIZE=9360081/);
+  assert.match(downloader, /downloads\/dashboard\/0\.13\.34\/parts\/extension-0\.13\.34\.part/);
 });
 
