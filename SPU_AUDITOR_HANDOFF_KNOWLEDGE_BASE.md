@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 69290)
-Total output lines: 1918
+Warning: truncated output (original token count: 69406)
+Total output lines: 1920
 
 # SPU Learning Auditor Dashboard — Handoff & Knowledge Base
 
@@ -836,13 +836,7 @@ Total output lines: 1918
   3. เอกสารประกอบการสอน
   4. วิดีโอแนะนำ/บันทึกการสอน
   5. กิจกรรมท้ายบท
-- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…9290 tokens truncated…คณะ`
-- Folder ID: `1emmD5WpTQXD0HVyHazO8ZybfgKT_x4rT`
-- โฟลเดอร์หลักฐาน KPI เดิมจึงเหลือเฉพาะหลักฐานที่เกี่ยวข้องกับงาน KPI
-
-### ผลต่อระบบ
-- Apps Script Production Version 6 และ Web App URL เดิมยังใช้ได้ ไม่ต้อง Deploy ใหม่
-- Extension/package 0.2.8 ไม่ต้อง Reload หรือ Load Unpacked ใหม่
+- ระบบสแกนอัตโนมัติที่พบหรือไม่พ…9406 tokens truncated…อง Reload หรือ Load Unpacked ใหม่
 - กติกาถาวร: ก่อนนำผลจากเอกสารภายนอกมารับรอง ต้องจับคู่กับฐาน `เหตุผลรายวิชา` ก่อนเสมอ; ห้ามเพิ่ม Course Profile ที่ไม่อยู่ในฐาน 152 โดยอัตโนมัติ
 - Section 39 นี้แก้ไขตัวเลขและขอบเขตใน Section 38: จำนวนที่ถูกต้องสำหรับงาน KPI คือ **92 หนังสือรับรอง** ไม่ใช่ 96; 4 ฉบับที่เหลือถูกแยกออกจาก KPI แล้ว
 
@@ -1617,7 +1611,7 @@ Total output lines: 1918
 
 ## 71. DB 0.13.34 — เปิด Podcast จากผลตรวจรายครั้งในเว็บหลังบ้าน (2026-11-12)
 
-**สถานะ: แก้ source และหน้าเว็บแล้ว / tests ผ่าน / เตรียมเผยแพร่ DB 0.13.34**
+**สถานะ: แก้ source และหน้าเว็บแล้ว / tests ผ่าน / เผยแพร่และตรวจ GitHub Pages จริงแล้ว**
 
 - สาเหตุเดิม: หลักฐาน Podcast มี URL ปลายทาง ชื่อป้าย และเวลาอยู่แล้ว แต่หน้าเว็บหลังบ้านแสดงลิงก์ไว้เฉพาะส่วน `หลักฐานที่ตรวจพบ` ทำให้ผู้ตรวจต้องเลื่อนหรือกลับไปค้นในหน้ารายวิชา
 - หน้า `ผลตรวจตามครั้ง/สัปดาห์` แสดง `ลิงก์ Podcast ของครั้งนี้` ภายใต้หัวข้อ Podcast ของครั้งนั้นโดยตรง
@@ -1627,6 +1621,8 @@ Total output lines: 1918
 - อัปเดต cache-buster ของ `audit-evidence.js` เป็น `20261112a`
 - เพิ่ม regression test ป้องกันลิงก์ Podcast หายจากการ์ดรายครั้ง; ชุดทดสอบหน้าเว็บหลักผ่าน **44/44**, fail 0 (9 ไฟล์)
 - หน้า Download อัปเดตเป็น DB **0.13.34** พร้อม 24 ส่วน ขนาดรวม 9,360,081 bytes และ SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F`
+- Release commit `3fe6dbed5d09bf77a3406846d062a2cc43b8c50c`; Pages run `43180135362` สำเร็จ
+- ตรวจหน้าเว็บจริงแล้วพบเลขรุ่น 0.13.34 และข้อความลิงก์ Podcast รายครั้ง; ประกอบไฟล์จริงครบ 24 ส่วน ได้ 9,360,081 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 
 
 
