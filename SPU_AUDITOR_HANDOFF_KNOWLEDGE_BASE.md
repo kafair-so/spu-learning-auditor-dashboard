@@ -1855,7 +1855,7 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - ประกอบไฟล์จริงจาก GitHub Pages ครบ 24 ส่วน ได้ 9,355,824 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
 ## 68. Dashboard 0.13.33 — องค์ประกอบบังคับและเกณฑ์วิดีโอตามหน่วยกิต (2026-11-12)
 
-**สถานะ: แก้ source แล้ว / tests 38 ไฟล์ผ่านทั้งหมด / สร้างและตรวจ ZIP แล้ว / รอเผยแพร่**
+**สถานะ: แก้ source แล้ว / tests 38 ไฟล์ผ่านทั้งหมด / สร้างและตรวจ ZIP แล้ว / เผยแพร่และตรวจจาก GitHub Pages จริงแล้ว**
 
 - ผลผ่านของ GR/GS ต้องผ่านทั้งคะแนนหลังบ้านขั้นต่ำ 80/110 และองค์ประกอบบังคับ ไม่มีการใช้คะแนนส่วนอื่นชดเชยองค์ประกอบที่ขาด
 - ทฤษฎี: แผนการสอน เอกสารประกอบ และวิดีโอล่วงหน้าครบ 15 ครั้ง; Pre/Post-test ตรวจเฉพาะครั้งที่ 2–15 และต้องครบ 14 ครั้ง
@@ -1867,5 +1867,7 @@ Spreadsheet ID: `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`
 - Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.33`
 - ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.33.zip`
 - ZIP 9,359,754 bytes, 123 entries, version `0.13.33`, SHA-256 `35548E8F5E2BDCDAA03C30B54B250F52B7DF892781DBF488163125E6A360E872`
+- Release commit `2c4851887a6707b3feb9d1289f10752f67500352`; Pages run `43147828821` สำเร็จ
+- ตรวจหน้า `download-extension.html` จาก GitHub Pages จริงแล้ว: แสดง 0.13.33, ดาวน์โหลดครบ 24 ส่วน, ตรวจ SHA-256 ผ่าน และขึ้นข้อความว่าไฟล์สมบูรณ์
 
 
