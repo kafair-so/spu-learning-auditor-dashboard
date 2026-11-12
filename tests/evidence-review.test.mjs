@@ -13,9 +13,17 @@ test("video and Podcast review is itemized with links, duration and use decision
   assert.match(evidence,/data-evidence-item/);
   assert.match(evidence,/ชื่อป้าย/);
   assert.match(evidence,/data-evidence-decision/);
-  assert.match(evidence,/data-evidence-seconds/);
+  assert.match(evidence,/data-evidence-time/);
+  assert.match(evidence,/parseDurationInput/);
+  assert.match(evidence,/นาที:วินาที หรือ ชั่วโมง:นาที:วินาที/);
+  assert.match(evidence,/durationSecondsFromDetail/);
   assert.match(evidence,/เปิดหลักฐาน/);
   assert.match(evidence,/ใช้ผลยืนยันเดิม/);
+  assert.match(evidence,/itemizedReviewChoice/);
+  assert.match(evidence,/evidenceLinks\.includes\("data-evidence-item"\)/);
+  assert.match(evidence,/data-evidence-progress/);
+  assert.match(evidence,/button\.disabled=done!==picks\.length\|\|evidenceDone!==evidenceRows\.length/);
+  assert.doesNotMatch(evidence,/เวลาที่ใช้คำนวณ \(วินาที\)/);
   assert.match(auditApi,/evidenceDecisions/);
   assert.match(api,/reviewConfirmation.*evidenceDecisions/);
 });
@@ -34,7 +42,7 @@ test("every reviewable criterion exposes matching direct evidence links", () => 
   assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
   assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
   assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261112c/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261112d/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
