@@ -1291,7 +1291,7 @@ Total output lines: 1971
 
 ## 75. DB — ทำให้ผลผู้สอนและแอดมินอ้างอิงผลตรวจเดียวกัน (2026-11-17)
 
-**สถานะ: แก้ source และ regression testแล้ว / Supabase Edge Function Production v45 แล้ว / รอ GitHub Pages**
+**สถานะ: เผยแพร่ Production ครบทั้ง Supabase Edge Function v45 และ GitHub Pages แล้ว**
 
 - สาเหตุหลักคือหน้าผู้สอนอ่าน evidence snapshot ดิบจาก Storage แต่หน้าแอดมินอ่าน `source_payload` ที่มีการนำผลยืนยันเดิมหรือผลผู้ตรวจมาปรับสถานะแล้ว จึงทำให้รายการแก้ไขของผลเดียวกันไม่ตรงกัน
 - เปลี่ยน public/admin evidence API ให้ยึด `source_payload.evidenceSnapshot` ที่ผ่านการตัดสินเป็นแหล่งข้อมูลหลัก และใช้ไฟล์ Storage เป็น fallback เฉพาะผลรุ่นเก่าที่ไม่มี snapshot ในฐานข้อมูล
@@ -1302,6 +1302,9 @@ Total output lines: 1971
 - การค้นหาผลยืนยันเดิมเรียงด้วย `created_at` แทน `audited_at` เพื่อไม่หยิบผลผิดเมื่อการรันซ้ำยังส่งเวลาตรวจเดิมมา
 - เพิ่ม regression test `teacher and admin evidence use the same resolved run snapshot`; ชุดทดสอบหลักผ่าน **45/45**, fail 0
 - อัปเดต cache-buster ของ `audit-api.js` และ `audit-evidence.js` เป็น `20261117a`
+- Supabase Edge Function `api` Production เป็น version 45; GitHub Pages run `44012717725` สำเร็จที่ commit `1fb6fcb3d1d22d91def9b2d5fbcf7b75b5ccae86`
+- ตรวจ API Production ของรายวิชา 962 แล้ว: `published_run_id` และรายการแรกตรงกันที่ `a7364996-fd2b-41c8-91be-932226b251ea`, เวลาตรวจ 17 พ.ย. 2569 10:06, Auditor 0.13.34, response เป็น `Cache-Control: no-store`
+- เปรียบเทียบสถานะหัวข้อจาก API ผู้สอนกับ canonical snapshot ในฐานข้อมูลแล้วตรงกันครบ: `pass=18`, `fail=75` (รวม needs_review ที่ซ่อนจากผู้สอน), `not_applicable=12`
 
 
 
