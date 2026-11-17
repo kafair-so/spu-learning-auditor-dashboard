@@ -1289,5 +1289,20 @@ Total output lines: 1971
 - Release commit `850650c3c74ca9c5c8f14aa4b69618c82fdcabb2`; Pages run `43195500060` สำเร็จ
 - ตรวจ tree หลังเผยแพร่แล้ว: root part 0, ตำแหน่งใหม่ 168 ไฟล์, แต่ละรุ่น 24 ไฟล์ และมี README กำกับโครงสร้าง
 
+## 75. DB — ทำให้ผลผู้สอนและแอดมินอ้างอิงผลตรวจเดียวกัน (2026-11-17)
+
+**สถานะ: แก้ source และ regression testแล้ว / Supabase Edge Function Production v45 แล้ว / รอ GitHub Pages**
+
+- สาเหตุหลักคือหน้าผู้สอนอ่าน evidence snapshot ดิบจาก Storage แต่หน้าแอดมินอ่าน `source_payload` ที่มีการนำผลยืนยันเดิมหรือผลผู้ตรวจมาปรับสถานะแล้ว จึงทำให้รายการแก้ไขของผลเดียวกันไม่ตรงกัน
+- เปลี่ยน public/admin evidence API ให้ยึด `source_payload.evidenceSnapshot` ที่ผ่านการตัดสินเป็นแหล่งข้อมูลหลัก และใช้ไฟล์ Storage เป็น fallback เฉพาะผลรุ่นเก่าที่ไม่มี snapshot ในฐานข้อมูล
+- เมื่อผลเก่ามี `reviewConfirmation.decisions` ระบบจะนำการตัดสินไปปรับสถานะของ snapshot ตอนอ่านด้วย จึงแก้ผลเดิมที่เคยบันทึกไว้ได้โดยไม่ต้องรันตรวจใหม่
+- หน้าแอดมินยึด `courses.latest_internal_run_id` เป็นผลล่าสุด ส่วนหน้าผู้สอนยึด `public_course_results.published_run_id` เป็นผลล่าสุด ไม่เดาจาก `audited_at` อีกต่อไป
+- ประวัติที่มีเวลาตรวจซ้ำกันเรียงด้วย `created_at` และ `run_id`; หน้าเว็บแสดงทั้งเวลาตรวจและเวลารับเข้าระบบเพื่อไม่ให้ผลหลายระเบียนดูเหมือนรายการเดียวกัน
+- ตัด cache ของรายละเอียดผลผู้สอน (`no-store`) ทั้งฝั่ง Browser และ API ป้องกันผลเก่าค้างหลังเผยแพร่หรือยืนยันผลใหม่
+- การค้นหาผลยืนยันเดิมเรียงด้วย `created_at` แทน `audited_at` เพื่อไม่หยิบผลผิดเมื่อการรันซ้ำยังส่งเวลาตรวจเดิมมา
+- เพิ่ม regression test `teacher and admin evidence use the same resolved run snapshot`; ชุดทดสอบหลักผ่าน **45/45**, fail 0
+- อัปเดต cache-buster ของ `audit-api.js` และ `audit-evidence.js` เป็น `20261117a`
+
+
 
 
