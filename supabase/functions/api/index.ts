@@ -230,22 +230,29 @@ function adminResultRecord(row) {
   };
 }
 
-function historyRunRecord(row) {
+function resolvedRunSource(row) {
   const source = row.source_payload ? JSON.parse(JSON.stringify(row.source_payload)) : {};
+  const savedDecisions = source?.reviewConfirmation?.decisions;
+  if (savedDecisions && typeof savedDecisions === "object") {
+    applyReviewDecisionStatuses(source, savedDecisions, {
+      confirmedScore:row.score, possibleScore:row.score,
+      internalStatus:row.internal_status, publicStatus:row.public_status || row.internal_status
+    });
+  }
+  return source;
+}
+
+function historyRunRecord(row) {
+  const source = resolvedRunSource(row);
   const score = row.score == null ? null : Number(row.score);
   const reviewable = Number(row.reviewable_points || 0);
   const scoreModel = String(source.scoreModel || "");
   const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
-  const savedDecisions = source?.reviewConfirmation?.decisions;
-  if (savedDecisions && typeof savedDecisions === "object") {
-    applyReviewDecisionStatuses(source, savedDecisions, {
-      confirmedScore:score, possibleScore:score, internalStatus:row.internal_status, publicStatus:row.public_status || row.internal_status
-    });
-  }
   return {
     ...source,
     runId: row.run_id,
     auditedAt: row.audited_at,
+    receivedAt: row.created_at,
     auditorVersion: row.auditor_version || "",
     internalStatus: row.internal_status,
     publicStatus: row.public_status || "",
@@ -263,10 +270,23 @@ function publicHistoryRunRecord(row) {
   return {
     runId: row.run_id,
     auditedAt: row.audited_at,
+    receivedAt: row.created_at,
     auditorVersion: row.auditor_version || "",
     publicStatus: row.public_status || "",
     evidenceAvailable: Boolean(row.evidence_object_path)
   };
+}
+
+function prioritizeRun(rows = [], currentRunId = "", limit = 3) {
+  const ordered = [...rows].sort((left, right) => {
+    const leftCurrent = String(left.run_id) === String(currentRunId);
+    const rightCurrent = String(right.run_id) === String(currentRunId);
+    if (leftCurrent !== rightCurrent) return leftCurrent ? -1 : 1;
+    const received = String(right.created_at || "").localeCompare(String(left.created_at || ""));
+    if (received) return received;
+    return String(right.run_id || "").localeCompare(String(left.run_id || ""));
+  });
+  return ordered.slice(0, limit);
 }
 
 function limitedAdminResultRecord(row) {
@@ -438,13 +458,13 @@ async function adminHistory(request, courseId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return publicHistory(courseId);
   const { data: course, error: courseError } = await db.from("courses")
-    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url")
+    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id,published_run_id")
     .eq("course_id", courseId).maybeSingle();
   if (courseError) throw courseError;
   if (!course) return null;
   const { data: runs, error } = await db.from("audit_runs")
-    .select("run_id,audited_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
-    .eq("course_id", courseId).order("audited_at", { ascending:false }).limit(3);
+    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
+    .eq("course_id", courseId).order("created_at", { ascending:false }).limit(10);
   if (error) throw error;
   return {
     courseId: course.course_id,
@@ -452,7 +472,7 @@ async function adminHistory(request, courseId) {
     courseTitle: course.course_title || "",
     courseProfile: course.course_title || "",
     courseUrl: course.course_url || "",
-    runs: (runs || []).map(historyRunRecord)
+    runs: prioritizeRun(runs || [], course.latest_internal_run_id).map(historyRunRecord)
   };
 }
 
@@ -674,12 +694,12 @@ async function publicHistory(courseId) {
     runs: []
   };
   const { data: runs, error } = await db.from("audit_runs")
-    .select("run_id,audited_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
+    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
     .eq("course_id", courseId).not("public_status", "is", null)
-    .order("audited_at", { ascending: false }).limit(3);
+    .order("created_at", { ascending: false }).limit(10);
   if (error) throw error;
   const { score, ...safePublicRow } = publicRow;
-  return { ...safePublicRow, runs: (runs || []).map(publicHistoryRunRecord) };
+  return { ...safePublicRow, runs: prioritizeRun(runs || [], publicRow.published_run_id).map(publicHistoryRunRecord) };
 }
 
 function publicEvidenceSnapshot(snapshot) {
@@ -714,9 +734,14 @@ async function downloadEvidenceSnapshot(path) {
 
 async function evidence(request, courseId, runId) {
   const { data: run, error } = await db.from("audit_runs")
-    .select("evidence_object_path,public_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
+    .select("evidence_object_path,public_status,source_payload").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
-  if (!run || !run.public_status || !run.evidence_object_path) return null;
+  if (!run || !run.public_status) return null;
+  const resolvedSnapshot = resolvedRunSource(run).evidenceSnapshot;
+  if (resolvedSnapshot && typeof resolvedSnapshot === "object") {
+    return { snapshot:publicEvidenceSnapshot(resolvedSnapshot) };
+  }
+  if (!run.evidence_object_path) return null;
   return { snapshot:publicEvidenceSnapshot(await downloadEvidenceSnapshot(run.evidence_object_path)) };
 }
 
@@ -724,8 +749,10 @@ async function adminEvidence(request, courseId, runId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return evidence(request, courseId, runId);
   const { data: run, error } = await db.from("audit_runs")
-    .select("evidence_object_path").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
+    .select("evidence_object_path,source_payload").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
+  const resolvedSnapshot = run ? resolvedRunSource(run).evidenceSnapshot : null;
+  if (resolvedSnapshot && typeof resolvedSnapshot === "object") return { snapshot:resolvedSnapshot };
   if (!run?.evidence_object_path) return null;
   const { data, error: signError } = await db.storage.from("audit-evidence").createSignedUrl(run.evidence_object_path, 300);
   if (signError) throw signError;
@@ -886,8 +913,8 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
   const activities = Array.isArray(payload?.evidenceSnapshot?.activities) ? payload.evidenceSnapshot.activities : [];
   if (!activities.length) return payload;
   const { data:recentRuns, error } = await db.from("audit_runs")
-    .select("run_id,score,passing_score,source_payload")
-    .eq("course_id", courseId).order("audited_at", { ascending:false }).limit(10);
+    .select("run_id,score,passing_score,source_payload,created_at")
+    .eq("course_id", courseId).order("created_at", { ascending:false }).limit(10);
   if (error) throw error;
   const previous = (recentRuns || []).find((run) => run?.source_payload?.reviewConfirmation?.decisions);
   if (!previous) return payload;
@@ -963,7 +990,7 @@ Deno.serve(async request => {
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "public" && parts[2] === "courses" && parts[4] === "history") {
       const result = await publicHistory(parts[3]);
-      return result ? respond(request, 200, result, "public, max-age=60, stale-while-revalidate=300") : respond(request, 404, { error: "course_not_found" });
+      return result ? respond(request, 200, result, "no-store") : respond(request, 404, { error: "course_not_found" });
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "evidence" && parts.length === 4) {
       const result = await evidence(request, parts[2], parts[3]);
@@ -1047,6 +1074,7 @@ Deno.serve(async request => {
     console.error(error); return respond(request, Number(error.status || 400), { error: error.message || "request_failed" });
   }
 });
+
 
 
 
