@@ -53,7 +53,7 @@ test("every reviewable criterion exposes matching direct evidence links", () => 
   assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
   assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
   assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261112f/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261117a/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
@@ -78,6 +78,20 @@ test("saved reviewer decisions replace stale pending criterion states", () => {
   assert.match(api,/source_payload:resolvedSource/);
   assert.match(api,/const savedDecisions = source\?\.reviewConfirmation\?\.decisions/);
   assert.match(reusePolicy,/item\.status = decisions\[key\] \? "pass" : "fail"/);
+});
+
+test("teacher and admin evidence use the same resolved run snapshot", () => {
+  assert.match(api,/function prioritizeRun/);
+  assert.match(api,/prioritizeRun\(runs \|\| \[\], course\.latest_internal_run_id\)/);
+  assert.match(api,/prioritizeRun\(runs \|\| \[\], publicRow\.published_run_id\)/);
+  assert.match(api,/function resolvedRunSource/);
+  assert.match(api,/const resolvedSnapshot = resolvedRunSource\(run\)\.evidenceSnapshot/);
+  assert.match(api,/snapshot:publicEvidenceSnapshot\(resolvedSnapshot\)/);
+  assert.match(api,/return \{ snapshot:resolvedSnapshot \}/);
+  assert.match(api,/respond\(request, 200, result, "no-store"\)/);
+  assert.match(auditApi,/courseId\)\}\/history`,\{auth:false,cache:"no-store"\}/);
+  assert.match(auditApi,/if\(payload\.snapshot\)return payload\.snapshot/);
+  assert.match(api,/\.eq\("course_id", courseId\)\.order\("created_at", \{ ascending:false \}\)\.limit\(10\)/);
 });
 
 test("complete instructor evidence closes the criterion before result ingestion", () => {
@@ -115,4 +129,5 @@ test("numeric scores are absent from public and ordinary-admin payloads", () => 
   assert.match(api,/map\(\(\{ score, \.\.\.record \}\) => record\)/);
   assert.match(evidence,/const scoreFacts=superAdmin\?/);
 });
+
 
