@@ -32,6 +32,7 @@ function criteriaRequest(body = {}) {
 
 async function syncSheetStatusSafely(courseId, status, group) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
+  if (!["pass", "has_content", "no_content"].includes(status)) return { configured:true, skipped:true, reason:"result_not_publishable" };
   const normalizedGroup = String(group || "").trim().toUpperCase();
   if (!["GS", "GR"].includes(normalizedGroup)) return { configured:true, ok:false, error:"invalid_course_group" };
   const contentStatus = status === "no_content" ? "ไม่พบเนื้อหา" : "พบเนื้อหา";
@@ -54,6 +55,7 @@ async function syncSheetStatusSafely(courseId, status, group) {
     if (!response.ok) throw new Error(`sheet_status_sync_http_${response.status}`);
     const result = await response.json().catch(() => ({}));
     if (result.ok !== true) throw new Error(result.error || "sheet_status_sync_failed");
+    if (result.verified !== true || String(result.courseId) !== String(courseId) || result.group !== normalizedGroup || result.contentStatus !== contentStatus || result.resultStatus !== resultStatus || result.evidenceUrl !== evidenceUrl) throw new Error("sheet_status_sync_unverified");
     return result;
   } catch (error) {
     console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:String(error?.message || error) });
@@ -497,6 +499,7 @@ async function decideAdminResult(request, runId) {
     .select("run_id,course_id,internal_status,score,passing_score,reviewable_points,audited_at,evidence_object_path,source_payload")
     .eq("run_id", runId).single();
   if (currentRunError) throw currentRunError;
+  if (currentRun.source_payload?.criteriaMode === "legacy_12569" || currentRun.source_payload?.criteria_mode === "legacy_12569") throw Object.assign(new Error("legacy_weighted_review_not_available"), { status:409 });
   if (!["needs_review", "has_content"].includes(currentRun.internal_status) || Number(currentRun.reviewable_points || 0) <= 0) {
     throw Object.assign(new Error("review_decision_not_available"), { status:409 });
   }
@@ -972,10 +975,13 @@ async function submitResult(request, jobId) {
   }
   submittedPayload.criteriaMode = expectedCriteria.criteriaMode;
   submittedPayload.semesterCode = expectedCriteria.semesterCode;
-  normalizeCloudAudioEvidence(submittedPayload);
-  resolveAutomaticInstructorCriterion(submittedPayload);
   const course = String(submittedPayload.courseId || "").trim();
-  await attachPriorEvidenceDecisions(course, submittedPayload);
+  if (course !== String(jobMeta.course_id)) throw Object.assign(new Error("audit_result_course_mismatch"), { status:409 });
+  normalizeCloudAudioEvidence(submittedPayload);
+  if (expectedCriteria.criteriaMode === "current" && submittedPayload.internalStatus !== "audit_failed") {
+    resolveAutomaticInstructorCriterion(submittedPayload);
+    await attachPriorEvidenceDecisions(course, submittedPayload);
+  }
   const { payload, gate } = applyAutomaticPublicationGate(submittedPayload);
   const externalId = String(payload.auditId || payload.runId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
@@ -1003,7 +1009,11 @@ async function submitResult(request, jobId) {
   await purgeRetiredEvidence().catch(error => console.warn("retired_evidence_cleanup_failed", error));
   const { data:sheetCourse, error:sheetCourseError } = await db.from("courses").select("course_group").eq("course_id", course).single();
   if (sheetCourseError) throw sheetCourseError;
-  const sheetSync = await syncSheetStatusSafely(course, payload.internalStatus, sheetCourse.course_group);
+  const { data:published, error:publishedError } = await db.from("courses").select("published_run_id,public_status").eq("course_id", course).single();
+  if (publishedError) throw publishedError;
+  const sheetSync = published.published_run_id === data && published.public_status === payload.internalStatus
+    ? await syncSheetStatusSafely(course, payload.internalStatus, sheetCourse.course_group)
+    : { skipped:true, reason:"result_not_published" };
   return { runId: data, courseId: course, automaticPublication: gate.approved, qualityFailures: gate.failures, sheetSync };
 }
 
