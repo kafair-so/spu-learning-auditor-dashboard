@@ -1,5 +1,5 @@
 const STATUS_SPREADSHEET_ID = '1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg';
-const STATUS_SHEETS = Object.freeze({ GS:'69/1-GS', GR:'69/1-GR' });
+const STATUS_SHEETS = Object.freeze({ GR:'69/1-GR' });
 const CONTENT_COLUMN = 22; // V
 const RESULT_COLUMN = 23; // W
 const EVIDENCE_COLUMN = 24; // X
