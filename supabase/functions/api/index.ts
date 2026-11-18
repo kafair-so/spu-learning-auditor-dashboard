@@ -59,7 +59,7 @@ async function inspectPublishedGrResult(id, expected) {
   }
 }
 
-async function syncSheetStatusSafely(courseId, status, group) {
+async function syncSheetStatusSafely(courseId, status, group, {diagnosePublished=true}={}) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
   if (!["pass", "has_content", "no_content"].includes(status)) return { configured:true, skipped:true, reason:"result_not_publishable" };
   const normalizedGroup = String(group || "").trim().toUpperCase();
@@ -95,10 +95,46 @@ async function syncSheetStatusSafely(courseId, status, group) {
     console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:message });
     // Public W/X is diagnostic only; V is not exposed. Keep the result
     // pending until the webhook verifies all three private values.
-    const published = timedOut || error?.name === "TypeError"
+    const published = diagnosePublished && (timedOut || error?.name === "TypeError")
       ? await inspectPublishedGrResult(courseId, expected) : {};
     return { configured:true, ok:false, verified:false, pending:true, error:message, ...published };
   }
+}
+
+// Persist synchronization work independently of the browser. Only a verified
+// live V/W/X readback is marked verified. A timeout is never counted as synced.
+async function grSheetRpc(name, args={}) {
+  const {data,error}=await db.rpc(name,args);
+  if(error)throw Object.assign(new Error("sheet_queue_backend_unavailable"),{status:503});
+  return data;
+}
+async function processGrSheetSync(courseId=null) {
+  const task=await grSheetRpc("claim_gr_sheet_sync",{p_course_id:courseId});
+  if(!task)return null;
+  const result=await syncSheetStatusSafely(task.course_id,task.target_status,"GR",{diagnosePublished:false});
+  const verified=result.ok===true&&result.verified===true&&result.liveSheetVerified===true;
+  const reason=String(result.error||(result.configured===false?"webhook_not_configured":"sheet_sync_unconfirmed"));
+  const permanent=!verified&&/^(?:unauthorized|spreadsheet_not_allowed|invalid_course_identity|invalid_status_update|content_result_mismatch|evidence_course_mismatch|duplicate_course_id|course_not_found|course_identity_changed|course_group_mismatch|sheet_not_found|webhook_not_configured)$/.test(reason);
+  // Apps Script may finish after our HTTP timeout. Keep the six-minute lease
+  // on ambiguous failures to avoid overlapping requests for the same course.
+  const hold=!verified&&!permanent;
+  const finished=await grSheetRpc("finish_gr_sheet_sync",{p_course_id:task.course_id,p_run_id:task.run_id,p_target_status:task.target_status,p_lease_token:task.lease_token,p_outcome:verified?"verified":permanent?"blocked":"pending",p_error:verified?null:reason,p_retry_seconds:Math.min(360,30*2**Math.min(4,Number(task.attempts||1)-1)),p_hold_lease:hold});
+  return {courseId:task.course_id,runId:task.run_id,state:finished?.state||"pending",reason:verified?null:reason};
+}
+async function queuePublishedGrSync(courseId,runId) {
+  const row=await grSheetRpc("register_gr_sheet_sync",{p_course_id:courseId,p_run_id:runId});
+  if(!row)return {skipped:true,reason:"result_not_published"};
+  if(row.state==="verified")return {ok:true,verified:true,liveSheetVerified:true,verificationSource:"durable_apps_script_readback"};
+  // Registration must succeed before the worker may acknowledge a result.
+  // Failure of the immediate mirror attempt cannot erase this durable work.
+  let attempt=null;
+  try{attempt=await processGrSheetSync(courseId);}
+  catch(error){console.warn("gr_sheet_queue_attempt_deferred",{courseId,error:String(error?.message||error)});}
+  if(attempt?.runId===runId&&attempt.state==="verified")return {ok:true,verified:true,liveSheetVerified:true,verificationSource:"apps_script_readback"};
+  return {ok:false,verified:false,liveSheetVerified:false,durable:true,queued:true,pending:true,runId,state:attempt?.runId===runId?attempt.state:row.state,error:attempt?.reason||row.last_error||"sheet_sync_pending"};
+}
+async function grSheetOverview() {
+  return await grSheetRpc("gr_sheet_sync_overview");
 }
 
 function corsHeaders(request) {
@@ -490,6 +526,7 @@ async function queueOverview(request) {
     current: current ? pending.find(item => item.jobId === current.job_id) : null,
     pending,
     recent,
+    sheetSync: await grSheetOverview(),
     generatedAt: new Date().toISOString()
   };
 }
@@ -670,7 +707,7 @@ async function decideAdminResult(request, runId) {
     published_run_id:run.run_id, evidence_available:Boolean(run.evidence_object_path), published_at:now
   }, { onConflict:"course_id" });
   if (publishError) throw publishError;
-  const sheetSync = await syncSheetStatusSafely(run.course_id, decision, course.course_group);
+  const sheetSync = await queuePublishedGrSync(run.course_id, run.run_id);
   return { runId:run.run_id, courseId:run.course_id, internalStatus:decision, publicStatus:decision, sheetSync };
 }
 
@@ -1109,7 +1146,7 @@ async function resolveLegacyCourseContext(course) {
   if(!meta){
     // Some i-Learning titles do not carry the profile. Resolve only the exact
     // published GR Course ID; never infer from course code or default to T.
-    const response=await fetch(GR_PUBLIC_CATALOG_URL+"&_="+Date.now(),{cache:"no-store"});
+    const response=await fetch(GR_PUBLIC_CATALOG_URL+"&_="+Date.now(),{cache:"no-store",signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw Object.assign(new Error("legacy_course_profile_catalog_unavailable"),{status:503});
     const rows=parseCsv(await response.text()).filter(row=>row.group==="GR"&&courseId(row)===String(course.course_id));
     if(rows.length!==1)throw Object.assign(new Error("legacy_course_profile_not_unique"),{status:409});
@@ -1161,7 +1198,7 @@ async function recoverCompletedWorkerResult(jobMeta, externalId, course) {
     .select("course_group,published_run_id,public_status").eq("course_id",course).single();
   if (publishedError) throw publishedError;
   const sheetSync = published.published_run_id === saved.run_id && published.public_status === saved.public_status
-    ? await syncSheetStatusSafely(course, saved.public_status, published.course_group)
+    ? await queuePublishedGrSync(course, saved.run_id)
     : {skipped:true,reason:"result_not_published"};
   const gate = saved.quality_gate;
   return {runId:saved.run_id,courseId:course,alreadyStored:true,
@@ -1232,7 +1269,7 @@ async function submitResult(request, jobId) {
   const { data:published, error:publishedError } = await db.from("courses").select("published_run_id,public_status").eq("course_id", course).single();
   if (publishedError) throw publishedError;
   const sheetSync = published.published_run_id === data && published.public_status === payload.internalStatus
-    ? await syncSheetStatusSafely(course, payload.internalStatus, sheetCourse.course_group)
+    ? await queuePublishedGrSync(course, data)
     : { skipped:true, reason:"result_not_published" };
   return { runId: data, courseId: course, automaticPublication: gate.approved, qualityFailures: gate.failures, sheetSync };
 }
@@ -1315,6 +1352,11 @@ Deno.serve(async request => {
     }
     if (request.method === "POST" && parts.join("/") === "v1/admin/results") {
       return respond(request, 200, await ingestReviewerResult(request));
+    }
+    if (request.method === "POST" && parts.join("/") === "v1/worker/sheet-sync") {
+      await reviewer(request);
+      const attempt=await processGrSheetSync();
+      return respond(request,200,{...await grSheetOverview(),attempt},"private, no-store");
     }
     if (request.method === "POST" && parts.join("/") === "v1/worker/jobs/claim") {
       const user = await reviewer(request); const data = await claimGrJob(user.email);

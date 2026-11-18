@@ -91,6 +91,7 @@
     clearQueuedJobs:()=>request("/v1/admin/jobs",{method:"DELETE"}),
     refreshAll:()=>request("/v1/admin/jobs/refresh",{method:"POST",body:"{}"}),
     uploadResult:result=>request("/v1/admin/results",{method:"POST",body:JSON.stringify(result)}),
+    retrySheetSync:()=>request("/v1/worker/sheet-sync",{method:"POST",body:"{}",signal:AbortSignal.timeout(45000)}),
     claimJob:()=>request("/v1/worker/jobs/claim",{method:"POST",body:"{}"}),
     submitResult:(jobId,result)=>request(`/v1/worker/jobs/${encodeURIComponent(jobId)}/result`,{method:"POST",body:JSON.stringify(result),signal:AbortSignal.timeout(90000)})
   };
