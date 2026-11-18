@@ -1346,3 +1346,18 @@ Total output lines: 1971
 
 
 
+
+
+## 78. ตรวจรับช่วงหลัง Codex/Work quota หมด — 2026-11-18
+
+**สถานะ: แก้ source บน GitHub บางส่วนและอ่านกลับแล้ว; ยังไม่พร้อมตรวจจริง / ยังไม่ deploy API หรือ Apps Script ที่แก้ในรอบนี้**
+
+- ก่อนแก้ยืนยัน Supabase migration `20261118033556` (`semester_12569_criteria_safe`), RPC `enqueue_selected_audits_v2` และ `record_audit_result_v2`, Edge Function API v46 ACTIVE; ยังไม่พบ job/run `legacy_12569` ใน DB ณ เวลาตรวจ
+- Front repo `donut204/ooe-dashboard-2569` commit `8fc87d7e201d26a7ea6eff9f3ecfce7d7243ff76`: รองรับหัว W ของ GR ที่มี newline และคัด prefix 691GS-/691GR- ตามแท็บ (พบข้อมูล FN ปะปนจริงในสองแท็บ); ยังไม่ได้ยืนยัน Pages/จำนวนรายวิชาหลังกรองหรือ eligibility ตามตัวกรองที่เจ้าของชีตตั้งไว้
+- `google-apps-script/Code.gs` commit `e314d176767f8b1e5f24043ea163455020040792`: จับคู่แถวจาก I เท่านั้น, ตรวจ evidence URL และ profile, ตรวจ Course ID และ V–X หลังเขียน; ยังไม่ได้ deploy web app หรือทดสอบ write จริง
+- `supabase/functions/api/index.ts` commit `b04e94618c48309b8821880cda09743d5bb048b9`: ตรวจ Course ID เทียบกับ job, ไม่ส่ง needs_review/audit_failed เข้า Sheet, require verified response และ published run, แยก heuristic การยืนยันคะแนนเดิมจาก legacy, ปิด manual review legacy ชั่วคราวเพื่อไม่คิดคะแนนผิด; ยังไม่ได้ deploy เนื่องจากต้องทดสอบร่วมกับ Apps Script ใหม่และ weighted review
+- ต้องแก้ต่อ: syncCatalog ยังอ่าน COURSE_CSV_URL และ schema เดิม; สองแท็บมีข้อมูลประเภทอื่นร่วมและ eligibility เดิมอิง row visibility จึงต้องยืนยันรายการที่ต้องตรวจจริงก่อนนำเข้า ไม่เดาจาก prefix อย่างเดียว; ห้ามแตะ AI Tutor / Podcast
+- ต้องแก้ weighted review ของ legacy ให้ใช้สูตรและ mandatory gates ตามประเภทวิชา ไม่บวกทีละ 1 และแก้การแสดง maxScore 110 ที่ API ยังตรึงอยู่; ตรวจ gate score model `legacy_course_type_v1` กับ `weekly_criterion_v2` และประวัติแยกเกณฑ์ก่อนปล่อยจริง
+- Extension 0.13.35 มี staged source และ manifest; workflow ถูก trigger จาก commit `a10a302d` แต่ไม่พบ release.json และหน้า download ใน repo ยัง 0.13.34; ไม่อ้างว่า build/deploy สำเร็จ (connector ไม่แสดง push workflow runs)
+- หน้า evidence mockup มี commit แล้ว ยังไม่ยืนยัน Pages และ browser smoke test; ยังไม่ได้รัน automated tests ใหม่หรือทดสอบ end-to-end ในรอบนี้
+- ไม่มีการเปลี่ยน Google Sheet cells, DB rows, migration, queue หรือ Edge Function production ในรอบนี้; ต้องยืนยัน Apps Script deploy, API release, package/download digest และทดสอบ GS/GR อย่างละหนึ่งรายวิชาก่อนเริ่ม bulk audit
