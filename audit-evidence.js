@@ -168,7 +168,7 @@
   };
 
   function render(selected,history,superAdmin=false){
-    const courseCode=String(selected.courseCode||"").trim(),courseProfile=String(selected.courseProfile||"").trim();
+    const courseCode=String(selected.courseCode||"").trim(),courseProfile=String(selected.courseProfile||"").trim().replace(/^\[\s*/,"").replace(/\s*\]$/,"");
     let courseTitle=String(selected.courseTitle||"").trim();
     if(courseProfile){
       const bracketedProfile=`[${courseProfile}]`;
