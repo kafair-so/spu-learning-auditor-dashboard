@@ -1050,6 +1050,7 @@ async function submitResult(request, jobId) {
   if (expectedCriteria.criteriaMode === "legacy_12569" && payload.internalStatus !== "audit_failed") {
     if (!gate.approved) throw Object.assign(new Error("legacy_result_quality_invalid"), {status:422});
     const weighted = score12569Snapshot(payload);
+    if (payload.internalStatus === "no_content" && (payload.hasContent !== false || weighted.total !== 0)) throw Object.assign(new Error("legacy_no_content_mismatch"),{status:422});
     if (weighted.total !== Number(payload.confirmedScore) || weighted.passScore !== Number(payload.threshold) || (weighted.status === "pass" && payload.internalStatus !== "pass") || (weighted.status !== "pass" && payload.internalStatus === "pass") || (weighted.status === "needs_review" && payload.internalStatus !== "needs_review")) throw Object.assign(new Error("legacy_result_score_mismatch"), {status:422});
     payload.reviewableCriteria = legacyReviewKeys(payload);
     payload.possibleScore = Math.max(weighted.total,weighted.potentialTotal);
