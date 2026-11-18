@@ -262,6 +262,15 @@ function resolvedRunSource(row) {
   return source;
 }
 
+function reviewerSummary(row, source = {}) {
+  const saved = String(source?.reviewConfirmation?.note || "").trim();
+  if (saved) return saved.slice(0, 1000);
+  const internal = String(row?.internal_note || "");
+  if (!internal.startsWith("reviewer_confirmation:")) return "";
+  const separator = internal.indexOf(" | ");
+  return separator >= 0 ? internal.slice(separator + 3).trim().slice(0, 1000) : "";
+}
+
 function historyRunRecord(row) {
   const source = resolvedRunSource(row);
   const score = row.score == null ? null : Number(row.score);
@@ -286,19 +295,22 @@ function historyRunRecord(row) {
     scoreModel,
     scoreNeedsRefresh,
     threshold: row.passing_score == null ? null : Number(row.passing_score),
-    evidenceAvailable: Boolean(row.evidence_object_path)
+    evidenceAvailable: Boolean(row.evidence_object_path),
+    reviewerSummary: reviewerSummary(row, source)
   };
 }
 
 function publicHistoryRunRecord(row) {
+  const source = row.source_payload || {};
   return {
     runId: row.run_id,
     auditedAt: row.audited_at,
     receivedAt: row.created_at,
     auditorVersion: row.auditor_version || "",
     publicStatus: row.public_status || "",
-    criteriaMode: row.source_payload?.criteriaMode || "current",
-    evidenceAvailable: Boolean(row.evidence_object_path)
+    criteriaMode: source.criteriaMode || "current",
+    evidenceAvailable: Boolean(row.evidence_object_path),
+    reviewerSummary: reviewerSummary(row, source)
   };
 }
 
@@ -493,7 +505,7 @@ async function adminHistory(request, courseId) {
   if (courseError) throw courseError;
   if (!course) return null;
   const { data: runs, error } = await db.from("audit_runs")
-    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
+    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload,internal_note")
     .eq("course_id", courseId).order("created_at", { ascending:false }).limit(10);
   if (error) throw error;
   return {
@@ -566,7 +578,7 @@ async function decideAdminResult(request, runId) {
   const inheritedDecisions = source?.reviewConfirmation?.decisions && typeof source.reviewConfirmation.decisions === "object" ? source.reviewConfirmation.decisions : {};
   const inheritedEvidence = Array.isArray(source?.reviewConfirmation?.evidenceDecisions) ? source.reviewConfirmation.evidenceDecisions : [];
   const reviewConfirmation = {
-    confirmedAt:new Date().toISOString(), reviewer:actor.email,
+    confirmedAt:new Date().toISOString(), reviewer:actor.email, note:reviewerNote,
     decisions:{ ...inheritedDecisions, ...Object.fromEntries(reviewKeys.map((key) => [key, supplied.get(key)])) },
     evidenceDecisions:[...inheritedEvidence, ...evidenceDecisions].filter((item, index, list) => list.findLastIndex((candidate) => candidate.key === item.key && candidate.criterionKey === item.criterionKey) === index)
   };
@@ -771,7 +783,7 @@ async function publicHistory(courseId) {
     runs: []
   };
   const { data: runs, error } = await db.from("audit_runs")
-    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload")
+    .select("run_id,audited_at,created_at,auditor_version,internal_status,public_status,score,passing_score,reviewable_points,evidence_object_path,source_payload,internal_note")
     .eq("course_id", courseId).not("public_status", "is", null)
     .order("created_at", { ascending: false }).limit(10);
   if (error) throw error;
