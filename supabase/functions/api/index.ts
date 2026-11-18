@@ -8,7 +8,7 @@ import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDec
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
-const MAIN_DATA_CSV_URLS = {GS:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1655346225&single=true&output=csv',GR:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv'};
+const MAIN_DATA_CSV_URLS = {GR:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv'};
 const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
 const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
 const STATUS_SPREADSHEET_ID = "1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg";
@@ -35,6 +35,7 @@ async function syncSheetStatusSafely(courseId, status, group) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
   if (!["pass", "has_content", "no_content"].includes(status)) return { configured:true, skipped:true, reason:"result_not_publishable" };
   const normalizedGroup = String(group || "").trim().toUpperCase();
+  if (normalizedGroup !== "GR") return { skipped:true, reason:"outside_gr_audit_scope" };
   if (!["GS", "GR"].includes(normalizedGroup)) return { configured:true, ok:false, error:"invalid_course_group" };
   const contentStatus = status === "no_content" ? "ไม่พบเนื้อหา" : "พบเนื้อหา";
   const resultStatus = status === "pass" ? "ผ่าน" : status === "no_content" ? "ไม่พบเนื้อหา" : "ไม่ผ่าน";
@@ -508,6 +509,7 @@ async function decideAdminResult(request, runId) {
     .select("run_id,course_id,internal_status,score,passing_score,reviewable_points,audited_at,evidence_object_path,source_payload")
     .eq("run_id", runId).single();
   if (currentRunError) throw currentRunError;
+  await assertGrCourse(currentRun.course_id);
   const legacy = currentRun.source_payload?.criteriaMode === "legacy_12569";
   const legacyKeys = legacy ? legacyReviewKeys(currentRun.source_payload) : [];
   if (!["needs_review", "has_content"].includes(currentRun.internal_status) || (legacy ? !legacyKeys.length : Number(currentRun.reviewable_points || 0) <= 0)) {
@@ -670,8 +672,11 @@ async function syncCatalog() {
     });
   }
   const courses = [...byId.values()];
+  const {data:protectedRows,error:protectedError} = await db.from("courses").select("course_id").eq("course_group","GS").in("course_id",courses.map(row=>row.course_id));
+  if (protectedError) throw protectedError;
+  if (protectedRows?.length) throw Object.assign(new Error("catalog_conflicts_with_protected_gs"),{status:409});
   const { count: previousCount, error: previousError } = await db.from("courses")
-    .select("course_id", { count: "exact", head: true }).eq("active", true).in("course_group", ["GR", "GS"]);
+    .select("course_id", { count: "exact", head: true }).eq("active", true).eq("course_group", "GR");
   if (previousError) throw previousError;
   if (previousCount && courses.length < previousCount * 0.8) {
     throw Object.assign(new Error("catalog_shrink_requires_manual_review"), { status: 409 });
@@ -695,7 +700,7 @@ async function syncCatalog() {
     if (error) throw error;
   }
   const { data: stale, error: staleError } = await db.from("courses")
-    .select("course_id").eq("active", true).in("course_group", ["GR", "GS"])
+    .select("course_id").eq("active", true).eq("course_group", "GR")
     .neq("catalog_version", version).limit(5000);
   if (staleError) throw staleError;
   const staleIds = (stale || []).map(item => item.course_id);
@@ -815,6 +820,8 @@ async function ingestReviewerResult(request) {
   if (!externalId || !course || !allowed.has(payload.internalStatus)) {
     throw Object.assign(new Error("invalid_audit_result"), { status: 400 });
   }
+  if (String(payload.group || "").toUpperCase() !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
+  await assertGrCourse(course);
   const now = new Date().toISOString();
   const { error: courseError } = await db.from("courses").upsert({
     course_id: course,
@@ -867,7 +874,7 @@ async function queueOneCourse(request) {
   const { criteriaMode, semesterCode } = criteriaRequest(body);
   if (!courseId) throw Object.assign(new Error("course_id_required"), { status:400 });
   const { data: course, error: courseError } = await db.from("courses")
-    .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
+    .select("course_id").eq("course_id", courseId).eq("active", true).eq("course_group","GR").maybeSingle();
   if (courseError) throw courseError;
   if (!course) return { queued:false, reason:"course_not_available" };
 
@@ -993,6 +1000,12 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
   return payload;
 }
 
+async function assertGrCourse(courseId) {
+  const {data,error} = await db.from("courses").select("course_group").eq("course_id",courseId).maybeSingle();
+  if (error) throw error;
+  if (data?.course_group !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
+}
+
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
@@ -1007,6 +1020,7 @@ async function submitResult(request, jobId) {
   submittedPayload.semesterCode = expectedCriteria.semesterCode;
   const course = String(submittedPayload.courseId || "").trim();
   if (course !== String(jobMeta.course_id)) throw Object.assign(new Error("audit_result_course_mismatch"), { status:409 });
+  await assertGrCourse(course);
   normalizeCloudAudioEvidence(submittedPayload);
   if (expectedCriteria.criteriaMode === "current" && submittedPayload.internalStatus !== "audit_failed") {
     resolveAutomaticInstructorCriterion(submittedPayload);
@@ -1116,6 +1130,7 @@ Deno.serve(async request => {
       await reviewer(request);
       const body = await request.json().catch(() => ({}));
       const scope = String(body.scope || "missing").toLowerCase();
+      if (scope === "gs") throw Object.assign(new Error("outside_gr_audit_scope"), {status:409});
       const { criteriaMode, semesterCode } = criteriaRequest(body);
       const catalog = await syncCatalog();
       const { data, error } = await db.rpc("enqueue_selected_audits_v2", { p_catalog_version: catalog.version, p_scope: scope, p_criteria_mode:criteriaMode, p_semester_code:semesterCode });
@@ -1126,8 +1141,8 @@ Deno.serve(async request => {
       return respond(request, 202, await queueOneCourse(request));
     }
     if (request.method === "POST" && parts.join("/") === "v1/admin/jobs/refresh") {
-      await reviewer(request); const { data, error } = await db.rpc("enqueue_refresh_audits");
-      if (error) throw error; return respond(request, 202, { batchId: data });
+      await reviewer(request);
+      throw Object.assign(new Error("use_gr_selected_queue"), {status:409});
     }
     if (request.method === "POST" && parts.join("/") === "v1/admin/results") {
       return respond(request, 200, await ingestReviewerResult(request));
