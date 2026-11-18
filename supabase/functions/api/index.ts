@@ -514,6 +514,9 @@ async function adminHistory(request, courseId) {
     courseTitle: course.course_title || "",
     courseProfile: course.course_title || "",
     courseUrl: course.course_url || "",
+    group: course.course_group || "",
+    faculty: course.faculty || "",
+    instructors: course.instructor_names || [],
     runs: prioritizeRun(runs || [], course.latest_internal_run_id).map(historyRunRecord)
   };
 }
