@@ -990,7 +990,7 @@ async function submitResult(request, jobId) {
   const confirmedScore = Math.max(0, Math.min(AUDIT_MAX_SCORE, Number(payload.confirmedScore ?? payload.score ?? 0)));
   const reportedPossibleScore = Number(payload.possibleScore ?? confirmedScore);
   const reviewablePoints = Math.max(0, Math.min(AUDIT_MAX_SCORE, reportedPossibleScore) - confirmedScore);
-  const { data, error } = await db.rpc("record_audit_result", {
+  const { data, error } = await db.rpc("record_audit_result_v2", {
     p_job_id: jobId, p_external_audit_id: externalId, p_internal_status: payload.internalStatus,
     p_score: hasConfirmedScore ? confirmedScore : null, p_passing_score: payload.threshold ?? null,
     p_reviewable_points: reviewablePoints,
@@ -1071,7 +1071,7 @@ Deno.serve(async request => {
       const scope = String(body.scope || "missing").toLowerCase();
       const { criteriaMode, semesterCode } = criteriaRequest(body);
       const catalog = await syncCatalog();
-      const { data, error } = await db.rpc("enqueue_selected_audits", { p_catalog_version: catalog.version, p_scope: scope, p_criteria_mode:criteriaMode, p_semester_code:semesterCode });
+      const { data, error } = await db.rpc("enqueue_selected_audits_v2", { p_catalog_version: catalog.version, p_scope: scope, p_criteria_mode:criteriaMode, p_semester_code:semesterCode });
       if (error) throw error;
       return respond(request, 202, { queued: data, catalogCount: catalog.count, catalogVersion: catalog.version, scope, criteriaMode, semesterCode });
     }
