@@ -1394,3 +1394,10 @@ Total output lines: 1971
 - ห้ามรัน audit ของ GS, ห้าม clear คิว GS, ห้ามแก้ Google Sheets ส่วนอื่น; การล้าง retired evidence ทั่วระบบถูกปิดใน workflow GR จนกว่าจะมีแบบ scoped.
 
 - Build รอบใหม่ GitHub Actions 44245174253 สำเร็จทุกขั้นตอน (รวม baseline SHA, syntax, weighted smoke tests, zip integrity, publish); release.json 0.13.35 ขนาด 9323076 bytes, 24 parts, SHA-256 628AB338E4F94B9EEA1A32C16B39683558051C5788CDB65202DD31F0B0EBA06D; ตรวจจำนวนและขนาด parts รวมตรง และหน้า download version/size/hash ตรง release manifest. Release commit 11249499346ba0af943be08593d42a16dd2bdd14; Pages publish status ตรวจ ณ เวลานี้ in_progress/null. ยังต้องทดสอบ Chrome authenticated worker และ GR 1 รายวิชาจริง; ไม่เริ่ม bulk audit และไม่ส่งผล GS.
+
+
+## 82. GRGS_Public architecture and GR course-picker fix — 2026-11-18
+
+- ผู้ใช้ยืนยันให้คง Dashboard หน้าบ้านใช้ GRGS_Public สำหรับทั้ง GS/GR; สูตรเดิมดึงจาก 69/1-GS และ 69/1-GR; ระบบ Auditor เขียนผลที่ยืนยันแล้วเฉพาะ 69/1-GR คอลัมน์ V/W/X. ห้ามแก้ GS, AI Tutor, Podcast, สูตรชีต และหน้าบ้าน.
+- หน้าคิวเดิมไม่พบรายวิชา และช่องเกณฑ์ไม่แสดงเพราะ CSS .scope-card select ซ่อน dropdown ทั้งหมด; เปลี่ยนบัญชีรายวิชาหลังบ้านให้ใช้ GRGS_Public แหล่งเดียวและกรองตัวเลือกคิวเฉพาะ GR, แสดง dropdown รายวิชาพร้อมรหัส/ชื่อ/Profile/ID, ค้นหาบางส่วนได้, แสดงจำนวนและ loading/error, ปุ่มโหลดรายชื่อใหม่; default เกณฑ์ผ่อนปรน 1/2569; ยืนยันก่อนสร้างคิวทั้งชุด.
+- JS commit 60f6ae80daa4b0d89c01d0857ee91a62c7d47da1; HTML commit fec2cec650563c9f9591fce21a967e757f607b64; syntax validation และ 8 checks จากข้อมูล GRGS_Public จริงผ่าน (GR 149, GS 46 read-only); DB active GR 149, รายวิชาที่ไม่มีใน DB 0; ไม่มีการสร้างคิว แก้ไขผลตรวจ หรืออัปเดต API/Extension; Pages in_progress/null; ยังไม่ได้ทดสอบ Chrome ที่ล็อกอินจริง.
