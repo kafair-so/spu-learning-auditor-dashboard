@@ -167,7 +167,12 @@ export function score12569Snapshot(payload = {}, decisions = {}) {
 const videoKinds=new Set(["video","video_candidate"]);
 const sessionOf=i=>Number(i.auditSession)||Number(String(i.section||"").match(/\d+/)?.[0])||0;
 const linkOf=i=>String(i.externalUrl||i.href||"").trim();
-const uncertain=i=>i.mediaReviewRequired===true||/manifest must request permission|cannot access contents of url|เปิดปลายทางไม่ได้|อ่านเวลาไม่ได้|ติดสิทธิ์|ไม่มีสิทธิ์|access denied/i.test(String(i.accessNote||""));
+const foundVideoSeconds=i=>Math.max(0,Math.min(43200,Math.round(Number(i.systemDurationSeconds||i.durationSeconds||0)||0)));
+const uncertain=i=>i.kind==="video_candidate"||i.mediaReviewRequired===true||i.mediaReviewDecision==="pending";
+export function legacyVideoMode(i){
+ if(!foundVideoSeconds(i)||i.mediaStatus==="link_error"||i.mediaStatus==="cloud_folder"||i.reviewExcluded||i.countingEligible===false)return "excluded";
+ return uncertain(i)?"manual":"fixed";
+}
 export function legacyVideoLinks(payload,session){
  const seen=new Set();
  return (payload.evidenceSnapshot?.activities||[]).filter(i=>videoKinds.has(i.kind)&&sessionOf(i)===Number(session)&&!i.reviewExcluded&&i.countingEligible!==false&&/^https?:\/\//i.test(linkOf(i))).filter(i=>{const k=linkOf(i);if(seen.has(k))return false;seen.add(k);return true;});
@@ -184,12 +189,16 @@ export function prepareLegacyReview(payload={}){
  coverage.legacyReviewScoped=true;snap.coverage=coverage;
  for(const week of snap.weeks){
   const session=Number(week.session),item=(week.criteria||[]).find(i=>Number(i.criterion)===(session===1?4:3));
-  if(!item||item.status!=="fail"||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
-  if(legacyVideoLinks(payload,session).some(uncertain)){
-   item.originalStatus=item.status;item.originalDetail=item.detail;item.status="needs_review";
-   item.detail=String(item.detail||"")+" · โปรดตรวจปลายทาง หากลิงก์เสียจริงให้เลือกไม่นำมานับ";
-  }
+  if(!item||!["fail","needs_review"].includes(item.status)||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
+  const links=legacyVideoLinks(payload,session),manual=links.filter(i=>legacyVideoMode(i)==="manual"),fixed=links.filter(i=>legacyVideoMode(i)==="fixed");
+  const observed=fixed.reduce((sum,i)=>sum+foundVideoSeconds(i),0),required=legacyVideoRequired(item,session);
+  item.originalStatus=item.originalStatus||item.status;item.originalDetail=item.originalDetail||item.detail;
+  item.status=observed>=required?"pass":manual.length?"needs_review":"fail";
+  if(item.status!==item.originalStatus)delete item.scoreValue;
+  item.detail=String(item.originalDetail||"").replace(/ · โปรดตรวจปลายทาง[\s\S]*$/,"")+(manual.length?" · รอยืนยันประเภทวิดีโอที่พบเวลา":" · ไม่นับคลิปที่ไม่พบเวลาหรือเปิดไม่ได้");
+  item.legacyVideoReview={required,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
  }
+ for(const item of snap.activities){if(videoKinds.has(item.kind)){item.legacyVideoMode=legacyVideoMode(item);item.legacyFoundSeconds=foundVideoSeconds(item);}}
  const weighted=score12569Snapshot(payload);
  payload.criteriaScorecard=weighted;snap.criteriaScorecard=weighted;
  payload.confirmedScore=weighted.total;payload.possibleScore=Math.max(weighted.total,weighted.potentialTotal);
@@ -210,6 +219,9 @@ export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
   let total=0;
   for(const entry of supplied){
    if(!expected.has(entry.key)||!["use","not_use"].includes(entry.decision)||!Number.isInteger(entry.seconds)||entry.seconds<0||entry.seconds>43200||(entry.decision==="use"&&entry.seconds<=0))throw Error("legacy_video_evidence_invalid");
+   const item=links.find(i=>linkOf(i)===entry.key),mode=legacyVideoMode(item);
+   if(mode==="excluded"&&(entry.decision!=="not_use"||entry.seconds!==0))throw Error("legacy_video_duration_not_found");
+   if(mode==="fixed"&&(entry.decision!=="use"||entry.seconds!==foundVideoSeconds(item)))throw Error("legacy_video_fixed_duration_mismatch");
    if(entry.decision==="use")total+=entry.seconds;
    seen.add(k+"\u0000"+entry.key);
   }
