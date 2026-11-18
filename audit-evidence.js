@@ -2,6 +2,7 @@
   const $=id=>document.getElementById(id);
   const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const date=value=>value?new Date(value).toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH",{dateStyle:"long",timeStyle:"short"}):"—";
+  const compactAuditDate=value=>{if(!value)return"—";const d=new Date(value),locale=localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH";return `${d.toLocaleDateString(locale,{day:"numeric",month:"short",year:"numeric"})} เวลา ${d.toLocaleTimeString(locale,{hour:"2-digit",minute:"2-digit"})}`;};
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH"):"—";
   const mediaTime=value=>{const seconds=Math.max(0,Math.round(Number(value)||0));if(!seconds)return"อ่านเวลาไม่ได้";const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;};
   const durationInput=value=>{const seconds=Math.max(0,Math.round(Number(value)||0));if(!seconds)return"";const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;};
@@ -188,11 +189,15 @@
     const courseProfile=profileMatch?profileMatch[1].trim():rawCourseProfile.replace(/^\[\s*/,"").replace(/\s*\]$/,"");
     const courseTitle=rawCourseTitle.replace(/\s*\[[^\[\]]+\]\s*$/,"").trim();
     const courseName=[...new Set([courseCode,courseTitle].filter(Boolean))].join(" · ")||String(selected.courseId||"");
-    $("course").innerHTML=`<span class="course-title-line">${esc(courseName)}</span>${courseProfile?`<span class="course-profile-line">[${esc(courseProfile)}]</span>`:""}`;
-    if(selected.courseUrl)$("courseLink").innerHTML=`<a href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`;
+    const latest=history[0]||{},group=String(selected.group||latest.group||"").trim(),semester=String(selected.semesterCode||latest.semesterCode||"").trim(),faculty=String(selected.faculty||latest.faculty||"").trim();
+    const creditValue=selected.credits||selected.creditUnits||latest.credits||latest.creditUnits||"";
+    const details=[courseProfile?courseProfile:"",creditValue?`${creditValue} หน่วยกิต`:"",faculty].filter(Boolean);
+    $("course").textContent=courseName;
+    $("viewModeLabel").className="evidence-course-meta";
+    $("viewModeLabel").innerHTML=`${group?`<span class="course-type-chip">${esc(group)}</span>`:""}${semester?`<span>ภาค ${esc(semester)}</span><i>·</i>`:""}<span>ตรวจล่าสุด ${esc(compactAuditDate(latest.auditedAt))}</span>`;
+    $("courseLink").innerHTML=`${details.length?`<div class="course-detail-line">${details.map(item=>`<span>${esc(item)}</span>`).join("<i>·</i>")}</div>`:""}${selected.courseUrl?`<a class="course-open-link" href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`:""}`;
     if(!history.length){$("runs").innerHTML='<section class="panel empty-note">รายวิชานี้ยังไม่มีผลการตรวจในระบบ</section>';return;}
     document.body.classList.toggle("evidence-admin",superAdmin);document.body.classList.toggle("evidence-user",!superAdmin);document.body.classList.toggle("gr-legacy-review",superAdmin&&isLegacy(history[0])&&history[0].group==="GR");
-    $("viewModeLabel").textContent=superAdmin?"Admin · รายละเอียดและหลักฐานครบถ้วน":"รายงานผลสำหรับผู้สอน";
     setCourseOutcome(history[0],superAdmin);
     if(!superAdmin){
       const latest=history[0],status=latest.publicStatus||latest.internalStatus||"audit_failed",tone=resultTone(latest),explanation=statusExplanation(status,latest,false),weeks=resultWeeks(latest);
