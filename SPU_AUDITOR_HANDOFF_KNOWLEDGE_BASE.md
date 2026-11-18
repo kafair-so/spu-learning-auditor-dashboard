@@ -1378,3 +1378,5 @@ Total output lines: 1971
 - API source commit 85ba105da7cbcb19b63d82938a4b1b5dd9d77769 จำกัด catalog/queue/result/confirmation/sheet sync เป็น GR; ปิด refresh all แบบเดิมที่อาจรวม GS; ป้องกัน catalog ID ชน GS ที่มีอยู่; ไม่แก้ DB rows หรือ sheet rows
 - Production API v48 ACTIVE เป็น v47 + GR-only safety guards เท่านั้น **ไม่ใช่ source draft ล่าสุด**; ยังใช้ catalog แบบเดิม และยังปิด weighted manual review; ไม่ deploy ส่วนพัฒนาที่ยังค้างเมื่อได้รับคำสั่งหยุด
 - ตรวจ DB แบบ read-only หลังหยุด: ไม่พบ open jobs หรือ legacy jobs/runs; ไม่มีการย้อนหรือลบผลตรวจจริง เพราะไม่ได้สร้างผลตรวจใหม่ในรอบนี้; ยังไม่ทดสอบ webhook live และไม่เริ่ม bulk audit
+
+- อัปเดตล่าสุด: ผู้ใช้ยืนยันว่า Deploy Apps Script รุ่น GR-only แล้วในโปรเจกต์เดิม; เป็นการยืนยันจากผู้ใช้ ยังไม่ได้ตรวจ endpoint ภายนอกหรือทดสอบเขียนผลจริง งานพัฒนาอื่นยังหยุดตามคำสั่งล่าสุด และห้ามดำเนินการกับ GS, AI Tutor, Podcast.
