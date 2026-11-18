@@ -12,6 +12,8 @@ const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
 const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
 const STATUS_SPREADSHEET_ID = "1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg";
 const AUDIT_MAX_SCORE = 110;
+const AUDIT_EVIDENCE_BASE_URL = "https://kafair-so.github.io/spu-learning-auditor-dashboard/audit-evidence.html";
+const CRITERIA_MODES = new Set(["current", "legacy_12569"]);
 const ALLOWED_ORIGINS = new Set((Deno.env.get("ALLOWED_ORIGINS") ||
   "http://127.0.0.1:8765,http://localhost:8765,https://donut204.github.io,https://kafair-so.github.io")
   .split(",").map(value => value.trim()).filter(Boolean));
@@ -20,14 +22,21 @@ const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-function sheetStatusLabel(status) {
-  if (status === "pass") return "ผ่าน";
-  if (status === "no_content") return "ไม่มีเนื้อหา";
-  return "ไม่ผ่าน";
+function criteriaRequest(body = {}) {
+  const criteriaMode = String(body.criteriaMode || body.criteria_mode || "current").trim();
+  if (!CRITERIA_MODES.has(criteriaMode)) throw Object.assign(new Error("invalid_criteria_mode"), { status:400 });
+  const semesterCode = String(body.semesterCode || body.semester_code || (criteriaMode === "legacy_12569" ? "1/2569" : "")).trim();
+  if (criteriaMode === "legacy_12569" && semesterCode !== "1/2569") throw Object.assign(new Error("invalid_semester_for_criteria"), { status:400 });
+  return { criteriaMode, semesterCode };
 }
 
-async function syncSheetStatusSafely(courseId, status) {
+async function syncSheetStatusSafely(courseId, status, group) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
+  const normalizedGroup = String(group || "").trim().toUpperCase();
+  if (!["GS", "GR"].includes(normalizedGroup)) return { configured:true, ok:false, error:"invalid_course_group" };
+  const contentStatus = status === "no_content" ? "ไม่พบเนื้อหา" : "พบเนื้อหา";
+  const resultStatus = status === "pass" ? "ผ่าน" : status === "no_content" ? "ไม่พบเนื้อหา" : "ไม่ผ่าน";
+  const evidenceUrl = `${AUDIT_EVIDENCE_BASE_URL}?courseId=${encodeURIComponent(String(courseId || ""))}`;
   try {
     const response = await fetch(SHEET_STATUS_WEBHOOK_URL, {
       method:"POST",
@@ -36,7 +45,10 @@ async function syncSheetStatusSafely(courseId, status) {
         secret:SHEET_STATUS_WEBHOOK_SECRET,
         spreadsheetId:STATUS_SPREADSHEET_ID,
         courseId:String(courseId || ""),
-        status:sheetStatusLabel(status)
+        group:normalizedGroup,
+        contentStatus,
+        resultStatus,
+        evidenceUrl
       })
     });
     if (!response.ok) throw new Error(`sheet_status_sync_http_${response.status}`);
@@ -44,7 +56,7 @@ async function syncSheetStatusSafely(courseId, status) {
     if (result.ok !== true) throw new Error(result.error || "sheet_status_sync_failed");
     return result;
   } catch (error) {
-    console.warn("sheet_status_sync_failed", { courseId, status, error:String(error?.message || error) });
+    console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:String(error?.message || error) });
     return { configured:true, ok:false, error:String(error?.message || error) };
   }
 }
@@ -358,7 +370,7 @@ async function queueOverview(request) {
   if (catalogError) throw catalogError;
   const activeCourseIds = new Set((catalog || []).map(course => course.course_id));
   const { data, error } = await db.from("audit_jobs").select(
-    "job_id,course_id,kind,status,priority,attempts,created_at,updated_at,claimed_at,completed_at,last_error,batch_id,courses!audit_jobs_course_id_fkey(course_code,course_title,course_group)"
+    "job_id,course_id,kind,status,priority,attempts,created_at,updated_at,claimed_at,completed_at,last_error,batch_id,criteria_mode,semester_code,courses!audit_jobs_course_id_fkey(course_code,course_title,course_group)"
   ).order("updated_at", { ascending:false }).order("created_at", { ascending:false }).limit(5000);
   if (error) throw error;
   // A course can have historical jobs from previous audit rounds. Requeued
@@ -392,7 +404,9 @@ async function queueOverview(request) {
     createdAt: job.created_at,
     startedAt: job.claimed_at,
     finishedAt: job.completed_at,
-    error: job.last_error || ""
+    error: job.last_error || "",
+    criteriaMode:job.criteria_mode || "current",
+    semesterCode:job.semester_code || ""
   });
   const recent = currentJobs.slice(0, 8).map(queueJobRecord);
   const pending = activeJobs
@@ -554,7 +568,7 @@ async function decideAdminResult(request, runId) {
     published_run_id:run.run_id, evidence_available:Boolean(run.evidence_object_path), published_at:now
   }, { onConflict:"course_id" });
   if (publishError) throw publishError;
-  const sheetSync = await syncSheetStatusSafely(run.course_id, decision);
+  const sheetSync = await syncSheetStatusSafely(run.course_id, decision, course.course_group);
   return { runId:run.run_id, courseId:run.course_id, internalStatus:decision, publicStatus:decision, sheetSync };
 }
 
@@ -817,6 +831,7 @@ async function queueOneCourse(request) {
   await reviewer(request);
   const body = await request.json().catch(() => ({}));
   const courseId = String(body.courseId || "").trim();
+  const { criteriaMode, semesterCode } = criteriaRequest(body);
   if (!courseId) throw Object.assign(new Error("course_id_required"), { status:400 });
   const { data: course, error: courseError } = await db.from("courses")
     .select("course_id").eq("course_id", courseId).eq("active", true).in("course_group", ["GR", "GS"]).maybeSingle();
@@ -839,7 +854,9 @@ async function queueOneCourse(request) {
     course_id:courseId,
     kind:"retry",
     status:"queued",
-    priority:120
+    priority:120,
+    criteria_mode:criteriaMode,
+    semester_code:semesterCode
   }).select("job_id").single();
   if (insertError) {
     if (insertError.code === "23505") return { queued:false, reason:"course_already_queued", courseId };
@@ -946,6 +963,15 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
+  const { data:jobMeta, error:jobMetaError } = await db.from("audit_jobs").select("course_id,criteria_mode,semester_code").eq("job_id", jobId).single();
+  if (jobMetaError) throw jobMetaError;
+  const expectedCriteria = criteriaRequest({criteriaMode:jobMeta.criteria_mode,semesterCode:jobMeta.semester_code});
+  const suppliedCriteria = criteriaRequest(submittedPayload);
+  if (expectedCriteria.criteriaMode !== suppliedCriteria.criteriaMode || expectedCriteria.semesterCode !== suppliedCriteria.semesterCode) {
+    throw Object.assign(new Error("audit_result_criteria_mismatch"), { status:409 });
+  }
+  submittedPayload.criteriaMode = expectedCriteria.criteriaMode;
+  submittedPayload.semesterCode = expectedCriteria.semesterCode;
   normalizeCloudAudioEvidence(submittedPayload);
   resolveAutomaticInstructorCriterion(submittedPayload);
   const course = String(submittedPayload.courseId || "").trim();
@@ -975,7 +1001,9 @@ async function submitResult(request, jobId) {
   });
   if (error) throw error;
   await purgeRetiredEvidence().catch(error => console.warn("retired_evidence_cleanup_failed", error));
-  const sheetSync = await syncSheetStatusSafely(course, payload.internalStatus);
+  const { data:sheetCourse, error:sheetCourseError } = await db.from("courses").select("course_group").eq("course_id", course).single();
+  if (sheetCourseError) throw sheetCourseError;
+  const sheetSync = await syncSheetStatusSafely(course, payload.internalStatus, sheetCourse.course_group);
   return { runId: data, courseId: course, automaticPublication: gate.approved, qualityFailures: gate.failures, sheetSync };
 }
 
@@ -1041,10 +1069,11 @@ Deno.serve(async request => {
       await reviewer(request);
       const body = await request.json().catch(() => ({}));
       const scope = String(body.scope || "missing").toLowerCase();
+      const { criteriaMode, semesterCode } = criteriaRequest(body);
       const catalog = await syncCatalog();
-      const { data, error } = await db.rpc("enqueue_selected_audits", { p_catalog_version: catalog.version, p_scope: scope });
+      const { data, error } = await db.rpc("enqueue_selected_audits", { p_catalog_version: catalog.version, p_scope: scope, p_criteria_mode:criteriaMode, p_semester_code:semesterCode });
       if (error) throw error;
-      return respond(request, 202, { queued: data, catalogCount: catalog.count, catalogVersion: catalog.version, scope });
+      return respond(request, 202, { queued: data, catalogCount: catalog.count, catalogVersion: catalog.version, scope, criteriaMode, semesterCode });
     }
     if (request.method === "POST" && parts.join("/") === "v1/admin/jobs/course") {
       return respond(request, 202, await queueOneCourse(request));
