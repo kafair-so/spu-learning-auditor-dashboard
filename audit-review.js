@@ -8,6 +8,20 @@
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
   const isSuperAdmin=()=>["owner","super_admin"].includes(window.OOEReviewer?.role);
   const auditTime=value=>{const time=new Date(value||"");return Number.isNaN(time.valueOf())?"—":time.toLocaleString(locale(),{dateStyle:"medium",timeStyle:"short"});};
+  const reportTime=value=>{
+    const t=new Date(value||"");
+    if(Number.isNaN(t.valueOf()))return '<span class="muted">—</span>';
+    return `<div class="report-date">${esc(t.toLocaleDateString(locale(),{day:"numeric",month:"short",year:"numeric"}))}</div><div class="report-time">${esc(t.toLocaleTimeString(locale(),{hour:"2-digit",minute:"2-digit"}))} น.</div>`;
+  };
+  const reportCourse=record=>{
+    const raw=String(record.courseProfile||record.courseTitle||record.courseUrl||"");
+    const suffix=raw.match(/\[([^\[\]]+)\]\s*$/);
+    const profile=suffix?suffix[1]:raw;
+    const title=suffix?raw.slice(0,suffix.index).trim():"";
+    return `<div class="report-course-code">${esc(record.courseCode||record.courseId||"—")}</div>${title?`<div class="report-course-title">${esc(title)}</div>`:""}<div class="report-course-profile">${esc(profile)}</div>`;
+  };
+  const reportBadge=(status,published=false)=>status?`<span class="status ${esc(published&&status==="has_content"?"red":AuditBridge.COLORS[status]||"gray")}">${esc(AuditBridge.LABELS[status]||status)}</span>`:'<span class="muted">—</span>';
+  const reportColumns=superAdmin=>superAdmin?8:5;
   const errorDetail=record=>{
     const source=record||{};
     const detail=source.errorReport||source.errorDetails||source.errorMessage||source.error||source.failureReason||source.reason||source.internalNote||"";
@@ -16,7 +30,7 @@
     const quality=source.qualityGate?.failures;
     return Array.isArray(quality)&&quality.length?quality.join(" · "):"ระบบไม่ได้บันทึกรายละเอียดสาเหตุไว้ กรุณาตรวจสอบการเชื่อมต่อและสั่งตรวจใหม่";
   };
-  const reasonLabel=value=>({content_exists_but_cannot_reach_threshold:"มีเนื้อหา แต่คะแนนยังไม่ถึงเกณฑ์",no_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",score_reaches_threshold:"คะแนนถึงเกณฑ์แล้ว",review_can_change_outcome:"ผ่านเกณฑ์และไม่ต้องแก้ไข",successful_scan_found_no_course_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",audit_completed_no_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",audit_failed:"ระบบตรวจไม่สำเร็จ"}[String(value||"")]||value||"");
+  const reasonLabel=value=>({content_exists_but_cannot_reach_threshold:"มีเนื้อหา แต่คะแนนยังไม่ถึงเกณฑ์",no_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",score_reaches_threshold:"คะแนนถึงเกณฑ์แล้ว",review_can_change_outcome:"ผ่านเกณฑ์และไม่ต้องแก้ไข",successful_scan_found_no_course_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",audit_completed_no_content:"ไม่พบเนื้อหาที่ใช้คิดคะแนน",audit_failed:"ระบบตรวจไม่สำเร็จ",legacy_12569_below_threshold_or_gate_failed:"คะแนนไม่ถึงเกณฑ์ หรือองค์ประกอบบังคับไม่ครบ",legacy_12569_score_and_gates_passed:"คะแนนและองค์ประกอบบังคับผ่านเกณฑ์",legacy_12569_review_can_change_outcome:"หลักฐานที่ต้องพิจารณาอาจเปลี่ยนผลตรวจ",legacy_review_can_change_outcome:"หลักฐานที่ต้องพิจารณาอาจเปลี่ยนผลตรวจ",legacy_structure_review_required:"ต้องตรวจสอบความครบถ้วนของโครงสร้างรายวิชา"}[String(value||"")]||value||"");
   const csvCell=value=>`"${String(value??"").replace(/"/g,'""')}"`;
   document.head.insertAdjacentHTML("beforeend",`<style>
     [hidden]{display:none!important}.theme-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 11px!important;border:1px solid rgba(255,255,255,.28)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.theme-knob{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#174e9b;font-size:13px}.extension-check{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;border:1px solid rgba(255,255,255,.35)!important;background:rgba(255,255,255,.12)!important;color:#fff!important}.extension-check.ok{background:#e5f7ee!important;border-color:#9cdeba!important;color:#08704a!important}.extension-check.error{background:#fff1f2!important;border-color:#f3b7be!important;color:#a61b2b!important}.theme-dark{--bg:#101928;--ink:#e5edf7;--muted:#9fb3c8;--line:#30445e;--navy:#e5edf7}.theme-dark .panel,.theme-dark .admin-drawer,.theme-dark .auth-chip{background:#182437;border-color:#30445e;box-shadow:0 10px 28px rgba(0,0,0,.22)}.theme-dark .audit-command-center{background:linear-gradient(135deg,#19283d,#15243a 64%,#123456)!important;border-color:#31527a!important}.theme-dark .command-title h2,.theme-dark .edition-card h3,.theme-dark .install-card h3,.theme-dark .table-head h2{color:#f4f8ff}.theme-dark .worker-console,.theme-dark .worker-progress,.theme-dark .queue-feedback{background:#132033;border-color:#345574;color:#cbdcf2}.theme-dark .progress-track{background:#2a405d}.theme-dark .drawer-link{background:#182437;color:#e5edf7}.theme-dark .drawer-link:hover,.theme-dark .drawer-link.active{background:#213955;color:#fff}.theme-dark .extension-compare .panel,.theme-dark .install-card,.theme-dark .update-note{background:#182437}.theme-dark .edition-card p,.theme-dark .install-card p,.theme-dark .update-note p{color:#b7c9df}
@@ -113,8 +127,8 @@
     if(!banner){banner=document.createElement("div");banner.id="ooeResultsState";banner.className="ooe-load-state";banner.setAttribute("role","status");banner.setAttribute("aria-live","polite");document.querySelector('[data-admin-panel="reports"] .kpis')?.before(banner);}
     banner.hidden=state==="ready";banner.classList.toggle("is-error",state==="error");
     banner.innerHTML='<span class="ooe-loader" aria-hidden="true"></span><span>'+esc(detail||(state==="loading"?"กำลังโหลดผลตรวจจากระบบกลาง…":state==="error"?"ไม่สามารถโหลดผลตรวจได้ กรุณาลองอีกครั้ง":""))+'</span>';
-    if(state==="loading"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}$("count").textContent="กำลังโหลดข้อมูล…";$("rows").innerHTML=Array.from({length:4},()=>'<tr class="ooe-report-skeleton"><td colspan="12"><span></span></td></tr>').join("");}
-    else if(state==="error"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.classList.remove("ooe-skeleton");element.textContent="—";}}$("count").textContent="ไม่สามารถโหลดข้อมูล";$("rows").innerHTML='<tr><td colspan="12" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>';}
+    if(state==="loading"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.textContent="";element.classList.add("ooe-skeleton");}}$("count").textContent="กำลังโหลดข้อมูล…";$("rows").innerHTML=Array.from({length:4},()=>`<tr class="ooe-report-skeleton"><td colspan="${reportColumns(isSuperAdmin())}"><span></span></td></tr>`).join("");}
+    else if(state==="error"&&!hasLoadedResults){for(const id of ["pass","review","content","none","failed"]){const element=$(id);if(element){element.classList.remove("ooe-skeleton");element.textContent="—";}}$("count").textContent="ไม่สามารถโหลดข้อมูล";$("rows").innerHTML=`<tr><td colspan="${reportColumns(isSuperAdmin())}" class="empty">โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่</td></tr>`;}
   }
 
   function setupReportRefresh(){
@@ -528,21 +542,31 @@
     const scopeLabel=group?` · ${group}`:"";
     const catalogTotal=group?courseCatalog.filter(course=>String(course.group||"").toUpperCase()===group).length:courseCatalog.length;
     $("count").textContent=catalogTotal?`${rows.length.toLocaleString(locale())} ผลตรวจ จาก ${catalogTotal.toLocaleString(locale())} รายวิชา${scopeLabel}`:`${rows.length.toLocaleString(locale())} รายการ${scopeLabel}`;
-    const head=document.querySelector('[data-admin-panel="reports"] table thead');
-    if(head)head.innerHTML=superAdmin?'<tr><th>รายวิชา</th><th>ตรวจล่าสุด</th><th>คะแนนยืนยัน</th><th>คะแนนที่อาจได้</th><th>เกณฑ์ผ่าน</th><th>จำนวนหลักฐาน</th><th>สถานะภายใน</th><th>สถานะที่เผยแพร่</th><th>เหตุผล</th><th>การตรวจสอบ</th><th>การตัดสิน</th><th>ตรวจซ้ำ</th></tr>':'<tr><th>รายวิชา</th><th>ตรวจล่าสุด</th><th>จำนวนหลักฐาน</th><th>ผลตรวจรายวิชา</th><th>หลักฐานการตรวจ</th><th>ตรวจซ้ำ</th></tr>';
+    const table=document.querySelector('[data-admin-panel="reports"] .report-results-table');
+    table.classList.toggle("report-super",superAdmin);table.classList.toggle("report-standard",!superAdmin);
+    const cols=superAdmin?'<col class="col-course"><col class="col-time"><col class="col-score"><col class="col-evidence"><col class="col-status"><col class="col-reason"><col class="col-decision"><col class="col-actions">':'<col class="col-course"><col class="col-time"><col class="col-evidence"><col class="col-status"><col class="col-actions">';
+    table.querySelector("colgroup").innerHTML=cols;
+    table.querySelector("thead").innerHTML=superAdmin?'<tr><th scope="col">รายวิชา</th><th scope="col">ตรวจล่าสุด</th><th scope="col">คะแนน</th><th scope="col">หลักฐาน</th><th scope="col">สถานะการตรวจ</th><th scope="col">เหตุผล</th><th scope="col">การตัดสิน</th><th scope="col">ดำเนินการ</th></tr>':'<tr><th scope="col">รายวิชา</th><th scope="col">ตรวจล่าสุด</th><th scope="col">หลักฐาน</th><th scope="col">ผลตรวจรายวิชา</th><th scope="col">ดำเนินการ</th></tr>';
     $("rows").innerHTML=rows.length?rows.map(record=>{
       const runId=esc(record.runId||"");
       const courseId=encodeURIComponent(record.courseId||"");
-      const evidence=record.runId&&record.courseId?`<a class="evidence-link" href="audit-evidence.html?admin=1&amp;courseId=${courseId}" target="_blank" rel="noopener"><span>▣</span> ดูผลตรวจ ↗</a>`:'<span class="muted">—</span>';
-      const decisions=record.scoreNeedsRefresh?'<span class="muted">ตรวจใหม่ด้วย Extension 0.13.34 ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">ไม่ผ่านเกณฑ์</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="muted">ตรวจสอบระบบหรือรันใหม่</span>':`<div class="decision-result">${badge(record.internalStatus)}<small>ตัดสินอัตโนมัติแล้ว</small></div>`;
+      const evidence=record.runId&&record.courseId?`<a class="evidence-link" href="audit-evidence.html?admin=1&amp;courseId=${courseId}" target="_blank" rel="noopener"><span aria-hidden="true">▣</span><span>ดูผลตรวจ</span><span aria-hidden="true">↗</span></a>`:'<span class="muted">—</span>';
+      const decisions=record.scoreNeedsRefresh?'<span class="report-decision-note">ตรวจใหม่ก่อนตัดสิน</span>':record.internalStatus==="needs_review"?`<div class="actions report-decisions"><button data-run-id="${runId}" data-decision="pass">ผ่าน</button><button data-run-id="${runId}" data-decision="has_content">ไม่ผ่านเกณฑ์</button><button data-run-id="${runId}" data-decision="no_content">ไม่มีเนื้อหา</button></div>`:record.internalStatus==="audit_failed"?'<span class="report-decision-note">ตรวจสอบระบบหรือตรวจซ้ำ</span>':'<div class="report-decision-done"><span aria-hidden="true">✓</span><span>ตัดสินอัตโนมัติแล้ว</span></div>';
       const possible=Number.isFinite(Number(record.possibleScore))?Math.min(maxScore(record),Number(record.possibleScore)):null;
       const qualityWarning=record.qualityGate?.failures?.length?`ข้อควรระวังคุณภาพข้อมูล: ${record.qualityGate.failures.join(", ")}`:"";
       const reason=record.scoreNeedsRefresh?"ผลรุ่นเดิมนับจำนวนหลักฐานเป็นคะแนน ต้องตรวจใหม่":reasonLabel(record.reason)||qualityWarning||"—";
-      const requeue=record.courseId?`<button class="requeue-course" type="button" data-queue-course="${esc(record.courseId)}">↻ ตรวจซ้ำ</button>`:'<span class="muted">—</span>';
+      const requeue=record.courseId?`<button class="requeue-course" type="button" data-queue-course="${esc(record.courseId)}"><span aria-hidden="true">↻</span><span>ตรวจซ้ำ</span></button>`:'<span class="muted">—</span>';
       const evidenceCount=Number.isFinite(Number(record.evidenceCount))?Number(record.evidenceCount).toLocaleString(locale()):"—";
-      if(!superAdmin)return `<tr class="result-row row-${esc(AuditBridge.COLORS[record.publicStatus]||"gray")}"><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${evidenceCount}</td><td>${badge(record.publicStatus)}</td><td>${evidence}</td><td>${requeue}</td></tr>`;
-      return `<tr class="result-row row-${esc(AuditBridge.COLORS[record.internalStatus]||"gray")}"><td><strong>${esc(record.courseCode||record.courseId||"—")}</strong><div class="muted">${esc(record.courseProfile||record.courseTitle||record.courseUrl||"")}</div></td><td class="audit-time">${esc(auditTime(record.auditedAt))}</td><td>${score(record.confirmedScore)} / ${score(maxScore(record))}</td><td>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} / ${score(maxScore(record))}`}</td><td>${score(record.threshold)}</td><td>${evidenceCount}</td><td>${badge(record.internalStatus)}</td><td>${badge(record.publicStatus)}</td><td>${esc(reason)}</td><td>${evidence}</td><td>${decisions}</td><td>${requeue}</td></tr>`;
-    }).join(""):`<tr><td colspan="${superAdmin?12:6}" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>`;
+      const course=`<td class="report-course">${reportCourse(record)}</td><td class="report-audited">${reportTime(record.auditedAt)}</td>`;
+      const proofs=`<td class="report-evidence-count"><strong>${evidenceCount}</strong></td>`;
+      const actions=`<td class="report-action-cell"><div class="report-row-actions">${evidence}${requeue}</div></td>`;
+      const outcome=record.publicStatus||record.internalStatus;
+      const color=outcome==="has_content"&&record.publicStatus==="has_content"?"red":AuditBridge.COLORS[superAdmin?record.internalStatus:record.publicStatus]||"gray";
+      if(!superAdmin)return `<tr class="result-row row-${esc(color)}">${course}${proofs}<td class="report-status">${reportBadge(record.publicStatus,true)}</td>${actions}</tr>`;
+      const scores=`<div class="report-scores"><div><span>ยืนยัน</span><strong>${score(record.confirmedScore)} <small>/ ${score(maxScore(record))}</small></strong></div><div><span>อาจได้</span><strong>${record.scoreNeedsRefresh?'ตรวจใหม่':`${score(possible)} <small>/ ${score(maxScore(record))}</small>`}</strong></div><div><span>เกณฑ์ผ่าน</span><strong>${score(record.threshold)}</strong></div></div>`;
+      const statuses=`<div class="report-statuses"><div><span class="report-status-label">ภายใน</span>${reportBadge(record.internalStatus)}</div><div><span class="report-status-label">เผยแพร่</span>${reportBadge(record.publicStatus,true)}</div></div>`;
+      return `<tr class="result-row row-${esc(color)}">${course}<td class="report-score">${scores}</td>${proofs}<td class="report-status">${statuses}</td><td class="report-reason"><span title="${esc(record.reason||"")}">${esc(reason)}</span></td><td class="report-decision">${decisions}</td>${actions}</tr>`;
+    }).join(""):`<tr><td colspan="${reportColumns(superAdmin)}" class="empty">ยังไม่มีผลตรวจที่นำเข้า</td></tr>`;
     if(!$("errorReport").hidden)renderErrorReport();
   }
 
