@@ -24,8 +24,10 @@ export function isAtLeastVersion(actual, minimum = MINIMUM_AUTOMATIC_AUDITOR_VER
 export function automaticPublicationGate(payload = {}) {
   const failures = [];
   if (Number(payload.schemaVersion) < REQUIRED_DASHBOARD_SCHEMA_VERSION) failures.push("schema_outdated");
-  if (payload.scoreModel !== REQUIRED_SCORE_MODEL) failures.push("score_model_outdated");
-  if (!isAtLeastVersion(payload.auditorVersion)) failures.push("auditor_version_outdated");
+  const legacy = payload.criteriaMode === "legacy_12569" && payload.semesterCode === "1/2569";
+  const requiredModel = legacy ? "legacy_course_type_v1" : REQUIRED_SCORE_MODEL;
+  if (payload.scoreModel !== requiredModel) failures.push("score_model_outdated");
+  if (!isAtLeastVersion(payload.auditorVersion, legacy ? "0.13.35" : MINIMUM_AUTOMATIC_AUDITOR_VERSION)) failures.push("auditor_version_outdated");
   if (payload.coverageComplete !== true) failures.push("scan_incomplete");
   return { approved: failures.length === 0, failures };
 }
