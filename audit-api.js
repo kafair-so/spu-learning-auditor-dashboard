@@ -40,7 +40,7 @@
     if(options.auth!==false&&!token)throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");
     const {auth,...fetchOptions}=options;
     const response=await fetch(base+"/api"+path,{...fetchOptions,headers:{...(token?{Authorization:`Bearer ${token}`}:{ }),apikey:cfg.supabasePublishableKey||"",...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});
-    if(!response.ok){let detail={};try{detail=await response.json();}catch{}const message=detail.error||`HTTP ${response.status}`;if(options.auth!==false&&(response.status===401||window.OOEAuth?.isSessionError(message)))throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");throw new Error(message);}
+    if(!response.ok){let detail={};try{detail=await response.json();}catch{}const message=detail.error||`HTTP ${response.status}`;if(options.auth!==false&&(response.status===401||window.OOEAuth?.isSessionError(message)))throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อให้เครื่องตรวจทำงานต่อ");throw Object.assign(new Error(message),{status:response.status});}
     return response.json();
   }
   async function publicResults(){
@@ -92,7 +92,7 @@
     refreshAll:()=>request("/v1/admin/jobs/refresh",{method:"POST",body:"{}"}),
     uploadResult:result=>request("/v1/admin/results",{method:"POST",body:JSON.stringify(result)}),
     claimJob:()=>request("/v1/worker/jobs/claim",{method:"POST",body:"{}"}),
-    submitResult:(jobId,result)=>request(`/v1/worker/jobs/${encodeURIComponent(jobId)}/result`,{method:"POST",body:JSON.stringify(result)})
+    submitResult:(jobId,result)=>request(`/v1/worker/jobs/${encodeURIComponent(jobId)}/result`,{method:"POST",body:JSON.stringify(result),signal:AbortSignal.timeout(90000)})
   };
 })();
 

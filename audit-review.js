@@ -104,6 +104,8 @@
     $("workerChip").classList.toggle("running",visible);
   }
   let workerRunning=false,workerStopRequested=false,workerTimer=null,processedThisSession=0,records=[],accessUsers=[];
+  let workerStepBusy=false,workerStarting=false,workerResetting=false,workerRetry=null;
+  const WORKER_RETRY_DELAYS=[30000,45000,60000];
   let resultsState="loading",hasLoadedResults=false;
   document.head.insertAdjacentHTML("beforeend",`<style>
     @keyframes ooeShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
@@ -228,15 +230,56 @@
   }
 
   const workerStateLabel=state=>state?.status==="running"?`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}`:state?.status==="result_ready"?"มีผลตรวจรอยืนยันการส่งข้อมูล":state?.status==="idle"?"พร้อมรับงาน":"กำลังเริ่มเครื่องตรวจ";
-  function scheduleWorker(ms=2500){clearTimeout(workerTimer);if(workerRunning)workerTimer=setTimeout(runWorkerStep,ms);}
+  function updateWorkerControls(){
+    $("workerStart").disabled=workerRunning||workerStarting||workerStepBusy||workerResetting;
+    $("workerStop").disabled=!workerRunning||workerStopRequested;
+    $("workerReset").disabled=workerStepBusy||workerStarting||workerResetting;
+  }
+  function scheduleWorker(ms=2500){
+    clearTimeout(workerTimer);workerTimer=null;
+    if(!workerRunning)return;
+    const delay=Math.max(ms,workerRetry?workerRetry.nextAt-Date.now():0);
+    workerTimer=setTimeout(()=>{workerTimer=null;void runWorkerStep();},delay);
+  }
+  function isTransientWorkerSubmit(error){
+    const message=String(error?.message||error||"");
+    const status=Number(error?.status);
+    if(status===408||status===425||status===429||(status>=500&&status<=599))return true;
+    if(error?.name==="AbortError"||error?.name==="TimeoutError"||error?.name==="TypeError")return true;
+    return /^(?:sheet_status_sync_timeout|sheet_busy|sheet_status_sync_http_(?:408|425|429|5\d\d)|HTTP (?:408|425|429|5\d\d))$/i.test(message)||
+      /failed to fetch|networkerror|network request failed|network error|load failed|connection reset|timed out|timeout exceeded/i.test(message);
+  }
+  function handlePendingSubmission(state,error,knownSaved){
+    const jobId=state.job.jobId;
+    const label=state.job.courseCode||state.job.courseId||"รายวิชา";
+    const reason=String(error?.message||error||"รอยืนยันการซิงก์");
+    if(!workerRetry||workerRetry.jobId!==jobId)workerRetry={jobId,attempts:0,nextAt:0};
+    const prefix=knownSaved?"บันทึกผลในฐานข้อมูลแล้ว แต่ยังยืนยัน Main Data ไม่ได้":"ยังไม่ได้รับคำยืนยันการส่งผลจากระบบกลาง";
+    if(workerStopRequested||!isTransientWorkerSubmit(error)||workerRetry.attempts>=WORKER_RETRY_DELAYS.length){
+      const suffix=workerStopRequested?"หยุดตามคำสั่ง":workerRetry.attempts>=WORKER_RETRY_DELAYS.length?"ส่งซ้ำครบ 3 ครั้งแล้ว":"พบข้อผิดพลาดที่ต้องตรวจสอบ";
+      stopWorker(prefix+" · "+label+" · "+suffix+" · ผลเดิมยังอยู่ใน Extension · กดเปิดเครื่องตรวจเพื่อส่งซ้ำ ("+reason+")","error");
+      void Promise.allSettled([loadResults(),loadQueueOverview(),refreshWorkerStatus()]);
+      return;
+    }
+    const delay=WORKER_RETRY_DELAYS[workerRetry.attempts++];
+    workerRetry.nextAt=Date.now()+delay;
+    setWorkerProgress(100,"รอยืนยันผล "+label,true,"ส่งซ้ำอัตโนมัติครั้งที่ "+workerRetry.attempts+" / 3 ใน "+Math.round(delay/1000)+" วินาที");
+    setWorkerMessage(prefix+" · "+label+" · ส่งผลเดิมซ้ำอัตโนมัติครั้งที่ "+workerRetry.attempts+"/3 ใน "+Math.round(delay/1000)+" วินาที ("+reason+")","error");
+    scheduleWorker(delay);
+  }
   async function refreshWorkerStatus(){
     try{const response=await AuditWorker.status();$("workerStatus").textContent=`Extension พร้อมใช้งาน · ${workerStateLabel(response.state)}`;return response.state;}
     catch(error){$("workerStatus").textContent="ยังไม่พบ Extension รุ่น Worker";throw error;}
   }
   async function runWorkerStep(){
-    if(!workerRunning)return;
+    if(!workerRunning||workerStepBusy||workerStarting||workerResetting)return;
+    if(workerRetry&&workerRetry.nextAt>Date.now()){scheduleWorker();return;}
+    workerStepBusy=true;updateWorkerControls();
     try{
       const state=await refreshWorkerStatus();
+      if(workerRetry&&(state?.status!=="result_ready"||state.job?.jobId!==workerRetry.jobId)){
+        stopWorker("ผลตรวจที่รอส่งซ้ำเปลี่ยนสถานะ · หยุดไว้เพื่อป้องกันการรับงานใหม่โดยไม่ยืนยันผล","error");return;
+      }
       if(state?.status==="running"||state?.status==="starting"){
         const progress=state.progress?.label?` · ${state.progress.label}`:"";
         const completed=Number(state.progress?.current??state.progress?.completed??state.progress?.completedItems);
@@ -245,73 +288,92 @@
         const value=hasElementProgress?(completed/total)*100:0;
         const detail=hasElementProgress?`ตรวจแล้ว ${Math.min(completed,total).toLocaleString(locale())} / ${total.toLocaleString(locale())} องค์ประกอบ`:"กำลังเตรียมข้อมูล";
         setWorkerProgress(value,`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress}`,true,detail,hasElementProgress);
-        setWorkerMessage(`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress} · ปิดหน้า Dashboard ได้ แต่ต้องเปิด Chrome ไว้`);
+        setWorkerMessage(`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}${progress} · เปิดหน้า Dashboard และ Chrome ไว้เพื่อส่งผลและเดินคิวอัตโนมัติ`);
         scheduleWorker();return;
       }
       if(state?.status==="result_ready"){
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
         if(String(state.result.group||"").toUpperCase()!=="GR")throw new Error("ขอบเขตงานนี้ไม่อนุญาตให้ส่งผลนอกกลุ่ม GR");
-        setWorkerMessage("กำลังส่งผลตรวจและยืนยันข้อมูลใน Main Data…");
-        const submission=await AuditApi.submitResult(state.job.jobId,state.result);
-        if(!submission?.runId)throw new Error("ยังไม่ได้รับการยืนยัน Run ID จากระบบกลาง");
+        if(workerStopRequested&&workerRetry){stopWorker("หยุดแล้ว · ผลเดิมยังรอส่งใน Extension");return;}
+        setWorkerMessage(workerRetry?`กำลังส่งผลเดิมซ้ำครั้งที่ ${workerRetry.attempts}/3 และยืนยัน Main Data…`:"กำลังส่งผลตรวจและยืนยันข้อมูลใน Main Data…");
+        let submission;
+        try{submission=await AuditApi.submitResult(state.job.jobId,state.result);}
+        catch(error){
+          if(OOEAuth.isSessionError(error))throw error;
+          handlePendingSubmission(state,error,false);return;
+        }
+        if(!submission?.runId){handlePendingSubmission(state,new Error("ยังไม่ได้รับการยืนยัน Run ID จากระบบกลาง"),false);return;}
         const sync=submission.sheetSync;
-        const verified=sync?.ok===true&&sync?.verified===true;
+        const verified=sync?.ok===true&&sync?.verified===true&&sync?.liveSheetVerified===true;
         const skipped=sync?.skipped===true&&sync?.reason==="result_not_published";
         if(!verified&&!skipped){
-          const message="บันทึกผลในฐานข้อมูลแล้ว แต่ยังยืนยัน Main Data ไม่ได้ · ผลเดิมยังอยู่ใน Extension · กดเปิดเครื่องตรวจเพื่อส่งซ้ำโดยไม่ตรวจใหม่ ("+(sync?.error||(sync?.configured===false?"ยังไม่ได้ตั้งค่า webhook":"รอยืนยันการซิงก์"))+")";
-          stopWorker(message);setWorkerMessage(message,"error");
-          await Promise.allSettled([loadResults(),loadQueueOverview(),refreshWorkerStatus()]);return;
+          handlePendingSubmission(state,new Error(sync?.error||(sync?.configured===false?"ยังไม่ได้ตั้งค่า webhook":"รอยืนยันการซิงก์")),true);return;
         }
-        await AuditWorker.acknowledge(state.job.jobId);
-        processedThisSession++;await loadResults();await loadQueueOverview();
+        // Only a verified live V/W/X readback, or a genuinely unpublished
+        // result, may release the Extension's retained result.
+        try{await AuditWorker.acknowledge(state.job.jobId);}
+        catch(error){stopWorker("ยืนยันผลในระบบกลางแล้ว แต่ Extension ไม่ตอบรับ · กดเปิดเครื่องตรวจเพื่ออ่านสถานะล่าสุด ("+(error.message||error)+")","error");return;}
+        workerRetry=null;
+        processedThisSession++;
+        void Promise.allSettled([loadResults(),loadQueueOverview()]);
         setWorkerProgress(100,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`,true,"ตรวจครบทุกองค์ประกอบแล้ว");
-        setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว${sync?.verificationSource==="published_main_data_csv"?" · ตรวจตรงกับข้อมูล Main Data ที่เผยแพร่":""} · รอบนี้เสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);
+        setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
       }
       if(workerStopRequested){stopWorker("หยุดแล้ว");return;}
       const claimed=await AuditApi.claimJob();
       if(!claimed.job){stopWorker(`คิวว่าง · รอบนี้ตรวจเสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);return;}
       if(claimed.job.course?.course_group!=="GR")throw new Error("ขอบเขตงานนี้รับเฉพาะรายวิชา GR");
-      await AuditWorker.start(claimed.job);await loadQueueOverview();
+      await AuditWorker.start(claimed.job);
+      void loadQueueOverview().catch(()=>{});
       setWorkerProgress(0,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`,true,"กำลังเปิดรายวิชาและอ่านองค์ประกอบ…",false);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
       scheduleWorker();
     }catch(error){
       if(OOEAuth.isSessionError(error)){
-        workerRunning=false;clearTimeout(workerTimer);workerTimer=null;
-        $("workerStart").disabled=true;$("workerStop").disabled=true;
-        setWorkerMessage("เซสชันหมดอายุ · กำลังขอสิทธิ์ใหม่จาก Google เพื่อทำคิวเดิมต่อ", "error");
-        const renewed=await OOEAuth.refreshCredential({interactive:true});
-        if(renewed){setWorkerMessage("ต่ออายุเซสชันแล้ว · กลับมาทำคิวเดิมต่อ");await startWorker();return;}
-        $("workerStart").disabled=false;
-        setWorkerMessage("เซสชันหมดอายุ · กรุณาเข้าสู่ระบบใหม่ แล้วกด “เปิดเครื่องตรวจ” ระบบจะกลับไปทำคิวเดิมโดยไม่ต้องสร้างคิวซ้ำ", "error");
-        return;
+        clearTimeout(workerTimer);workerTimer=null;
+        setWorkerMessage("เซสชันหมดอายุ · กำลังขอสิทธิ์ใหม่จาก Google เพื่อทำคิวเดิมต่อ","error");
+        const renewed=await OOEAuth.refreshCredential({interactive:true}).catch(()=>false);
+        if(renewed&&workerRunning&&!workerStopRequested){setWorkerMessage("ต่ออายุเซสชันแล้ว · กลับมาทำคิวเดิมต่อ");scheduleWorker(0);return;}
+        stopWorker(renewed?"หยุดตามคำสั่ง · ผลและคิวเดิมยังอยู่":"เซสชันหมดอายุ · กรุณาเข้าสู่ระบบใหม่ แล้วกด “เปิดเครื่องตรวจ” ระบบจะกลับไปทำคิวเดิมโดยไม่ต้องสร้างคิวซ้ำ","error");return;
       }
+      if(workerStopRequested){stopWorker("หยุดแล้ว · คิวและผลเดิมยังอยู่");return;}
+      if(workerRetry){stopWorker("ไม่สามารถอ่านผลเดิมที่รอส่งซ้ำจาก Extension · "+String(error.message||error),"error");return;}
       setWorkerMessage(error.message||String(error),"error");scheduleWorker(5000);
+    }finally{
+      workerStepBusy=false;updateWorkerControls();
+      if(workerRunning&&workerTimer===null)scheduleWorker();
     }
   }
-  function stopWorker(message="หยุดรับงานใหม่แล้ว"){
-    workerRunning=false;workerStopRequested=false;clearTimeout(workerTimer);workerTimer=null;
-    $("workerStart").disabled=false;$("workerStop").disabled=true;setWorkerProgress(100,message,false);setWorkerMessage(message);
+  function stopWorker(message="หยุดรับงานใหม่แล้ว",type="ok"){
+    workerRunning=false;workerStopRequested=false;workerRetry=null;clearTimeout(workerTimer);workerTimer=null;
+    updateWorkerControls();setWorkerProgress(100,message,false);setWorkerMessage(message,type);
+  }
+  function requestWorkerStop(){
+    if(!workerRunning)return;
+    workerStopRequested=true;updateWorkerControls();
+    if(workerRetry&&!workerStepBusy){stopWorker("หยุดแล้ว · ผลเดิมยังรอส่งใน Extension");return;}
+    setWorkerMessage("รับคำสั่งแล้ว · จะหยุดหลังวิชาปัจจุบันหรือการส่งผลครั้งนี้เสร็จ");
   }
   async function startWorker(){
-    if(workerRunning)return;
+    if(workerRunning||workerStepBusy||workerStarting||workerResetting)return;
+    workerStarting=true;updateWorkerControls();
     try{
       const ping=await AuditWorker.ping();
       const enabled=await AuditWorker.enable();
       if(enabled?.granted===false)throw new Error("ยังไม่ได้อนุญาตให้ Extension เปิดผู้ให้บริการสื่อที่ต้องตรวจ");
-      workerRunning=true;workerStopRequested=false;processedThisSession=0;
-      $("workerStart").disabled=true;$("workerStop").disabled=false;
+      workerRunning=true;workerStopRequested=false;workerRetry=null;processedThisSession=0;
       setWorkerProgress(0,"กำลังตรวจสอบ Extension และอ่านคิวกลาง",true,"กำลังเตรียมเครื่องตรวจ…",false);
       $("workerStatus").textContent=`Extension ${ping.version||""} พร้อมใช้งาน`;
       setWorkerMessage("เปิดเครื่องตรวจแล้ว · กำลังอ่านคิวกลาง");
-      await runWorkerStep();
-    }catch(error){stopWorker(error.message||String(error));$("workerMessage").className="message error";}
+    }catch(error){stopWorker(error.message||String(error),"error");}
+    finally{workerStarting=false;updateWorkerControls();if(workerRunning)scheduleWorker(0);}
   }
 
   async function resetWorkerPanel(){
-    workerRunning=false;workerStopRequested=false;clearTimeout(workerTimer);workerTimer=null;processedThisSession=0;
-    $("workerStart").disabled=false;$("workerStop").disabled=true;$("workerReset").disabled=true;
+    if(workerStepBusy||workerStarting||workerResetting)return;
+    workerResetting=true;workerRunning=false;workerStopRequested=false;workerRetry=null;clearTimeout(workerTimer);workerTimer=null;processedThisSession=0;
+    updateWorkerControls();
     setWorkerProgress(0,"รีเซ็ตหน้าเว็บตรวจแล้ว",false);
     setWorkerMessage("กำลังเชื่อมต่อ Extension และโหลดสถานะคิวใหม่");
     try{
@@ -320,7 +382,7 @@
       setWorkerMessage("Reset เว็บตรวจเรียบร้อย · คิวและผลตรวจเดิมยังอยู่ครบ");
     }catch(error){
       setWorkerMessage(`Reset หน้าเว็บแล้ว แต่เชื่อมต่อสถานะล่าสุดไม่สำเร็จ: ${error.message||error}`,"error");
-    }finally{$("workerReset").disabled=false;}
+    }finally{workerResetting=false;updateWorkerControls();}
   }
 
   let queueOverviewData=null,courseCatalog=[];
@@ -666,7 +728,7 @@
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("workerStart").addEventListener("click",startWorker);
-  $("workerStop").addEventListener("click",()=>{workerStopRequested=true;$("workerStop").disabled=true;setWorkerMessage("รับคำสั่งแล้ว · จะหยุดหลังวิชาปัจจุบันเสร็จ");});
+  $("workerStop").addEventListener("click",requestWorkerStop);
   $("workerReset").addEventListener("click",resetWorkerPanel);
   $("accessForm").addEventListener("submit",async event=>{
     event.preventDefault();
