@@ -4,6 +4,7 @@
   const badge=status=>status?`<span class="status ${AuditBridge.COLORS[status]}">${AuditBridge.LABELS[status]}</span>`:"—";
   const locale=()=>window.OOEI18n?.current?.()==="en"?"en-US":"th-TH";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString(locale()):"—";
+  const GR_CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv";
   const CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
   const maxScore=record=>Number.isFinite(Number(record.maxScore))?Number(record.maxScore):110;
   const isSuperAdmin=()=>["owner","super_admin"].includes(window.OOEReviewer?.role);
@@ -235,7 +236,9 @@
       }
       if(state?.status==="result_ready"){
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
-        await AuditApi.submitResult(state.job.jobId,state.result);
+        if(String(state.result.group||"").toUpperCase()!=="GR")throw new Error("ขอบเขตงานนี้ไม่อนุญาตให้ส่งผลนอกกลุ่ม GR");
+        const submission=await AuditApi.submitResult(state.job.jobId,state.result);
+        if(submission?.sheetSync?.ok===false)throw new Error("บันทึกผลในฐานข้อมูลแล้ว แต่ซิงก์ Sheet ไม่สำเร็จ: "+submission.sheetSync.error);
         await AuditWorker.acknowledge(state.job.jobId);
         processedThisSession++;await loadResults();await loadQueueOverview();
         setWorkerProgress(100,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`,true,"ตรวจครบทุกองค์ประกอบแล้ว");
@@ -245,6 +248,7 @@
       if(workerStopRequested){stopWorker("หยุดแล้ว");return;}
       const claimed=await AuditApi.claimJob();
       if(!claimed.job){stopWorker(`คิวว่าง · รอบนี้ตรวจเสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);return;}
+      if(claimed.job.course?.course_group!=="GR")throw new Error("ขอบเขตงานนี้รับเฉพาะรายวิชา GR");
       await AuditWorker.start(claimed.job);await loadQueueOverview();
       setWorkerProgress(0,`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว`,true,"กำลังเปิดรายวิชาและอ่านองค์ประกอบ…",false);
       setWorkerMessage(`รับงาน ${claimed.job.course?.course_code||claimed.job.course_id} แล้ว · เริ่มตรวจอัตโนมัติ`);
@@ -316,10 +320,13 @@
     const url=CATALOG_URL+(CATALOG_URL.includes("?")?"&":"?")+"_="+Date.now();
     const response=await fetch(url,{cache:"no-store"});
     if(!response.ok)throw new Error(`โหลดบัญชีรายวิชาไม่สำเร็จ (HTTP ${response.status})`);
-    const rows=AuditBridge.parseCSV(await response.text()).filter(row=>!soloSpecialInstructor(row)).map(courseFromCatalogRow)
-      .filter(course=>course.group==="GR"||course.group==="GS");
+    const readOnlyGs=AuditBridge.parseCSV(await response.text()).filter(row=>!soloSpecialInstructor(row)).map(courseFromCatalogRow).filter(course=>course.group==="GS");
+    const grResponse=await fetch(GR_CATALOG_URL+"&_="+Date.now(),{cache:"no-store"});
+    if(!grResponse.ok)throw new Error(`โหลดบัญชี GR ไม่สำเร็จ (HTTP ${grResponse.status})`);
+    const grRows=AuditBridge.parseCSV(await grResponse.text()).filter(row=>String(row.coursename||"").startsWith("691GR-")&&String(row["ประเภทผู้ปฏิบัติงาน"]||"").trim()).map(row=>({...courseFromCatalogRow({group:"GR",courseCode:row["รหัสวิชา"],courseProfile:row.coursename,courseLink:row.link,teacherType:row["ประเภทผู้ปฏิบัติงาน"],teacherCount:row.teachers,instructors:row["อ.ผู้สอน"]||row.teachernames}),courseTitle:String(row.fullname||"")}));
+    const rows=[...readOnlyGs,...grRows];
     const unique=new Map();
-    rows.forEach(course=>{const key=catalogKey(course);if(key)unique.set(key,course);});
+    rows.forEach(course=>{const key=course.group==="GR"?course.courseId:catalogKey(course);if(key)unique.set(key,course);});
     courseCatalog=[...unique.values()];
     populateCoursePicker();
   }
@@ -327,12 +334,12 @@
   function populateCoursePicker(){
     const options=$("queueCourseOptions");
     if(!options)return;
-    options.innerHTML=courseCatalog.map(course=>`<option value="${esc(coursePickerLabel(course))}">${esc(`${course.group||""} · ${course.courseId||""}`)}</option>`).join("");
+    options.innerHTML=courseCatalog.filter(course=>course.group==="GR").map(course=>`<option value="${esc(coursePickerLabel(course))}">${esc(`${course.group||""} · ${course.courseId||""}`)}</option>`).join("");
   }
   function selectedCourseFromPicker(){
     const value=$("queueCourseSearch")?.value.trim().toLowerCase()||"";
     if(!value)throw new Error("กรุณาเลือกรายวิชาที่ต้องการตรวจ");
-    const course=courseCatalog.find(item=>[
+    const course=courseCatalog.filter(item=>item.group==="GR").find(item=>[
       coursePickerLabel(item),item.courseId,item.courseCode,item.courseProfile,item.courseTitle
     ].filter(Boolean).some(candidate=>String(candidate).trim().toLowerCase()===value));
     if(!course?.courseId)throw new Error("ไม่พบรายวิชาในบัญชีกลาง กรุณาเลือกจากรายการที่แสดง");
@@ -428,7 +435,7 @@
     if(reportHeader&&!reportHeader.querySelector(".queue-column"))reportHeader.insertAdjacentHTML("beforeend",'<th class="queue-column">คิวตรวจ</th>');
     const commandActions=document.querySelector(".command-actions");
     if(commandActions&&!document.getElementById("queueScope")){
-      commandActions.insertAdjacentHTML("beforebegin",`<div class="queue-picker"><div><span class="queue-picker-label">เลือกชุดรายวิชาที่ต้องการตรวจ</span><small>สร้างคิวเฉพาะรายการที่เลือก โดยไม่กระทบรายวิชาอื่น</small></div><select id="queueScope" aria-label="ชุดรายวิชาที่ต้องการตรวจ"><option value="missing">รายวิชาที่ยังไม่มีผลตรวจ</option><option value="gr">เฉพาะรายวิชา GR</option><option value="gs">เฉพาะรายวิชา GS</option><option value="failed">เฉพาะรายวิชาที่ตรวจไม่สำเร็จ</option><option value="retry">เฉพาะรายวิชาที่ต้องตรวจใหม่</option></select></div>`);
+      commandActions.insertAdjacentHTML("beforebegin",`<div class="queue-picker"><div><span class="queue-picker-label">เลือกชุดรายวิชาที่ต้องการตรวจ</span><small>สร้างคิวเฉพาะรายการที่เลือก โดยไม่กระทบรายวิชาอื่น</small></div><select id="queueScope" aria-label="ชุดรายวิชาที่ต้องการตรวจ"><option value="missing">รายวิชาที่ยังไม่มีผลตรวจ</option><option value="gr">เฉพาะรายวิชา GR</option><option value="failed">เฉพาะรายวิชาที่ตรวจไม่สำเร็จ</option><option value="retry">เฉพาะรายวิชาที่ต้องตรวจใหม่</option></select></div>`);
       const queueButton=$("queueMissing"),queueScope=$("queueScope");
       const labels={missing:"ตรวจวิชาที่ยังไม่มีผล",gr:"ตรวจเฉพาะรายวิชา GR",gs:"ตรวจเฉพาะรายวิชา GS",failed:"ตรวจวิชาที่ตรวจไม่สำเร็จ",retry:"ตรวจวิชาที่ต้องตรวจใหม่"};
       queueScope.addEventListener("change",()=>{queueButton.innerHTML=`<span>⌕</span> ${labels[queueScope.value]}`;});
@@ -438,9 +445,9 @@
       populateCoursePicker();
     }
     const queueScope=$("queueScope"),courseScope=$("courseScope"),queueActionLabel=$("queueActionLabel");
-    const syncQueueScope=()=>{if(!queueScope)return;const labels={course:"ตรวจเฉพาะรายวิชา",gr:"ตรวจรายวิชา GR",gs:"ตรวจรายวิชา GS",all:"ตรวจรายวิชาทั้งหมด"};if(courseScope)courseScope.hidden=queueScope.value!=="course";if(queueActionLabel)queueActionLabel.textContent=labels[queueScope.value]||labels.course;$("queueMissing").hidden=queueScope.value==="course";};
+    const syncQueueScope=()=>{if(!queueScope)return;const labels={course:"ตรวจเฉพาะรายวิชา",gr:"ตรวจรายวิชา GR"};if(courseScope)courseScope.hidden=queueScope.value!=="course";if(queueActionLabel)queueActionLabel.textContent=labels[queueScope.value]||labels.course;$("queueMissing").hidden=queueScope.value==="course";};
     queueScope?.addEventListener("change",syncQueueScope);syncQueueScope();
-    if(queueScope&&!document.querySelector(".scope-segments")){const segments=document.createElement("div");segments.className="scope-segments";const labels={course:["รายวิชาเดียว","One course"],gr:["เฉพาะ GR","GR only"],gs:["เฉพาะ GS","GS only"],all:["ทุกวิชา","All courses"]};segments.innerHTML=Object.entries(labels).map(([value,label])=>`<button class="scope-segment" type="button" data-scope-value="${value}">${window.OOEI18n?.t(...label)||label[0]}</button>`).join("");queueScope.after(segments);const syncSegments=()=>segments.querySelectorAll("[data-scope-value]").forEach(button=>{const selected=button.dataset.scopeValue===queueScope.value;button.classList.toggle("active",selected);button.setAttribute("aria-pressed",String(selected));});segments.addEventListener("click",event=>{const button=event.target.closest("[data-scope-value]");if(!button)return;queueScope.value=button.dataset.scopeValue;queueScope.dispatchEvent(new Event("change"));syncSegments();});queueScope.addEventListener("change",syncSegments);window.addEventListener("ooe:languagechange",()=>{segments.querySelectorAll("[data-scope-value]").forEach(button=>button.textContent=window.OOEI18n.t(...labels[button.dataset.scopeValue]));});syncSegments();}
+    if(queueScope&&!document.querySelector(".scope-segments")){const segments=document.createElement("div");segments.className="scope-segments";const labels={course:["รายวิชาเดียว","One course"],gr:["เฉพาะ GR","GR only"]};segments.innerHTML=Object.entries(labels).map(([value,label])=>`<button class="scope-segment" type="button" data-scope-value="${value}">${window.OOEI18n?.t(...label)||label[0]}</button>`).join("");queueScope.after(segments);const syncSegments=()=>segments.querySelectorAll("[data-scope-value]").forEach(button=>{const selected=button.dataset.scopeValue===queueScope.value;button.classList.toggle("active",selected);button.setAttribute("aria-pressed",String(selected));});segments.addEventListener("click",event=>{const button=event.target.closest("[data-scope-value]");if(!button)return;queueScope.value=button.dataset.scopeValue;queueScope.dispatchEvent(new Event("change"));syncSegments();});queueScope.addEventListener("change",syncSegments);window.addEventListener("ooe:languagechange",()=>{segments.querySelectorAll("[data-scope-value]").forEach(button=>button.textContent=window.OOEI18n.t(...labels[button.dataset.scopeValue]));});syncSegments();}
     if(queueScope&&!$("queueCriteriaMode")){const card=document.createElement("div");card.className="scope-card";card.innerHTML='<div><strong>เลือกเกณฑ์การตรวจ</strong><p class="muted">เกณฑ์ผ่อนปรนใช้เฉพาะภาค 1/2569 และเก็บผลตรวจแยกจากเกณฑ์ปกติ</p></div><select id="queueCriteriaMode" aria-label="เลือกเกณฑ์การตรวจ"><option value="current">เกณฑ์ปกติของ Dashboard</option><option value="legacy_12569">เกณฑ์ผ่อนปรน ภาค 1/2569</option></select>';queueScope.closest(".scope-card")?.after(card);}
     const fileInput=$("files"),fileDrop=$("fileDrop"),fileStatus=$("fileDropStatus");
     const showFiles=()=>{const count=fileInput?.files?.length||0;if(fileStatus)fileStatus.textContent=count?`เลือกแล้ว ${count.toLocaleString(locale())} ไฟล์ · ${[...fileInput.files].map(file=>file.name).join(", ")}`:"รองรับไฟล์ JSON หลายไฟล์พร้อมกัน";};
@@ -574,7 +581,7 @@
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
-    try{const scope=$("queueScope")?.value||"gr";const labels={gr:"รายวิชา GR",gs:"รายวิชา GS",all:"รายวิชาทั้งหมด"};const criteriaMode=$("queueCriteriaMode")?.value||"current";const semesterCode=criteriaMode==="legacy_12569"?"1/2569":"";setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope,criteriaMode,semesterCode);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว · ${criteriaMode==="legacy_12569"?"เกณฑ์ผ่อนปรน 1/2569":"เกณฑ์ปกติ"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"gr";const labels={gr:"รายวิชา GR"};const criteriaMode=$("queueCriteriaMode")?.value||"current";const semesterCode=criteriaMode==="legacy_12569"?"1/2569":"";setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope,criteriaMode,semesterCode);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว · ${criteriaMode==="legacy_12569"?"เกณฑ์ผ่อนปรน 1/2569":"เกณฑ์ปกติ"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("queueCourseAdd")?.addEventListener("click",async()=>{
