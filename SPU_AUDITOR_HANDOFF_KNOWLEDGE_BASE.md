@@ -1444,3 +1444,13 @@ Total output lines: 1971
 - ปรับ `actionableIssues` ให้ access failure มีลำดับก่อน duration และ return ทันที จึงไม่สร้างสองหัวข้อจาก criterion เดียว; เพิ่มรูปแบบตรวจจับ `ลิงก์เสีย`, `link_error`, `เปิดปลายทางไม่ได้`, `ไม่พบปลายทาง` และสิทธิ์เข้าถึง. Access action ระบุให้แก้ลิงก์หรือสิทธิ์เท่านั้น ไม่กล่าวเรื่องเวลา.
 - ทดสอบ 3 กรณีผ่าน: CLB423 detail ที่มี 0:00 พร้อมลิงก์เสีย => เปิดปลายทางไม่ได้เพียงข้อเดียว; ลิงก์เปิดได้แต่ 42:18/1:30:00 => เวลาไม่ครบ; ไม่มีลิงก์คลิป => เวลาไม่ครบ. Source commit `88c9ea0f2f28fb340598e7b96886f6e006bc62f5`; cache `20261118review13` commit `e0455e0bcb9d5f706e19b9f6666ecc40b39fdd29`.
 - ตรวจ Production แบบ no-store แล้ว HTML และ JavaScript review13 ขึ้นครบ. ไม่เปลี่ยน API, คะแนน, ผลตรวจ, Main Data, GS, AI Tutor, Podcast หรือ Extension.
+
+
+## 88. Mockup-aligned course evidence header — 2026-11-18
+
+- ปรับส่วนหัวหน้าหลักฐานตาม Mockup: แถวบนแสดงประเภทวิชาเป็น chip, ภาคการศึกษา และเวลาตรวจล่าสุด; แถวกลางแสดง `รหัสวิชา · ชื่อวิชา`; แถวล่างแสดง Course Profile, หน่วยกิตเมื่อมีข้อมูลจริง และคณะ; ลิงก์เปิดรายวิชายังคงอยู่แบบข้อความขนาดเล็ก. กล่องสถานะด้านขวาคงใช้สีตามผลตรวจ.
+- ไม่สร้างหรือเดาหน่วยกิตเมื่อข้อมูลต้นทางไม่มีค่า. ตรวจข้อมูล CLB423 พบ GR, ภาค 1/2569, คณะการบิน การท่องเที่ยว และการบริการ แต่ไม่มีค่า credits จึงไม่แสดงหน่วยกิต.
+- เพิ่ม group/faculty/instructors ใน admin history response. API source commit `500485819ddf795aa85349819650c217d564ef0d`; Production API v53 ACTIVE และอ่าน source กลับยืนยัน metadata fields ครบ.
+- เพิ่มการคง `semesterCode`, `reviewerSummary`, `receivedAt` ใน public API normalization เพื่อไม่ทำข้อมูลที่ API ส่งมาหาย. Commit `ba1ab4713ed8f146d50902d8f8128fd4bdb6d3ea`.
+- UI commits `887b92615c977117a53c743989fbc457f425bfce`, `5cd25a178b19583aac0ce38a31da1fce009f1ec1`; cache `20261118review14` และ audit-api cache `20261118header1` commit `f824f5c8498aa25a8c42dc4b7983fd4d67454d42`. ตรวจ Production แบบ no-store แล้ว HTML/JS/CSS/API asset ชุดใหม่ขึ้นครบ.
+- ไม่เปลี่ยนผลตรวจ คะแนน Main Data, GS, AI Tutor, Podcast, สูตรคะแนน หรือ Extension.
