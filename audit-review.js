@@ -213,7 +213,7 @@
     [...$("filter").options].forEach(option=>{if(["needs_review","audit_failed"].includes(option.value))option.remove();});
   }
 
-  const workerStateLabel=state=>state?.status==="running"?`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}`:state?.status==="result_ready"?"มีผลตรวจรอส่งเข้าฐานข้อมูล":state?.status==="idle"?"พร้อมรับงาน":"กำลังเริ่มเครื่องตรวจ";
+  const workerStateLabel=state=>state?.status==="running"?`กำลังตรวจ ${state.job?.courseCode||state.job?.courseId||"รายวิชา"}`:state?.status==="result_ready"?"มีผลตรวจรอยืนยันการส่งข้อมูล":state?.status==="idle"?"พร้อมรับงาน":"กำลังเริ่มเครื่องตรวจ";
   function scheduleWorker(ms=2500){clearTimeout(workerTimer);if(workerRunning)workerTimer=setTimeout(runWorkerStep,ms);}
   async function refreshWorkerStatus(){
     try{const response=await AuditWorker.status();$("workerStatus").textContent=`Extension พร้อมใช้งาน · ${workerStateLabel(response.state)}`;return response.state;}
@@ -237,12 +237,21 @@
       if(state?.status==="result_ready"){
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
         if(String(state.result.group||"").toUpperCase()!=="GR")throw new Error("ขอบเขตงานนี้ไม่อนุญาตให้ส่งผลนอกกลุ่ม GR");
+        setWorkerMessage("กำลังส่งผลตรวจและยืนยันข้อมูลใน Main Data…");
         const submission=await AuditApi.submitResult(state.job.jobId,state.result);
+        if(!submission?.runId)throw new Error("ยังไม่ได้รับการยืนยัน Run ID จากระบบกลาง");
+        const sync=submission.sheetSync;
+        const verified=sync?.ok===true&&sync?.verified===true;
+        const skipped=sync?.skipped===true&&sync?.reason==="result_not_published";
+        if(!verified&&!skipped){
+          const message="บันทึกผลในฐานข้อมูลแล้ว แต่ยังยืนยัน Main Data ไม่ได้ · ผลเดิมยังอยู่ใน Extension · กดเปิดเครื่องตรวจเพื่อส่งซ้ำโดยไม่ตรวจใหม่ ("+(sync?.error||(sync?.configured===false?"ยังไม่ได้ตั้งค่า webhook":"รอยืนยันการซิงก์"))+")";
+          stopWorker(message);setWorkerMessage(message,"error");
+          await Promise.allSettled([loadResults(),loadQueueOverview(),refreshWorkerStatus()]);return;
+        }
         await AuditWorker.acknowledge(state.job.jobId);
-        if(submission?.sheetSync?.ok===false||submission?.sheetSync?.configured===false){await loadResults();await loadQueueOverview();stopWorker("บันทึกผลในฐานข้อมูลแล้ว แต่ซิงก์ Sheet ไม่สำเร็จ — ตรวจสอบก่อนเริ่มงานถัดไป: "+(submission.sheetSync.error||"ยังไม่ได้ตั้งค่า webhook"));return;}
         processedThisSession++;await loadResults();await loadQueueOverview();
         setWorkerProgress(100,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`,true,"ตรวจครบทุกองค์ประกอบแล้ว");
-        setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);
+        setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว${sync?.verificationSource==="published_main_data_csv"?" · ตรวจตรงกับข้อมูล Main Data ที่เผยแพร่":""} · รอบนี้เสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);
         if(workerStopRequested){stopWorker("หยุดแล้วหลังส่งผลวิชาปัจจุบัน");return;}
       }
       if(workerStopRequested){stopWorker("หยุดแล้ว");return;}

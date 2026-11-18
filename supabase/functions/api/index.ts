@@ -32,7 +32,33 @@ function criteriaRequest(body = {}) {
   return { criteriaMode, semesterCode };
 }
 
-async function syncSheetStatusSafely(courseId, status, group) {
+// Bound the webhook and independent readback; a published CSV can lag.
+const SHEET_WEBHOOK_TIMEOUT_MS = 15000;
+const SHEET_READBACK_TIMEOUT_MS = 10000;
+
+async function verifyPublishedGrSheet(id, expected) {
+  try {
+    const response = await fetch(MAIN_DATA_CSV_URLS.GR + "&_=" + Date.now(), {
+      cache:"no-store", signal:AbortSignal.timeout(SHEET_READBACK_TIMEOUT_MS)
+    });
+    if (!response.ok) return null;
+    const rows = parseCsv(await response.text());
+    const matches = rows.filter(row => courseId({courseLink:row.link}) === String(id));
+    if (matches.length !== 1) return null;
+    const row = matches[0];
+    if (!String(row.coursename || "").startsWith("691GR-") ||
+        row["เนื้อหา"] !== expected.contentStatus ||
+        row["สถานะการ\nตรวจสอบ"] !== expected.resultStatus ||
+        row["หลักฐานการตรวจ"] !== expected.evidenceUrl) return null;
+    return { configured:true, ok:true, verified:true, verificationSource:"published_main_data_csv",
+      liveSheetVerified:false, courseId:String(id), group:"GR", ...expected };
+  } catch (error) {
+    console.warn("sheet_status_readback_unavailable", {courseId:String(id), error:String(error?.name || "readback_error")});
+    return null;
+  }
+}
+
+async function syncSheetStatusSafely(courseId, status, group, {checkPublishedFirst=false} = {}) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
   if (!["pass", "has_content", "no_content"].includes(status)) return { configured:true, skipped:true, reason:"result_not_publishable" };
   const normalizedGroup = String(group || "").trim().toUpperCase();
@@ -41,8 +67,14 @@ async function syncSheetStatusSafely(courseId, status, group) {
   const contentStatus = status === "no_content" ? "ไม่พบเนื้อหา" : "พบเนื้อหา";
   const resultStatus = status === "pass" ? "ผ่าน" : status === "no_content" ? "ไม่พบเนื้อหา" : "ไม่ผ่าน";
   const evidenceUrl = `${AUDIT_EVIDENCE_BASE_URL}?courseId=${encodeURIComponent(String(courseId || ""))}`;
+  const expected = {contentStatus, resultStatus, evidenceUrl};
+  if (checkPublishedFirst) {
+    const verified = await verifyPublishedGrSheet(courseId, expected);
+    if (verified) return verified;
+  }
   try {
     const response = await fetch(SHEET_STATUS_WEBHOOK_URL, {
+      signal:AbortSignal.timeout(SHEET_WEBHOOK_TIMEOUT_MS),
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
@@ -56,13 +88,21 @@ async function syncSheetStatusSafely(courseId, status, group) {
       })
     });
     if (!response.ok) throw new Error(`sheet_status_sync_http_${response.status}`);
-    const result = await response.json().catch(() => ({}));
+    const result = await response.json();
     if (result.ok !== true) throw new Error(result.error || "sheet_status_sync_failed");
     if (result.verified !== true || String(result.courseId) !== String(courseId) || result.group !== normalizedGroup || result.contentStatus !== contentStatus || result.resultStatus !== resultStatus || result.evidenceUrl !== evidenceUrl) throw new Error("sheet_status_sync_unverified");
-    return result;
+    return {...result, configured:true, verificationSource:"apps_script_readback", liveSheetVerified:true};
   } catch (error) {
-    console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:String(error?.message || error) });
-    return { configured:true, ok:false, error:String(error?.message || error) };
+    const timedOut = ["AbortError","TimeoutError"].includes(error?.name);
+    const message = timedOut ? "sheet_status_sync_timeout" : String(error?.message || error);
+    console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:message });
+    // Do not hide explicit webhook validation failures. Only a lost response
+    // can be recovered by an exact independently observed published row.
+    if (timedOut || error?.name === "TypeError") {
+      const verified = await verifyPublishedGrSheet(courseId, expected);
+      if (verified) return verified;
+    }
+    return { configured:true, ok:false, verified:false, pending:true, error:message };
   }
 }
 
@@ -1090,10 +1130,32 @@ async function assertGrCourse(courseId) {
   if (data?.course_group !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
 }
 
+async function recoverCompletedWorkerResult(jobMeta, externalId, course) {
+  // A newly inserted run and job completion share the transaction timestamp.
+  // Reject historical runs of the same course from a different job.
+  if (!jobMeta.completed_at) throw Object.assign(new Error("completed_job_missing_timestamp"),{status:409});
+  const {data:saved,error} = await db.from("audit_runs")
+    .select("run_id,internal_status,public_status,quality_gate:source_payload->qualityGate")
+    .eq("course_id",course).eq("external_audit_id",externalId)
+    .eq("criteria_mode",jobMeta.criteria_mode).eq("semester_code",jobMeta.semester_code)
+    .eq("created_at",jobMeta.completed_at).maybeSingle();
+  if (error) throw error;
+  if (!saved) throw Object.assign(new Error("completed_job_result_not_matched"),{status:409});
+  const {data:published,error:publishedError} = await db.from("courses")
+    .select("course_group,published_run_id,public_status").eq("course_id",course).single();
+  if (publishedError) throw publishedError;
+  const sheetSync = published.published_run_id === saved.run_id && published.public_status === saved.public_status
+    ? await syncSheetStatusSafely(course, saved.public_status, published.course_group, {checkPublishedFirst:true})
+    : {skipped:true,reason:"result_not_published"};
+  const gate = saved.quality_gate;
+  return {runId:saved.run_id,courseId:course,alreadyStored:true,
+    automaticPublication:gate?.approved !== false,qualityFailures:gate?.failures || [],sheetSync};
+}
+
 async function submitResult(request, jobId) {
   await reviewer(request);
   const submittedPayload = await request.json();
-  const { data:jobMeta, error:jobMetaError } = await db.from("audit_jobs").select("course_id,criteria_mode,semester_code").eq("job_id", jobId).single();
+  const { data:jobMeta, error:jobMetaError } = await db.from("audit_jobs").select("course_id,criteria_mode,semester_code,status,completed_at").eq("job_id", jobId).single();
   if (jobMetaError) throw jobMetaError;
   const expectedCriteria = criteriaRequest({criteriaMode:jobMeta.criteria_mode,semesterCode:jobMeta.semester_code});
   const suppliedCriteria = criteriaRequest(submittedPayload);
@@ -1106,6 +1168,10 @@ async function submitResult(request, jobId) {
   if (String(submittedPayload.group || "").toUpperCase() !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
   if (course !== String(jobMeta.course_id)) throw Object.assign(new Error("audit_result_course_mismatch"), { status:409 });
   await assertGrCourse(course);
+  const retryExternalId = String(submittedPayload.auditId || submittedPayload.runId || "").trim();
+  if (!retryExternalId) throw Object.assign(new Error("invalid_audit_result"),{status:400});
+  if (jobMeta.status === "completed") return await recoverCompletedWorkerResult(jobMeta, retryExternalId, course);
+  if (jobMeta.status !== "running") throw Object.assign(new Error("job_is_not_running"),{status:409});
   normalizeCloudAudioEvidence(submittedPayload);
   if (expectedCriteria.criteriaMode === "current" && submittedPayload.internalStatus !== "audit_failed") {
     resolveAutomaticInstructorCriterion(submittedPayload);
