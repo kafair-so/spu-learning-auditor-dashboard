@@ -1367,3 +1367,14 @@ Total output lines: 1971
 - ผู้ใช้ยืนยันว่า Deploy Apps Script เดิม SPU Auditor Sheet Status Sync แล้ว; ยังไม่ได้ตรวจ endpoint หรือ write จริงจากภายนอก
 - Deploy Supabase Edge Function API v47 ACTIVE จาก commit b04e946 พร้อม dependencies เดิมและ verify_jwt เดิม; อ่าน source production กลับตรงกับ GitHub
 - ยังไม่ทดสอบ end-to-end, weighted review รุ่น legacy ยังปิดไว้, catalog และ Extension release ยังต้องดำเนินการ; ไม่ได้แก้ข้อมูลรายวิชา/คิวในขั้นตอนนี้
+
+
+## 80. STOP / revised scope — GR only (2026-11-18)
+
+- คำสั่งล่าสุดผู้ใช้: หยุดและย้อนส่วนที่เกี่ยวข้องกับ GS เพราะเพื่อนร่วมงานเป็นผู้รับผิดชอบผลตรวจ GS; การพัฒนาต่อจากนี้ทำเฉพาะ GR เท่านั้น ห้ามเขียนผล GS, AI Tutor, Podcast หรือเปลี่ยนข้อมูลของผู้ร่วมงาน
+- ก่อนหยุดมี source commits สำหรับ Main Data, weighted scoring/review, evidence display; สูตรทดสอบ isolated 14 กรณีผ่าน แต่ยังไม่มี end-to-end หรือ deploy API draft นี้, ยังไม่ release Extension ใหม่
+- Front commit 6b06b51ac8444acfe80c93a1352fe301d2c37896 คืน GS ไปใช้ GRGS_Public และ mapping เดิมก่อน a769b9f (เฉพาะ GS); GR ยังใช้ source ใหม่; Pages live ยังไม่ยืนยัน
+- Apps Script source commit b003046f69e7818b9e9b4db735a444f782a0fdc6 จำกัด STATUS_SHEETS เป็น GR เท่านั้น; ผู้ใช้ต้องแก้ค่าหนึ่งบรรทัดใน Apps Script เดิมและ deploy version ใหม่คง URL เพื่อปิด GS ที่ webhook ด้วย
+- API source commit 85ba105da7cbcb19b63d82938a4b1b5dd9d77769 จำกัด catalog/queue/result/confirmation/sheet sync เป็น GR; ปิด refresh all แบบเดิมที่อาจรวม GS; ป้องกัน catalog ID ชน GS ที่มีอยู่; ไม่แก้ DB rows หรือ sheet rows
+- Production API v48 ACTIVE เป็น v47 + GR-only safety guards เท่านั้น **ไม่ใช่ source draft ล่าสุด**; ยังใช้ catalog แบบเดิม และยังปิด weighted manual review; ไม่ deploy ส่วนพัฒนาที่ยังค้างเมื่อได้รับคำสั่งหยุด
+- ตรวจ DB แบบ read-only หลังหยุด: ไม่พบ open jobs หรือ legacy jobs/runs; ไม่มีการย้อนหรือลบผลตรวจจริง เพราะไม่ได้สร้างผลตรวจใหม่ในรอบนี้; ยังไม่ทดสอบ webhook live และไม่เริ่ม bulk audit
