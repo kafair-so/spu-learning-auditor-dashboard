@@ -168,7 +168,15 @@
   };
 
   function render(selected,history,superAdmin=false){
-    $("course").textContent=[...new Set([selected.courseCode,selected.courseTitle||selected.courseProfile].filter(Boolean))].join(" · ")||selected.courseId;
+    const courseCode=String(selected.courseCode||"").trim(),courseProfile=String(selected.courseProfile||"").trim();
+    let courseTitle=String(selected.courseTitle||"").trim();
+    if(courseProfile){
+      const bracketedProfile=`[${courseProfile}]`;
+      if(courseTitle.endsWith(bracketedProfile))courseTitle=courseTitle.slice(0,-bracketedProfile.length).trim();
+      else if(courseTitle.endsWith(courseProfile))courseTitle=courseTitle.slice(0,-courseProfile.length).replace(/\[\s*$/,"").trim();
+    }
+    const courseName=[...new Set([courseCode,courseTitle||(!courseProfile?selected.courseProfile:"")].filter(Boolean))].join(" · ")||String(selected.courseId||"");
+    $("course").innerHTML=`<span class="course-title-line">${esc(courseName)}</span>${courseProfile?`<span class="course-profile-line">[${esc(courseProfile)}]</span>`:""}`;
     if(selected.courseUrl)$("courseLink").innerHTML=`<a href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`;
     if(!history.length){$("runs").innerHTML='<section class="panel empty-note">รายวิชานี้ยังไม่มีผลการตรวจในระบบ</section>';return;}
     document.body.classList.toggle("evidence-admin",superAdmin);document.body.classList.toggle("evidence-user",!superAdmin);document.body.classList.toggle("gr-legacy-review",superAdmin&&isLegacy(history[0])&&history[0].group==="GR");
