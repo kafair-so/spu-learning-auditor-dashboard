@@ -49,6 +49,7 @@
     if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:superAdmin?`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม ${score(maximum)} คะแนน`:"รายวิชาผ่านเกณฑ์การประเมินแล้ว",actions:[]};
     if(status==="needs_review"&&superAdmin&&isLegacy(run)&&!run.legacyReviewBlocked&&!reviewCandidates(run).length)return {title:"พร้อมยืนยันผลตรวจ",text:`ไม่มีรายการรอยืนยันประเภทเพิ่มเติม คะแนนที่ระบบคำนวณ ${score(confirmed)} / ${score(maximum)} · เกณฑ์ผ่าน ${score(threshold)} คะแนน`,actions:[]};
     if(status==="needs_review"&&superAdmin)return {title:"รอตรวจโดยทีมตรวจ",text:`คะแนนยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ แต่คะแนนที่อาจได้ ${score(possible)} อาจถึง ${score(threshold)} คะแนน จึงต้องให้ทีมตรวจยืนยันหลักฐานก่อน`,actions:["ผู้สอนไม่ต้องส่งคำยืนยันในหน้านี้ แต่ควรเตรียมหลักฐานของหัวข้อที่ระบุว่า “รอตรวจ” ไว้ให้ทีมตรวจ"]};
+    if(status==="has_content"&&run.publicStatus==="has_content")return {title:"ไม่ผ่านเกณฑ์",text:superAdmin?`ยืนยันผลแล้วที่ ${score(confirmed)} / ${score(maximum)} คะแนน ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน`:`ผลตรวจล่าสุดได้ ${score(confirmed)} / ${score(maximum)} คะแนน ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน โปรดแก้ไขตามรายการสรุปด้านล่าง`,actions:[]};
     if(status==="has_content"||status==="needs_review")return {title:"ไม่ปรากฏ / ไม่ครบ",text:superAdmin?`คะแนนที่ระบบยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม ${score(maximum)} คะแนน`:"ยังพบองค์ประกอบที่ไม่ครบหรือยังยืนยันไม่ได้",actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่"]};
     if(status==="no_content")return {title:"ยังไม่พบองค์ประกอบรายวิชา",text:"ระบบตรวจสำเร็จแล้ว แต่ไม่พบองค์ประกอบที่ใช้คำนวณคะแนน",actions:["เพิ่มองค์ประกอบการสอนและหลักฐานในรายวิชา แล้วตรวจใหม่"]};
     return {title:"ตรวจไม่สำเร็จ",text:"ระบบเข้าถึงหรืออ่านข้อมูลได้ไม่ครบ จึงยังสรุปผลรายวิชาไม่ได้",actions:["ตรวจสอบสิทธิ์เข้าถึงรายวิชาและลิงก์ภายนอก แล้วรันการตรวจใหม่"]};
@@ -97,7 +98,7 @@
     issues.forEach(issue=>{const current=grouped.get(issue.key)||{...issue,sessions:[]};current.sessions.push(issue.session);grouped.set(issue.key,current);});
     const rows=[...grouped.values()].map(issue=>{const sessions=sessionLabel(issue.sessions);return `<li class="fix-item"><div class="fix-item-head"><strong>${esc(issue.label)}</strong>${sessions?`<span class="fix-session">ครั้งที่ ${esc(sessions)}</span>`:""}</div><div class="fix-action">${esc(issue.action)}</div></li>`;}).join("");
     if(!rows)return"";
-    return `<section class="fix-summary ${esc(status)}"><h3>สิ่งที่ผู้สอนต้องแก้ไขเพื่อให้ผ่านเกณฑ์</h3><p>รวมหัวข้อที่ต้องดำเนินการจากทุกครั้งไว้ในรายการเดียว</p><ol>${rows}</ol></section>`;
+    return `<section class="fix-summary ${esc(status)}"><h3>สรุปการแก้ไขสำหรับผู้สอน</h3><p>ระบบรวมหัวข้อที่ไม่ผ่านจากผลตรวจล่าสุดไว้ในรายการเดียว เพื่อใช้ปรับปรุงรายวิชาก่อนตรวจครั้งถัดไป</p><ol>${rows}</ol></section>`;
   };
   const activitySession=item=>Number(item?.auditSession)||Number(String(item?.section||"").match(/\d+/)?.[0])||0;
   const durationSecondsFromDetail=(detail,fallback)=>{
