@@ -29,10 +29,10 @@
     return [...criteria.slice(0,criterionCount),...manual];
   };
   const statusExplanation=(status,run,superAdmin=false)=>{
-    const confirmed=Number(run.confirmedScore)||0,possible=Number(run.possibleScore)||0,threshold=Number(run.threshold)||80;
-    if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:superAdmin?`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`:"รายวิชาผ่านเกณฑ์การประเมินแล้ว",actions:[]};
+    const confirmed=Number(run.confirmedScore)||0,possible=Number(run.possibleScore)||0,threshold=Number(run.threshold)||80,maximum=Number(run.maxScore)||110;
+    if(status==="pass")return {title:"ผ่านเกณฑ์แล้ว",text:superAdmin?`คะแนนยืนยัน ${score(confirmed)} ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม ${score(maximum)} คะแนน`:"รายวิชาผ่านเกณฑ์การประเมินแล้ว",actions:[]};
     if(status==="needs_review"&&superAdmin)return {title:"รอตรวจโดยทีมตรวจ",text:`คะแนนยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ แต่คะแนนที่อาจได้ ${score(possible)} อาจถึง ${score(threshold)} คะแนน จึงต้องให้ทีมตรวจยืนยันหลักฐานก่อน`,actions:["ผู้สอนไม่ต้องส่งคำยืนยันในหน้านี้ แต่ควรเตรียมหลักฐานของหัวข้อที่ระบุว่า “รอตรวจ” ไว้ให้ทีมตรวจ"]};
-    if(status==="has_content"||status==="needs_review")return {title:"ไม่ปรากฏ / ไม่ครบ",text:superAdmin?`คะแนนที่ระบบยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม 110 คะแนน`:"ยังพบองค์ประกอบที่ไม่ครบหรือยังยืนยันไม่ได้",actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่"]};
+    if(status==="has_content"||status==="needs_review")return {title:"ไม่ปรากฏ / ไม่ครบ",text:superAdmin?`คะแนนที่ระบบยืนยัน ${score(confirmed)} ยังไม่ถึงเกณฑ์ ${score(threshold)} คะแนน จากคะแนนเต็ม ${score(maximum)} คะแนน`:"ยังพบองค์ประกอบที่ไม่ครบหรือยังยืนยันไม่ได้",actions:["แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่"]};
     if(status==="no_content")return {title:"ยังไม่พบองค์ประกอบรายวิชา",text:"ระบบตรวจสำเร็จแล้ว แต่ไม่พบองค์ประกอบที่ใช้คำนวณคะแนน",actions:["เพิ่มองค์ประกอบการสอนและหลักฐานในรายวิชา แล้วตรวจใหม่"]};
     return {title:"ตรวจไม่สำเร็จ",text:"ระบบเข้าถึงหรืออ่านข้อมูลได้ไม่ครบ จึงยังสรุปผลรายวิชาไม่ได้",actions:["ตรวจสอบสิทธิ์เข้าถึงรายวิชาและลิงก์ภายนอก แล้วรันการตรวจใหม่"]};
   };
@@ -122,14 +122,41 @@
   };
   const reviewPanel=(run,index,admin)=>{
     if(!admin||index!==0||!["needs_review","has_content"].includes(run.internalStatus)||!run.runId||Number(run.possibleScore||0)<=Number(run.confirmedScore||0))return"";
-    const confirmed=Number(run.confirmedScore)||0,possible=Math.min(Number(run.maxScore)||110,Number(run.possibleScore)||confirmed),threshold=Number(run.threshold)||80,candidates=reviewCandidates(run);
-    return `<section class="review-decision" data-review-run="${esc(run.runId)}" data-review-base="${esc(confirmed)}" data-review-count="${esc(candidates.length)}" data-review-threshold="${esc(threshold)}"><h3>ยืนยันองค์ประกอบที่รอตรวจ</h3><p>หัวข้อทั่วไปเลือกผ่าน/ไม่ผ่าน ส่วนวิดีโอและ Podcast ให้เลือกใช้/ไม่ใช้รายลิงก์เพียงครั้งเดียว ระบบจะสรุปผลหัวข้อและคะแนนให้อัตโนมัติ</p><div class="review-score"><span>คะแนนหลังยืนยัน</span><strong data-review-total>${score(confirmed)} / 110</strong><span data-review-result>เลือกผลให้ครบ ${candidates.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} หัวข้อ</span><span data-evidence-progress></span></div><div class="review-decision-grid"><label>บันทึกเหตุผลการยืนยัน (ถ้ามี)<textarea data-review-note placeholder="เช่น ตรวจหน้า Course profile แล้วพบข้อมูลผู้สอนครบ"></textarea></label><div class="review-actions"><button type="button" class="primary" data-review-save disabled>ยืนยันผลที่ระบบคำนวณ</button></div></div><div class="review-error" data-review-error></div></section>`;
+    const confirmed=Number(run.confirmedScore)||0,maximum=Number(run.maxScore)||110,possible=Math.min(maximum,Number(run.possibleScore)||confirmed),threshold=Number(run.threshold)||80,candidates=reviewCandidates(run);
+    return `<section class="review-decision" data-review-run="${esc(run.runId)}" data-review-base="${esc(confirmed)}" data-review-count="${esc(candidates.length)}" data-review-threshold="${esc(threshold)}" data-review-max="${esc(maximum)}"><h3>ยืนยันองค์ประกอบที่รอตรวจ</h3><p>หัวข้อทั่วไปเลือกผ่าน/ไม่ผ่าน ส่วนวิดีโอและ Podcast ให้เลือกใช้/ไม่ใช้รายลิงก์เพียงครั้งเดียว ระบบจะสรุปผลหัวข้อและคะแนนให้อัตโนมัติ</p><div class="review-score"><span>คะแนนหลังยืนยัน</span><strong data-review-total>${score(confirmed)} / ${score(maximum)}</strong><span data-review-result>เลือกผลให้ครบ ${candidates.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} หัวข้อ</span><span data-evidence-progress></span></div><div class="review-decision-grid"><label>บันทึกเหตุผลการยืนยัน (ถ้ามี)<textarea data-review-note placeholder="เช่น ตรวจหน้า Course profile แล้วพบข้อมูลผู้สอนครบ"></textarea></label><div class="review-actions"><button type="button" class="primary" data-review-save disabled>ยืนยันผลที่ระบบคำนวณ</button></div></div><div class="review-error" data-review-error></div></section>`;
+  };
+
+  const weekTone=week=>{
+    const statuses=(week?.criteria||[]).map(item=>item.status);
+    if(statuses.includes("fail"))return"fail";
+    if(statuses.includes("needs_review"))return"review";
+    return statuses.length&&statuses.every(value=>["pass","pass_tolerance","not_applicable"].includes(value))?"pass":"fail";
+  };
+  const sessionOverview=weeks=>{
+    const bySession=new Map(weeks.map((week,index)=>[Number(week.session)||index+1,week]));
+    const chips=Array.from({length:15},(_,index)=>{const session=index+1,tone=weekTone(bySession.get(session));return `<span class="session-chip ${tone}"><span>ครั้งที่</span><strong>${session}</strong></span>`;}).join("");
+    return `<section class="session-overview"><div class="session-overview-head"><div><span class="evidence-eyebrow">ภาพรวมรายครั้ง</span><h3>เห็นจุดที่ขาดได้โดยไม่ต้องเปิดทุกกล่อง</h3></div><div class="session-legend"><span><i class="pass"></i>ผ่าน</span><span><i class="review"></i>รอตรวจ</span><span><i class="fail"></i>ไม่ผ่าน</span></div></div><div class="session-strip">${chips}</div></section>`;
+  };
+
+  const setCourseOutcome=(run,superAdmin)=>{
+    const node=$("courseOutcome");if(!node||!run)return;
+    const status=run.publicStatus||run.internalStatus||"audit_failed",label=AuditBridge.LABELS[status]||status;
+    node.hidden=false;node.className=`course-outcome ${status}`;
+    node.innerHTML=`<span>ผลการตรวจล่าสุด</span><strong>${esc(label)}</strong><small>${superAdmin?"มุมมองผู้ตรวจ · มีรายละเอียดและหลักฐานครบถ้วน":"มุมมองผู้สอน · แสดงเฉพาะผลที่เผยแพร่และสิ่งที่ต้องแก้ไข"}</small>`;
   };
 
   function render(selected,history,superAdmin=false){
     $("course").textContent=[selected.courseCode,selected.courseProfile,selected.courseTitle].filter(Boolean).join(" · ")||selected.courseId;
     if(selected.courseUrl)$("courseLink").innerHTML=`<a href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`;
     if(!history.length){$("runs").innerHTML='<section class="panel empty-note">รายวิชานี้ยังไม่มีผลการตรวจในระบบ</section>';return;}
+    document.body.classList.toggle("evidence-admin",superAdmin);document.body.classList.toggle("evidence-user",!superAdmin);
+    $("viewModeLabel").textContent=superAdmin?"Admin · รายละเอียดและหลักฐานครบถ้วน":"รายงานผลสำหรับผู้สอน";
+    setCourseOutcome(history[0],superAdmin);
+    if(!superAdmin){
+      const latest=history[0],status=latest.publicStatus||latest.internalStatus||"audit_failed",explanation=statusExplanation(status,latest,false),weeks=Array.isArray(latest.evidenceSnapshot?.weeks)?latest.evidenceSnapshot.weeks:[];
+      $("runs").innerHTML=`<div class="teacher-report"><section class="teacher-summary-grid"><article><span class="teacher-summary-icon">✓</span><div><strong>${esc(AuditBridge.LABELS[status]||status)}</strong><span>สถานะผลตรวจ</span></div></article><article><span class="teacher-summary-icon">◷</span><div><strong>${esc(date(latest.auditedAt))}</strong><span>อัปเดตผลล่าสุด</span></div></article><article><span class="teacher-summary-icon">↻</span><div><strong>${esc(latest.auditorVersion||"—")}</strong><span>เวอร์ชันการตรวจ</span></div></article></section><section class="panel run"><section class="result-summary ${esc(status)}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p></section>${fixSummary(status,weeks)||'<div class="empty-note">ไม่พบรายการที่ต้องดำเนินการเพิ่มเติมจากผลที่เผยแพร่ล่าสุด</div>'}</section><section class="panel teacher-history"><h3>ประวัติผลตรวจที่เผยแพร่</h3><div class="teacher-history-list">${history.slice(0,3).map((run,index)=>{const itemStatus=run.publicStatus||run.internalStatus||"audit_failed";return `<article class="teacher-history-item"><div><strong>${index===0?"ผลตรวจล่าสุด":`ผลตรวจย้อนหลังครั้งที่ ${index}`}</strong><span>อัปเดต ${esc(date(run.auditedAt))} · Auditor ${esc(run.auditorVersion||"—")}</span></div><span class="status ${AuditBridge.COLORS[itemStatus]}">${esc(AuditBridge.LABELS[itemStatus]||itemStatus)}</span></article>`;}).join("")}</div><p class="teacher-privacy-note">หน้านี้แสดงเฉพาะผลที่เผยแพร่และสรุปสิ่งที่ต้องแก้ไข รายละเอียดหลักฐาน คะแนน และข้อมูลการยืนยันภายในจะแสดงเฉพาะผู้ตรวจที่มีสิทธิ์</p></section></div>`;
+      window.OOEI18n?.translate(document);return;
+    }
     $("runs").innerHTML=history.map((run,index)=>{
       const snapshot=run.evidenceSnapshot||{};
       const activities=Array.isArray(snapshot.activities)?snapshot.activities:[];
@@ -160,9 +187,8 @@
       const actions=explanation.actions.length?`<ul class="action-list">${explanation.actions.map(action=>`<li>${esc(action)}</li>`).join("")}</ul>`:"";
       const scoreFacts=superAdmin?`<div class="fact"><span>คะแนนที่ระบบยืนยัน</span><strong>${score(run.confirmedScore)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนที่อาจได้</span><strong>${score(possible)} / ${score(maximum)}</strong></div><div class="fact"><span>คะแนนเกณฑ์ผ่าน</span><strong>${score(run.threshold)} / ${score(maximum)}</strong></div>`:"";
       const received=run.receivedAt?` · รับเข้าระบบ ${date(run.receivedAt)}`:"";
-      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">ตรวจเมื่อ ${date(run.auditedAt)}${received} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts">${scoreFacts}<div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${weekRows?`<h3>ผลตรวจตามครั้ง/สัปดาห์</h3><div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่น 0.13.34</div>'}${manualRows}${activityRows?`<h3>หลักฐานที่ตรวจพบ</h3><ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</section>`;
+      return `<section class="panel run"><div class="run-head"><div><h2>${index===0?"ผลตรวจล่าสุด":`ผลย้อนหลังครั้งที่ ${index}`}</h2><p class="muted">ตรวจเมื่อ ${date(run.auditedAt)}${received} · Auditor ${esc(run.auditorVersion||"—")}</p></div><span class="status ${AuditBridge.COLORS[status]}">${esc(AuditBridge.LABELS[status])}</span></div><section class="result-summary ${esc(status||"")}"><h3>${esc(explanation.title)}</h3><p>${esc(explanation.text)}</p>${actions}</section>${fixSummary(status,weeks)}${reviewPanel(run,index,superAdmin)}<div class="facts">${scoreFacts}<div class="fact"><span>จำนวนหลักฐาน</span><strong>${activities.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")}</strong></div></div>${quality?`<div class="quality-note">${esc(quality)}</div>`:""}${sessionOverview(weeks)}<div class="evidence-tabs" role="tablist"><button type="button" class="evidence-tab active" data-evidence-tab="detail">รายละเอียดรายครั้ง</button><button type="button" class="evidence-tab" data-evidence-tab="all">หลักฐานทั้งหมด (${activities.length})</button></div><div class="evidence-tab-panel" data-evidence-panel="detail">${weekRows?`<div class="week-evidence-grid">${weekRows}</div>`:'<div class="empty-note">ผลตรวจเดิมยังไม่มีรายละเอียดหัวข้อรายครั้ง กรุณาตรวจใหม่ด้วย Extension รุ่นปัจจุบัน</div>'}${manualRows}</div><div class="evidence-tab-panel" data-evidence-panel="all" hidden>${activityRows?`<ol class="evidence-list">${activityRows}</ol>`:'<div class="empty-note">ผลตรวจรุ่นนี้ยังไม่มีรายละเอียดหลักฐานแนบมา</div>'}</div></section>`;
     }).join("");
-    document.querySelectorAll(".run>h3").forEach(heading=>{const content=heading.nextElementSibling;if(!content||!["ผลตรวจตามครั้ง/สัปดาห์","หลักฐานที่ตรวจพบ"].includes(heading.textContent.trim()))return;const details=document.createElement("details");details.className="evidence-details";const summary=document.createElement("summary");summary.textContent=heading.textContent;heading.replaceWith(details);details.append(summary,content);});
     $("runs").querySelectorAll("[data-evidence-decision],[data-podcast-time]").forEach(control=>{if(control.value)control.dispatchEvent(new Event("change",{bubbles:true}));});
     updateReviewTotal($("runs").querySelector("[data-review-run]"));
     window.OOEI18n?.translate(document);
@@ -194,10 +220,10 @@
   }
   const updateReviewTotal=panel=>{
     if(!panel)return;
-    const picks=[...$("runs").querySelectorAll("select[data-review-item]")],base=Number(panel.dataset.reviewBase||0),threshold=Number(panel.dataset.reviewThreshold||80),done=picks.filter(select=>select.value).length,earned=picks.filter(select=>select.value==="pass").length,total=base+earned;
+    const picks=[...$("runs").querySelectorAll("select[data-review-item]")],base=Number(panel.dataset.reviewBase||0),threshold=Number(panel.dataset.reviewThreshold||80),maximum=Number(panel.dataset.reviewMax||110),done=picks.filter(select=>select.value).length,earned=picks.filter(select=>select.value==="pass").length,total=Math.min(maximum,base+earned);
     const evidenceRows=[...$("runs").querySelectorAll("[data-evidence-item]")],evidenceDone=evidenceRows.filter(row=>{const time=row.querySelector("[data-evidence-time]")?.value||"";if(row.dataset.podcastTimeOnly==="1")return validDurationInput(time);const decision=row.querySelector("[data-evidence-decision]")?.value||"";return Boolean(decision)&&!(decision==="use"&&!validDurationInput(time));}).length;
     const totalNode=panel.querySelector("[data-review-total]"),result=panel.querySelector("[data-review-result]"),progress=panel.querySelector("[data-evidence-progress]"),button=panel.querySelector("[data-review-save]");
-    if(totalNode)totalNode.textContent=`${score(total)} / 110`;
+    if(totalNode)totalNode.textContent=`${score(total)} / ${score(maximum)}`;
     if(result)result.textContent=done===picks.length?(total>=threshold?"ระบบคำนวณผล: ผ่าน":"ระบบคำนวณผล: ไม่ผ่านเกณฑ์"):`เลือกแล้ว ${done.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} / ${picks.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} หัวข้อ`;
     if(progress)progress.textContent=evidenceRows.length?`หลักฐานรายลิงก์ครบ ${evidenceDone.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} / ${evidenceRows.length.toLocaleString(localStorage.getItem("ooe-auditor-language")==="en"?"en-US":"th-TH")} รายการ`:"";
     if(button&&!button.dataset.submitting)button.disabled=false;
@@ -229,6 +255,7 @@
     if(select)setReviewChoice(select.closest("[data-review-control]"),seconds>=required?"pass":"fail");
   });
   $("runs").addEventListener("click",async event=>{
+    const tab=event.target.closest("[data-evidence-tab]");if(tab){const run=tab.closest(".run"),name=tab.dataset.evidenceTab;run?.querySelectorAll("[data-evidence-tab]").forEach(node=>node.classList.toggle("active",node===tab));run?.querySelectorAll("[data-evidence-panel]").forEach(panel=>panel.hidden=panel.dataset.evidencePanel!==name);return;}
     const pick=event.target.closest("button[data-review-pick]");if(pick){setReviewChoice(pick.closest("[data-review-control]"),pick.dataset.reviewPick);return;}
     const button=event.target.closest("button[data-review-save]");if(!button)return;
     const panel=button.closest("[data-review-run]"),error=panel?.querySelector("[data-review-error]");
