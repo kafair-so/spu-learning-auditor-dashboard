@@ -1361,3 +1361,9 @@ Total output lines: 1971
 - Extension 0.13.35 มี staged source และ manifest; workflow ถูก trigger จาก commit `a10a302d` แต่ไม่พบ release.json และหน้า download ใน repo ยัง 0.13.34; ไม่อ้างว่า build/deploy สำเร็จ (connector ไม่แสดง push workflow runs)
 - หน้า evidence mockup มี commit แล้ว ยังไม่ยืนยัน Pages และ browser smoke test; ยังไม่ได้รัน automated tests ใหม่หรือทดสอบ end-to-end ในรอบนี้
 - ไม่มีการเปลี่ยน Google Sheet cells, DB rows, migration, queue หรือ Edge Function production ในรอบนี้; ต้องยืนยัน Apps Script deploy, API release, package/download digest และทดสอบ GS/GR อย่างละหนึ่งรายวิชาก่อนเริ่ม bulk audit
+
+## 79. Sheet Status Sync deployment handoff — 2026-11-18
+
+- ผู้ใช้ยืนยันว่า Deploy Apps Script เดิม SPU Auditor Sheet Status Sync แล้ว; ยังไม่ได้ตรวจ endpoint หรือ write จริงจากภายนอก
+- Deploy Supabase Edge Function API v47 ACTIVE จาก commit b04e946 พร้อม dependencies เดิมและ verify_jwt เดิม; อ่าน source production กลับตรงกับ GitHub
+- ยังไม่ทดสอบ end-to-end, weighted review รุ่น legacy ยังปิดไว้, catalog และ Extension release ยังต้องดำเนินการ; ไม่ได้แก้ข้อมูลรายวิชา/คิวในขั้นตอนนี้
