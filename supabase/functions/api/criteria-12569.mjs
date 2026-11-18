@@ -229,3 +229,72 @@ export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
  }
  if(submitted.some(i=>!seen.has(i.criterionKey+"\u0000"+i.key)))throw Error("legacy_unexpected_evidence");
 }
+
+
+// Course Profile is authoritative; the FIRST parenthesis describes the overall
+// course, the LAST one describes the specific class (e.g. TL)-(L), TL)-(TT)).
+export function parseLegacyCourseProfile(value){
+ const matches=[...String(value||"").matchAll(/\b(691GR-[A-Z0-9_-]+\([TL]+\)-\((T|TT|L|LL)\))/gi)];
+ const profiles=[...new Set(matches.map(m=>m[1].toUpperCase()))];
+ if(profiles.length!==1)return null;
+ const profile=profiles[0],suffix=profile.match(/\((T|TT|L|LL)\)$/)[1];
+ return {profile,track:suffix.startsWith("L")?"practical":"theory",threshold:suffix.startsWith("L")?40:80};
+}
+const legacyError=(message,status=422)=>Object.assign(new Error(message),{status});
+
+// Recalculate from a complete, uniquely indexed 15-session checklist.
+// Never use the client's claimed total as a source of points. Preserve the
+// original numbers for investigation, but reject identity/track/schema errors.
+export function reconcileLegacyResult(payload,expected){
+ if(!expected||payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569")throw legacyError("legacy_course_type_not_verified",409);
+ const snap=payload.evidenceSnapshot,card=payload.criteriaScorecard,sc=snap?.criteriaScorecard;
+ if(!card||card.track!==expected.track||sc?.track!==expected.track||Number(payload.threshold)!==expected.threshold)throw legacyError("legacy_course_track_mismatch",409);
+ for(const value of [payload.courseProfile,payload.courseTitle]){
+  const parsed=parseLegacyCourseProfile(value);
+  if(parsed&&parsed.profile!==expected.profile)throw legacyError("legacy_course_profile_mismatch",409);
+  if(String(value||"").includes("691GR-")&&!parsed)throw legacyError("legacy_course_profile_invalid",409);
+ }
+ const statuses=new Set(["pass","pass_tolerance","fail","needs_review","not_applicable"]);
+ if(payload.coverageComplete!==true||!Array.isArray(snap?.weeks)||snap.weeks.length!==15||!Array.isArray(snap.activities)||!snap.coverage||typeof snap.coverage!=="object")throw legacyError("legacy_score_snapshot_missing");
+ if(payload.reviewConfirmation?.confirmedAt)throw legacyError("legacy_unexpected_review_confirmation");
+ const seen=new Set();
+ for(const week of snap.weeks){
+  const n=Number(week.session);
+  if(!Number.isInteger(n)||n<1||n>15||seen.has(n)||!Array.isArray(week.criteria))throw legacyError("legacy_score_snapshot_invalid");
+  const parsed=Number(String(week.section||"").match(/\d+/)?.[0]||n);
+  if(parsed!==n)throw legacyError("legacy_score_snapshot_session_mismatch");
+  seen.add(n);
+  const counted=n===1?[1,2,3,4,6]:[1,2,3,5,6,7];
+  const byIndex=new Map();
+  for(const item of week.criteria){
+   const k=Number(item.criterion);
+   if(!Number.isInteger(k)||k<1||k>7||byIndex.has(k))throw legacyError("legacy_score_snapshot_invalid");
+   byIndex.set(k,item);
+  }
+  for(const k of counted){
+   const item=byIndex.get(k);
+   if(!item||!statuses.has(item.status))throw legacyError("legacy_score_snapshot_invalid");
+   if(k===2&&n===1&&Object.prototype.hasOwnProperty.call(item,"scoreValue")&&(!Number.isFinite(item.scoreValue)||item.scoreValue<0||item.scoreValue>5))throw legacyError("legacy_score_snapshot_invalid");
+  }
+ }
+ if(typeof payload.hasContent!=="boolean"||typeof payload.confirmedScore!=="number"||!Number.isFinite(payload.confirmedScore)||payload.confirmedScore<0||payload.confirmedScore>(expected.track==="practical"?50:100)||!["pass","needs_review","has_content","no_content"].includes(payload.internalStatus))throw legacyError("legacy_result_invalid");
+ const received={confirmedScore:payload.confirmedScore,possibleScore:payload.possibleScore,internalStatus:payload.internalStatus,threshold:payload.threshold,track:card.track};
+ const baseline=score12569Snapshot(payload);
+ if(baseline.passScore!==expected.threshold||!Number.isFinite(baseline.total))throw legacyError("legacy_score_snapshot_invalid");
+ if(!payload.hasContent&&(baseline.total!==0||snap.weeks.some(w=>(w.criteria||[]).some(i=>PASS.has(i.status)))||snap.activities.some(i=>!["forum","url","supplementary"].includes(i.kind))))throw legacyError("legacy_no_content_mismatch");
+ if(payload.internalStatus==="no_content"&&payload.hasContent)throw legacyError("legacy_no_content_mismatch");
+ payload.courseProfile=expected.profile;
+ prepareLegacyReview(payload);
+ const final=payload.criteriaScorecard;
+ if(final.track!==expected.track||final.passScore!==expected.threshold||!Number.isFinite(final.total)||final.total<0||final.total>final.totalMax)throw legacyError("legacy_score_snapshot_invalid");
+ payload.threshold=expected.threshold;
+ payload.confirmedScore=final.total;
+ payload.possibleScore=Math.min(final.totalMax,Math.max(final.total,final.potentialTotal));
+ payload.reviewablePoints=payload.possibleScore-final.total;
+ payload.internalStatus=payload.legacyReviewBlocked?"needs_review":!payload.hasContent?"no_content":final.status==="pass"?"pass":final.status==="needs_review"?"needs_review":"has_content";
+ payload.publicStatus=payload.internalStatus==="needs_review"?null:payload.internalStatus;
+ payload.publicResult={...(payload.publicResult||{}),status:payload.publicStatus,score:null};
+ payload.reason=payload.legacyReviewBlocked?"legacy_structure_review_required":payload.internalStatus==="needs_review"?"legacy_review_can_change_outcome":payload.internalStatus==="no_content"?"successful_scan_found_no_course_content":payload.internalStatus==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
+ payload.legacyScoreReconciliation={received,baselineScore:baseline.total,baselineStatus:baseline.status,serverScore:final.total,serverStatus:payload.internalStatus,track:expected.track,changed:received.confirmedScore!==final.total||received.internalStatus!==payload.internalStatus};
+ return payload;
+}
