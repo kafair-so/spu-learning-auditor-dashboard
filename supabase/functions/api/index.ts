@@ -8,7 +8,6 @@ import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDec
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
-const MAIN_DATA_CSV_URLS = {GR:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv'};
 const GR_PUBLIC_CATALOG_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
 const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
 const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
@@ -32,33 +31,35 @@ function criteriaRequest(body = {}) {
   return { criteriaMode, semesterCode };
 }
 
-// Bound the webhook and independent readback; a published CSV can lag.
+// GRGS_Public is the read source. The private 69/1-GR tab is only
+// written/verified by the authenticated Apps Script webhook.
 const SHEET_WEBHOOK_TIMEOUT_MS = 15000;
 const SHEET_READBACK_TIMEOUT_MS = 10000;
 
-async function verifyPublishedGrSheet(id, expected) {
+async function inspectPublishedGrResult(id, expected) {
   try {
-    const response = await fetch(MAIN_DATA_CSV_URLS.GR + "&_=" + Date.now(), {
+    const response = await fetch(GR_PUBLIC_CATALOG_URL + "&_=" + Date.now(), {
       cache:"no-store", signal:AbortSignal.timeout(SHEET_READBACK_TIMEOUT_MS)
     });
-    if (!response.ok) return null;
-    const rows = parseCsv(await response.text());
-    const matches = rows.filter(row => courseId({courseLink:row.link}) === String(id));
-    if (matches.length !== 1) return null;
+    if (!response.ok) return {publishedVerified:false,publishedError:"public_catalog_http_"+response.status};
+    const matches = parseCsv(await response.text()).filter(row =>
+      String(row.group || "").trim().toUpperCase() === "GR" &&
+      courseId(row) === String(id));
+    if (matches.length !== 1) return {publishedVerified:false,publishedError:"public_course_not_unique"};
     const row = matches[0];
-    if (!String(row.coursename || "").startsWith("691GR-") ||
-        row["เนื้อหา"] !== expected.contentStatus ||
-        row["สถานะการ\nตรวจสอบ"] !== expected.resultStatus ||
-        row["หลักฐานการตรวจ"] !== expected.evidenceUrl) return null;
-    return { configured:true, ok:true, verified:true, verificationSource:"published_main_data_csv",
-      liveSheetVerified:false, courseId:String(id), group:"GR", ...expected };
+    // Public reviewStatus/evidence are W/X. Public progress is U, NOT V.
+    // Never claim that a published CSV verified the private V field.
+    const publishedVerified = String(row.courseProfile || "").startsWith("691GR-") &&
+      row.reviewStatus === expected.resultStatus && row.evidence === expected.evidenceUrl;
+    return {publishedVerified,publishedVerificationSource:"GRGS_Public",
+      liveSheetVerified:false,contentStatusVerified:false};
   } catch (error) {
     console.warn("sheet_status_readback_unavailable", {courseId:String(id), error:String(error?.name || "readback_error")});
-    return null;
+    return {publishedVerified:false,publishedError:"public_readback_unavailable"};
   }
 }
 
-async function syncSheetStatusSafely(courseId, status, group, {checkPublishedFirst=false} = {}) {
+async function syncSheetStatusSafely(courseId, status, group) {
   if (!SHEET_STATUS_WEBHOOK_URL || !SHEET_STATUS_WEBHOOK_SECRET) return { configured:false };
   if (!["pass", "has_content", "no_content"].includes(status)) return { configured:true, skipped:true, reason:"result_not_publishable" };
   const normalizedGroup = String(group || "").trim().toUpperCase();
@@ -68,10 +69,6 @@ async function syncSheetStatusSafely(courseId, status, group, {checkPublishedFir
   const resultStatus = status === "pass" ? "ผ่าน" : status === "no_content" ? "ไม่พบเนื้อหา" : "ไม่ผ่าน";
   const evidenceUrl = `${AUDIT_EVIDENCE_BASE_URL}?courseId=${encodeURIComponent(String(courseId || ""))}`;
   const expected = {contentStatus, resultStatus, evidenceUrl};
-  if (checkPublishedFirst) {
-    const verified = await verifyPublishedGrSheet(courseId, expected);
-    if (verified) return verified;
-  }
   try {
     const response = await fetch(SHEET_STATUS_WEBHOOK_URL, {
       signal:AbortSignal.timeout(SHEET_WEBHOOK_TIMEOUT_MS),
@@ -96,13 +93,11 @@ async function syncSheetStatusSafely(courseId, status, group, {checkPublishedFir
     const timedOut = ["AbortError","TimeoutError"].includes(error?.name);
     const message = timedOut ? "sheet_status_sync_timeout" : String(error?.message || error);
     console.warn("sheet_status_sync_failed", { courseId, status, group:normalizedGroup, error:message });
-    // Do not hide explicit webhook validation failures. Only a lost response
-    // can be recovered by an exact independently observed published row.
-    if (timedOut || error?.name === "TypeError") {
-      const verified = await verifyPublishedGrSheet(courseId, expected);
-      if (verified) return verified;
-    }
-    return { configured:true, ok:false, verified:false, pending:true, error:message };
+    // Public W/X is diagnostic only; V is not exposed. Keep the result
+    // pending until the webhook verifies all three private values.
+    const published = timedOut || error?.name === "TypeError"
+      ? await inspectPublishedGrResult(courseId, expected) : {};
+    return { configured:true, ok:false, verified:false, pending:true, error:message, ...published };
   }
 }
 
@@ -712,22 +707,35 @@ function isSoloSpecialInstructorCourse(row) {
   return instructorCount === 1 && /^อาจารย์พิเศษ(?:\s*\([^)]*\))?$/.test(teacherType);
 }
 
-async function syncCatalog() {
-  const parts = await Promise.all(Object.entries(MAIN_DATA_CSV_URLS).map(async ([group, url]) => {
-    const response = await fetch(`${url}&_=${Date.now()}`, { cache:"no-store" });
-    if (!response.ok) throw new Error(`catalog_${group}_http_${response.status}`);
-    const records = parseCsv(await response.text());
-    if (!records.length || !["coursename","link","รหัสวิชา","ประเภทผู้ปฏิบัติงาน"].every(key => Object.prototype.hasOwnProperty.call(records[0], key))) {
-      throw Object.assign(new Error(`invalid_catalog_headers_${group}`), { status:422 });
+function parseGrPublicCatalog(text) {
+  const records = parseCsv(text);
+  const required = ["group","courseCode","courseProfile","courseName","faculty","instructors","teacherType","courseLink"];
+  if (!records.length || !required.every(key => Object.prototype.hasOwnProperty.call(records[0], key))) {
+    throw Object.assign(new Error("invalid_GRGS_Public_headers"), {status:422});
+  }
+  const gr = records.filter(row => String(row.group || "").trim().toUpperCase() === "GR");
+  if (!gr.length) throw Object.assign(new Error("empty_GRGS_Public_GR_catalog"), {status:422});
+  const seen = new Set();
+  return gr.map(row => {
+    const id = courseId(row);
+    const code = String(row.courseCode || "").trim();
+    const profile = String(row.courseProfile || "").trim();
+    if (!id || !code || !profile.startsWith("691GR-"+code.toUpperCase()+"(")) {
+      throw Object.assign(new Error("invalid_GRGS_Public_course_identity"), {status:422});
     }
-    const eligible = records.filter(row => String(row.coursename || "").startsWith("691" + group + "-") && String(row["ประเภทผู้ปฏิบัติงาน"] || "").trim());
-    if (!eligible.length) throw Object.assign(new Error(`empty_catalog_${group}`), { status:422 });
-    return eligible.map(row => ({
-      group, courseCode:row["รหัสวิชา"], courseProfile:row.coursename, courseName:row.fullname,
-      faculty:row.name, instructors:row["อ.ผู้สอน"] || row.teachernames, courseLink:row.link
-    }));
-  }));
-  const rawRows = parts.flat();
+    if (seen.has(id)) throw Object.assign(new Error("conflicting_duplicate_course_id"), {status:422});
+    seen.add(id);
+    return {group:"GR",courseCode:code,courseProfile:profile,courseName:row.courseName,
+      faculty:row.faculty,instructors:row.instructors,courseLink:row.courseLink};
+  });
+}
+
+async function syncCatalog() {
+  const response = await fetch(GR_PUBLIC_CATALOG_URL + "&_=" + Date.now(), {
+    cache:"no-store",signal:AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error("catalog_GRGS_Public_http_"+response.status);
+  const rawRows = parseGrPublicCatalog(await response.text());
   if (!rawRows.length || rawRows.some(row => !courseId(row))) {
     throw Object.assign(new Error("invalid_or_incomplete_course_catalog"), { status: 422 });
   }
@@ -761,6 +769,14 @@ async function syncCatalog() {
   if (previousError) throw previousError;
   if (previousCount && courses.length < previousCount * 0.8) {
     throw Object.assign(new Error("catalog_shrink_requires_manual_review"), { status: 409 });
+  }
+  // The public formula reflects visible rows. Never deactivate or cancel
+  // an active course on a potentially incomplete/filtered CSV without review.
+  const {data:activeGr,error:activeGrError} = await db.from("courses")
+    .select("course_id").eq("active",true).eq("course_group","GR").limit(5000);
+  if (activeGrError) throw activeGrError;
+  if ((activeGr || []).some(row => !byId.has(String(row.course_id)))) {
+    throw Object.assign(new Error("GRGS_Public_missing_active_courses_requires_review"), {status:409});
   }
   // The old timestamp-based version changed on every button click.  That
   // made an unchanged Google Sheet look like a new catalog and produced
@@ -1145,7 +1161,7 @@ async function recoverCompletedWorkerResult(jobMeta, externalId, course) {
     .select("course_group,published_run_id,public_status").eq("course_id",course).single();
   if (publishedError) throw publishedError;
   const sheetSync = published.published_run_id === saved.run_id && published.public_status === saved.public_status
-    ? await syncSheetStatusSafely(course, saved.public_status, published.course_group, {checkPublishedFirst:true})
+    ? await syncSheetStatusSafely(course, saved.public_status, published.course_group)
     : {skipped:true,reason:"result_not_published"};
   const gate = saved.quality_gate;
   return {runId:saved.run_id,courseId:course,alreadyStored:true,
