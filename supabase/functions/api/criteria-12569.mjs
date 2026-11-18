@@ -34,8 +34,7 @@ function structurePending(coverage = {}) {
     || coverage.structurallyComplete === false
     || coverage.topologyReviewRequired === true
     || Number(coverage.unmappedNonForumActivityCount || 0) > 0
-    || Number(coverage.unresolvedClassificationCount || 0) > 0
-    || Number(coverage.unresolvedScoringEvidenceCount || 0) > 0;
+    || (coverage.legacyReviewScoped !== true && (Number(coverage.unresolvedClassificationCount || 0) > 0 || Number(coverage.unresolvedScoringEvidenceCount || 0) > 0));
 }
 
 function videoCoverage(weeks, track) {
@@ -141,7 +140,7 @@ export function legacyReviewKeys(payload = {}) {
     const sessionNumber = Number(week.session || index + 1);
     const allowed = sessionNumber === 1 ? [1,2,3,4,6] : [1,2,3,5,6,7];
     return (week.criteria || []).filter(item => item.status === "needs_review" && allowed.includes(Number(item.criterion)))
-      .map(item => ({session:sessionNumber, criterion:Number(item.criterion), detail:item.detail || ""}));
+      .map(item => ({session:sessionNumber, criterion:Number(item.criterion), label:item.label || "", detail:item.detail || ""}));
   });
 }
 
@@ -163,4 +162,58 @@ export function score12569Snapshot(payload = {}, decisions = {}) {
     })
   }));
   return criteria12569Scorecard({gnTrack:track, weeks, coverage:snap.coverage || {}});
+}
+
+const videoKinds=new Set(["video","video_candidate"]);
+const sessionOf=i=>Number(i.auditSession)||Number(String(i.section||"").match(/\d+/)?.[0])||0;
+const linkOf=i=>String(i.externalUrl||i.href||"").trim();
+const uncertain=i=>i.mediaReviewRequired===true||/manifest must request permission|cannot access contents of url|เปิดปลายทางไม่ได้|อ่านเวลาไม่ได้|ติดสิทธิ์|ไม่มีสิทธิ์|access denied/i.test(String(i.accessNote||""));
+export function legacyVideoLinks(payload,session){
+ const seen=new Set();
+ return (payload.evidenceSnapshot?.activities||[]).filter(i=>videoKinds.has(i.kind)&&sessionOf(i)===Number(session)&&!i.reviewExcluded&&i.countingEligible!==false&&/^https?:\/\//i.test(linkOf(i))).filter(i=>{const k=linkOf(i);if(seen.has(k))return false;seen.add(k);return true;});
+}
+export function legacyVideoRequired(item,session){
+ const m=[...String(item.originalDetail||item.detail||"").matchAll(/(\d{1,2}):(\d{2})(?::(\d{2}))?/g)].at(-1);
+ return m?(m[3]===undefined?Number(m[1])*60+Number(m[2]):Number(m[1])*3600+Number(m[2])*60+Number(m[3])):(Number(session)===1?2700:5400);
+}
+export function prepareLegacyReview(payload={}){
+ if(payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569"||payload.reviewConfirmation?.confirmedAt||payload.internalStatus==="audit_failed")return payload;
+ const snap=payload.evidenceSnapshot||{},coverage=snap.coverage||{};
+ if(!Array.isArray(snap.weeks)||!Array.isArray(snap.activities)||!snap.weeks.length)return payload;
+ // Legacy uses scored checklist statuses, not global counters that include omitted media.
+ coverage.legacyReviewScoped=true;snap.coverage=coverage;
+ for(const week of snap.weeks){
+  const session=Number(week.session),item=(week.criteria||[]).find(i=>Number(i.criterion)===(session===1?4:3));
+  if(!item||item.status!=="fail"||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
+  if(legacyVideoLinks(payload,session).some(uncertain)){
+   item.originalStatus=item.status;item.originalDetail=item.detail;item.status="needs_review";
+   item.detail=String(item.detail||"")+" · โปรดตรวจปลายทาง หากลิงก์เสียจริงให้เลือกไม่นำมานับ";
+  }
+ }
+ const weighted=score12569Snapshot(payload);
+ payload.criteriaScorecard=weighted;snap.criteriaScorecard=weighted;
+ payload.confirmedScore=weighted.total;payload.possibleScore=Math.max(weighted.total,weighted.potentialTotal);
+ payload.reviewableCriteria=legacyReviewKeys(payload);
+ payload.legacyReviewBlocked=payload.coverageComplete!==true||structurePending(coverage);
+ return payload;
+}
+export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
+ const seen=new Set();
+ for(const k of keys){
+  const [,session,criterion]=k.split(":");
+  if(Number(criterion)!==(Number(session)===1?4:3))continue;
+  const item=source.evidenceSnapshot.weeks.find(w=>Number(w.session)===Number(session))?.criteria.find(i=>Number(i.criterion)===Number(criterion));
+  const links=legacyVideoLinks(source,session);
+  if(!links.length)continue;
+  const expected=new Set(links.map(linkOf)),supplied=submitted.filter(i=>i.criterionKey===k);
+  if(supplied.length!==expected.size||new Set(supplied.map(i=>i.key)).size!==expected.size)throw Error("legacy_video_evidence_incomplete");
+  let total=0;
+  for(const entry of supplied){
+   if(!expected.has(entry.key)||!["use","not_use"].includes(entry.decision)||!Number.isInteger(entry.seconds)||entry.seconds<0||entry.seconds>43200||(entry.decision==="use"&&entry.seconds<=0))throw Error("legacy_video_evidence_invalid");
+   if(entry.decision==="use")total+=entry.seconds;
+   seen.add(k+"\u0000"+entry.key);
+  }
+  if(decisions.get(k)!==(total>=legacyVideoRequired(item,session)))throw Error("legacy_video_duration_mismatch");
+ }
+ if(submitted.some(i=>!seen.has(i.criterionKey+"\u0000"+i.key)))throw Error("legacy_unexpected_evidence");
 }
