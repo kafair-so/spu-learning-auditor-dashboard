@@ -2,13 +2,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { applyAutomaticPublicationGate } from "./audit-quality.mjs";
-import { legacyReviewKeys, score12569Snapshot, prepareLegacyReview, validateLegacyVideoDecisions } from "./criteria-12569.mjs";
+import { legacyReviewKeys, score12569Snapshot, prepareLegacyReview, validateLegacyVideoDecisions, parseLegacyCourseProfile, reconcileLegacyResult } from "./criteria-12569.mjs";
 import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDecisions } from "./review-reuse.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
 const MAIN_DATA_CSV_URLS = {GR:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv'};
+const GR_PUBLIC_CATALOG_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
 const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
 const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
 const STATUS_SPREADSHEET_ID = "1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg";
@@ -1037,21 +1038,48 @@ async function grCourseIds(activeOnly = true) {
   return (data || []).map(row=>row.course_id);
 }
 
+async function loadGrCourseForJob(courseId) {
+  const {data:course,error}=await db.from("courses")
+    .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
+    .eq("course_id",courseId).eq("course_group","GR").maybeSingle();
+  if(error)throw error;
+  if(!course)throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
+  return course;
+}
+
+async function resolveLegacyCourseContext(course) {
+  if(!course||course.course_group!=="GR")throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
+  let meta=parseLegacyCourseProfile(course.course_title);
+  if(!meta){
+    // Some i-Learning titles do not carry the profile. Resolve only the exact
+    // published GR Course ID; never infer from course code or default to T.
+    const response=await fetch(GR_PUBLIC_CATALOG_URL+"&_="+Date.now(),{cache:"no-store"});
+    if(!response.ok)throw Object.assign(new Error("legacy_course_profile_catalog_unavailable"),{status:503});
+    const rows=parseCsv(await response.text()).filter(row=>row.group==="GR"&&courseId(row)===String(course.course_id));
+    if(rows.length!==1)throw Object.assign(new Error("legacy_course_profile_not_unique"),{status:409});
+    meta=parseLegacyCourseProfile(rows[0].courseProfile);
+  }
+  if(!meta||!meta.profile.startsWith("691GR-"+String(course.course_code||"").trim().toUpperCase()+"("))throw Object.assign(new Error("legacy_course_type_not_verified"),{status:409});
+  return meta;
+}
+
 async function claimGrJob(worker) {
   const ids = await grCourseIds();
   if (!ids.length) return null;
   for (let attempt=0;attempt<4;attempt++) {
     const now = new Date().toISOString();
     const eligible = `status.eq.queued,and(status.eq.running,lease_expires_at.lt.${now})`;
-    const {data:candidate,error:findError} = await db.from("audit_jobs").select("job_id,course_id,attempts").in("course_id",ids).or(eligible).order("priority",{ascending:false}).order("created_at",{ascending:true}).limit(1).maybeSingle();
+    const {data:candidate,error:findError} = await db.from("audit_jobs").select("job_id,course_id,attempts,criteria_mode,semester_code").in("course_id",ids).or(eligible).order("priority",{ascending:false}).order("created_at",{ascending:true}).limit(1).maybeSingle();
     if (findError) throw findError;
     if (!candidate) return null;
-    await assertGrCourse(candidate.course_id);
+    const course=await loadGrCourseForJob(candidate.course_id);
+    const context=candidate.criteria_mode==="legacy_12569"?await resolveLegacyCourseContext(course):null;
+    const metadata=context?{courseProfile:context.profile,courseTrack:context.track,gnTrack:context.track}:{};
     const {data,error} = await db.from("audit_jobs").update({
       status:"running",claimed_by:worker,claimed_at:now,lease_expires_at:new Date(Date.now()+45*60000).toISOString(),attempts:Number(candidate.attempts||0)+1,updated_at:now
     }).eq("job_id",candidate.job_id).eq("course_id",candidate.course_id).or(eligible).select("*").maybeSingle();
     if (error) throw error;
-    if (data) return data;
+    if (data) return {...data,...metadata,course:{...course,...metadata}};
   }
   return null;
 }
@@ -1086,15 +1114,10 @@ async function submitResult(request, jobId) {
   const { payload, gate } = applyAutomaticPublicationGate(submittedPayload);
   if (expectedCriteria.criteriaMode === "legacy_12569" && payload.internalStatus !== "audit_failed") {
     if (!gate.approved) throw Object.assign(new Error("legacy_result_quality_invalid"), {status:422});
-    const weighted = score12569Snapshot(payload);
-    if (payload.internalStatus === "no_content" && (payload.hasContent !== false || weighted.total !== 0)) throw Object.assign(new Error("legacy_no_content_mismatch"),{status:422});
-    if (weighted.total !== Number(payload.confirmedScore) || weighted.passScore !== Number(payload.threshold) || (weighted.status === "pass" && payload.internalStatus !== "pass") || (weighted.status !== "pass" && payload.internalStatus === "pass") || (weighted.status === "needs_review" && payload.internalStatus !== "needs_review")) throw Object.assign(new Error("legacy_result_score_mismatch"), {status:422});
-    prepareLegacyReview(payload);
-    if(payload.legacyReviewBlocked) { payload.internalStatus="needs_review";payload.publicStatus=null; }
-    else if(payload.internalStatus !== "no_content") {
-      const card=payload.criteriaScorecard;
-      payload.internalStatus=card.status==="pass"?"pass":card.status==="needs_review"?"needs_review":"has_content";
-      payload.publicStatus=payload.internalStatus==="needs_review"?null:payload.internalStatus;
+    const expected=await resolveLegacyCourseContext(await loadGrCourseForJob(course));
+    reconcileLegacyResult(payload,expected);
+    if(payload.legacyScoreReconciliation.changed) {
+      console.info("legacy_result_reconciled",JSON.stringify({jobId,courseId:course,...payload.legacyScoreReconciliation}));
     }
   }
   const externalId = String(payload.auditId || payload.runId || "").trim();
@@ -1214,11 +1237,7 @@ Deno.serve(async request => {
     if (request.method === "POST" && parts.join("/") === "v1/worker/jobs/claim") {
       const user = await reviewer(request); const data = await claimGrJob(user.email);
       if (!data?.job_id) return respond(request, 200, { job:null });
-      const { data:course, error:courseError } = await db.from("courses")
-        .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
-        .eq("course_id", data.course_id).eq("course_group","GR").single();
-      if (courseError) throw courseError;
-      return respond(request, 200, { job:{...data,course} });
+      return respond(request, 200, { job:data });
     }
     if (request.method === "POST" && parts[0] === "v1" && parts[1] === "worker" && parts[2] === "jobs" && parts[4] === "result") {
       return respond(request, 200, await submitResult(request, parts[3]));
