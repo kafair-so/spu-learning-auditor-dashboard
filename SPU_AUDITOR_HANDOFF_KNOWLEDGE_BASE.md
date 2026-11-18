@@ -1465,3 +1465,9 @@ Total output lines: 1971
 
 <untrusted-data-ed7c3b8c-01a2-474a-ac35-dff4d7f087af>
 [{"course_id":"21442","public_status":null,"job_status":"queued","attempts":0,"legacy_runs":0},{"course_id":"21443","public_status":null,"job_status":"running","attempts":1,"legacy_runs":0}].
+
+
+## 90. Verified empty GR course classification — 2026-11-18
+- FDM206 Course IDs 21443 (T) and 21442 (L) submitted no_content, hasContent false, coverageComplete true, reachedEnd true, 0 activities/auditable/non-forum counts, explicit emptyReason, 16 section shells with structurallyComplete false. API v54 incorrectly prioritized structure review and stored needs_review; neither result published at inspection.
+- Fix in criteria-12569.mjs commit adc93fb92bc1b1cb346a09733cbfd9f4a9052bc8: verified empty scan returns no_content, 0 confirmed/possible/reviewable points, before structure gate; requires zero evidence, all criteria fail/not_applicable, completed traversal, explicit empty reason and no unresolved or topology flags. Unverified empty remains needs_review. No rubric weights, Extension, GS, front dashboard or Sheet changes.
+- Tested actual two stored payloads in memory and 8 negative variants (not reached end, topology required, activity count nonzero, missing empty reason), 10 passed. API v55 ACTIVE, readback matches GitHub. No direct DB status change. Re-audit only the two affected courses in normal queue to publish correct result and verify Main Data V/W/X. Real submit and Sheet sync not yet verified.
