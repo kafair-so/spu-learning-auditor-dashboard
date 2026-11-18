@@ -1,6 +1,7 @@
 const STATUS_SPREADSHEET_ID = '1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg';
-const STATUS_SHEET_NAME = '69/1-GR';
-const STATUS_COLUMN = 23; // W
+const STATUS_SHEETS = Object.freeze({ GS:'69/1-GS', GR:'69/1-GR' });
+const CONTENT_COLUMN = 22; // V
+const RESULT_COLUMN = 23; // W
 const EVIDENCE_COLUMN = 24; // X
 
 function doPost(event) {
@@ -10,42 +11,55 @@ function doPost(event) {
     if (!expected || payload.secret !== expected) return json_({ ok:false, error:'unauthorized' });
     if (payload.spreadsheetId !== STATUS_SPREADSHEET_ID) return json_({ ok:false, error:'spreadsheet_not_allowed' });
     const courseId = String(payload.courseId || '').trim();
-    const status = String(payload.status || '').trim();
-    if (!courseId || !['ผ่าน', 'ไม่ผ่าน', 'ไม่มีเนื้อหา'].includes(status)) {
-      return json_({ ok:false, error:'invalid_status_update' });
+    const group = String(payload.group || '').trim().toUpperCase();
+    const contentStatus = String(payload.contentStatus || '').trim();
+    const resultStatus = String(payload.resultStatus || '').trim();
+    const evidenceUrl = String(payload.evidenceUrl || '').trim();
+    if (!courseId || !STATUS_SHEETS[group]) return json_({ ok:false, error:'invalid_course_identity' });
+    if (!['พบเนื้อหา', 'ไม่พบเนื้อหา'].includes(contentStatus)
+      || !['ผ่าน', 'ไม่ผ่าน', 'ไม่พบเนื้อหา'].includes(resultStatus)
+      || !evidenceUrl) return json_({ ok:false, error:'invalid_status_update' });
+    if ((contentStatus === 'ไม่พบเนื้อหา') !== (resultStatus === 'ไม่พบเนื้อหา')) {
+      return json_({ ok:false, error:'content_result_mismatch' });
     }
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      const sheet = SpreadsheetApp.openById(STATUS_SPREADSHEET_ID).getSheetByName(STATUS_SHEET_NAME);
+      const sheetName = STATUS_SHEETS[group];
+      const sheet = SpreadsheetApp.openById(STATUS_SPREADSHEET_ID).getSheetByName(sheetName);
       if (!sheet) return json_({ ok:false, error:'sheet_not_found' });
-      const row = findCourseRow_(sheet, courseId);
-      if (!row) return json_({ ok:false, error:'course_not_found' });
-      sheet.getRange(row, STATUS_COLUMN).setValue(status);
+      const rows = findCourseRows_(sheet, courseId);
+      if (!rows.length) return json_({ ok:false, error:'course_not_found', courseId, sheetName });
+      if (rows.length !== 1) return json_({ ok:false, error:'duplicate_course_id', courseId, sheetName, rows });
+      const row = rows[0];
+      sheet.getRange(row, CONTENT_COLUMN, 1, 3).setValues([[contentStatus, resultStatus, evidenceUrl]]);
       SpreadsheetApp.flush();
-      return json_({ ok:true, row, courseId, status });
+      const verified = sheet.getRange(row, CONTENT_COLUMN, 1, 3).getDisplayValues()[0].map(value => String(value || '').trim());
+      if (verified[0] !== contentStatus || verified[1] !== resultStatus || verified[2] !== evidenceUrl) {
+        return json_({ ok:false, error:'write_verification_failed', courseId, sheetName, row, verified });
+      }
+      return json_({ ok:true, row, courseId, group, sheetName, contentStatus, resultStatus, evidenceUrl, verified:true });
     } finally { lock.releaseLock(); }
   } catch (error) {
     return json_({ ok:false, error:String(error?.message || error) });
   }
 }
 
-function findCourseRow_(sheet, courseId) {
+function findCourseRows_(sheet, courseId) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 0;
+  if (lastRow < 2) return [];
+  const matches = new Set();
   const evidenceValues = sheet.getRange(2, EVIDENCE_COLUMN, lastRow - 1, 1).getDisplayValues();
-  for (let index = 0; index < evidenceValues.length; index += 1) {
-    const value = String(evidenceValues[index][0] || '');
-    const match = value.match(/[?&]courseId=([^&#]+)/i);
-    if (match && decodeURIComponent(match[1]) === courseId) return index + 2;
-  }
+  evidenceValues.forEach((row, index) => {
+    const match = String(row[0] || '').match(/[?&]courseId=([^&#]+)/i);
+    if (match && decodeURIComponent(match[1]) === courseId) matches.add(index + 2);
+  });
   const courseValues = sheet.getRange(2, 9, lastRow - 1, 1).getDisplayValues();
-  for (let index = 0; index < courseValues.length; index += 1) {
-    const value = String(courseValues[index][0] || '');
-    const match = value.match(/[?&]id=([^&#]+)/i);
-    if (match && decodeURIComponent(match[1]) === courseId) return index + 2;
-  }
-  return 0;
+  courseValues.forEach((row, index) => {
+    const match = String(row[0] || '').match(/[?&]id=([^&#]+)/i);
+    if (match && decodeURIComponent(match[1]) === courseId) matches.add(index + 2);
+  });
+  return Array.from(matches).sort((a, b) => a - b);
 }
 
 function json_(value) {
