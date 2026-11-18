@@ -55,3 +55,62 @@
 @media(max-width:900px){.mock-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.component-grid{grid-template-columns:1fr}.component-tile.wide{grid-column:auto}}@media(max-width:600px){.evidence-page.gr-legacy-review main{width:calc(100% - 16px)}.priority-card{grid-template-columns:30px minmax(0,1fr)}.priority-card>button{grid-column:2;justify-self:start}.component-tile{grid-template-columns:32px minmax(0,1fr)}.component-link{grid-column:2;justify-self:start}.review-drawer{padding:16px}.coverage-bar{min-width:120px}.media-meta{grid-template-columns:1fr 1fr}}
 
 .gr-mock-run{padding:0;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible}.gr-mock-run .run-head{display:none}.gr-mock-run .mock-facts{margin:0 0 8px}.gr-mock-run .priority-panel,.gr-mock-run .session-overview,.gr-mock-run .review-decision,.gr-mock-run .result-summary{margin-block:12px}.gr-mock-run .evidence-tabs{padding:0 18px;background:var(--ev-card);border:1px solid var(--ev-line);border-bottom:0;border-radius:16px 16px 0 0;margin-top:12px}.gr-mock-run .evidence-tab-panel:not([hidden]){padding:18px;background:var(--ev-card);border:1px solid var(--ev-line);border-radius:0 0 16px 16px}.gr-mock-run .evidence-tab-panel[hidden]{display:none!important}.gr-mock-run .priority-panel,.gr-mock-run .session-overview,.gr-mock-run .fact{box-shadow:0 4px 14px #16375b0a}
+
+/* Meeting-room readability: keep the evidence view legible when projected. */
+.evidence-page.gr-legacy-review{font-size:16px;line-height:1.55}
+.evidence-page.gr-legacy-review main{max-width:1440px}
+.gr-legacy-review .evidence-brand h1{font-size:22px}
+.gr-legacy-review .evidence-brand p{font-size:14px}
+.gr-legacy-review .evidence-eyebrow{font-size:13px;letter-spacing:.06em}
+.gr-legacy-review .evidence-course-hero{padding:26px 28px}
+.gr-legacy-review .evidence-course-hero strong{font-size:clamp(1.65rem,2.4vw,2.15rem)}
+.gr-legacy-review .evidence-course-hero a{font-size:15px}
+.gr-legacy-review .course-outcome{min-height:126px;padding:20px}
+.gr-legacy-review .course-outcome span{font-size:14px}
+.gr-legacy-review .course-outcome strong{font-size:1.6rem}
+.gr-legacy-review .course-outcome small{font-size:14px}
+.gr-legacy-review .mock-facts .fact{min-height:86px;padding:15px 17px 14px 68px}
+.gr-legacy-review .mock-facts .fact:before{left:16px;top:16px;width:40px;height:40px;font-size:18px}
+.gr-legacy-review .mock-facts .fact strong{font-size:24px}
+.gr-legacy-review .mock-facts .fact span{font-size:14px}
+.gr-legacy-review .mock-score-note{font-size:15px;padding:6px 4px 10px}
+.gr-legacy-review .result-summary{padding:19px 22px}
+.gr-legacy-review .result-summary h3{font-size:21px}
+.gr-legacy-review .result-summary p{font-size:15px;line-height:1.6}
+.gr-legacy-review .priority-panel{padding:22px}
+.gr-legacy-review .priority-head h2{font-size:23px}
+.gr-legacy-review .priority-count,.gr-legacy-review .priority-state{font-size:14px}
+.gr-legacy-review .priority-card{min-height:88px;padding:17px 18px}
+.gr-legacy-review .priority-copy strong{font-size:18px}
+.gr-legacy-review .priority-card p{font-size:15px}
+.gr-legacy-review button{font-size:15px;min-height:44px}
+.gr-legacy-review .session-overview{padding:22px}
+.gr-legacy-review .session-overview-head h3{font-size:22px}
+.gr-legacy-review .session-legend{font-size:14px}
+.gr-legacy-review .session-chip[data-session-select]{min-height:66px;font-size:13px}
+.gr-legacy-review .session-chip strong{font-size:20px}
+.gr-legacy-review .evidence-tab{padding:14px 18px;font-size:16px}
+.gr-legacy-review .week-head h3{font-size:22px}
+.gr-legacy-review .week-head p{font-size:15px}
+.gr-legacy-review .component-tile{grid-template-columns:44px minmax(0,1fr) auto;gap:14px;padding:17px}
+.gr-legacy-review .component-icon{width:42px;height:42px;font-size:13px}
+.gr-legacy-review .component-tile strong{font-size:18px}
+.gr-legacy-review .component-tile p{font-size:15px;line-height:1.6}
+.gr-legacy-review .component-link{font-size:15px}
+.gr-legacy-review .component-summary th,.gr-legacy-review .component-summary td{font-size:15px;padding:15px}
+.gr-legacy-review .coverage-bar b{font-size:15px}
+.gr-legacy-review .media-tag{font-size:13px}
+.gr-legacy-review .review-decision h3{font-size:22px}
+.gr-legacy-review .review-decision p,.gr-legacy-review .review-score,.gr-legacy-review .review-decision label{font-size:15px}
+.gr-legacy-review .review-drawer{width:min(560px,100vw)}
+.gr-legacy-review .drawer-head h3{font-size:23px}
+.gr-legacy-review .mock-evidence-card p,.gr-legacy-review .media-note{font-size:15px}
+.gr-legacy-review .media-title strong{font-size:18px}
+.gr-legacy-review .media-meta small{font-size:13px}
+.gr-legacy-review .media-meta b{font-size:15px}
+@media(max-width:760px){
+  .evidence-page.gr-legacy-review{font-size:15px}
+  .gr-legacy-review .evidence-course-hero{padding:19px}
+  .gr-legacy-review .mock-facts .fact strong{font-size:21px}
+  .gr-legacy-review .component-tile{grid-template-columns:40px minmax(0,1fr)}
+}
