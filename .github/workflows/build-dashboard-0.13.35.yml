@@ -1,6 +1,7 @@
 name: Build Dashboard Extension 0.13.35
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -21,10 +22,12 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import re, zipfile, shutil
+          import re, zipfile, shutil, hashlib
           parts=sorted(Path("downloads/dashboard/0.13.34/parts").glob("extension-0.13.34.part*"),key=lambda p:int(re.search(r"part(\d+)$",p.name).group(1)))
           archive=Path("SPU-Learning-Auditor-Dashboard-0.13.34.zip")
-          archive.write_bytes(b"".join(p.read_bytes() for p in parts))
+          data=b"".join(p.read_bytes() for p in parts)
+          assert len(parts)==24 and len(data)==9360081 and hashlib.sha256(data).hexdigest().upper()=="AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F", "0.13.34 baseline verification failed"
+          archive.write_bytes(data)
           build=Path("build/dashboard-0.13.35")
           shutil.rmtree(build,ignore_errors=True)
           build.mkdir(parents=True)
@@ -45,6 +48,27 @@ jobs:
           node --check build/dashboard-0.13.35/background.js
           grep -q "criteria12569Decision" build/dashboard-0.13.35/dashboard-export.js
           grep -q "buildDashboardRecord(saved, \"\", job)" build/dashboard-0.13.35/background.js
+          node --input-type=module <<'JS'
+          import assert from "node:assert/strict";
+          import { criteria12569Scorecard, legacyReviewKeys, score12569Snapshot } from "./build/dashboard-0.13.35/criteria-12569.js";
+          import { buildDashboardRecord } from "./build/dashboard-0.13.35/dashboard-export.js";
+          import { emptyCentralResult } from "./build/dashboard-0.13.35/central-worker-contract.js";
+          for (const track of ["theory","practical"]) {
+            const max=track==="practical"?50:100, threshold=track==="practical"?40:80;
+            const report={courseType:"GR",gnTrack:track,weeks:Array.from({length:15},(_,i)=>({section:`Session ${i+1}`,checklist:Array.from({length:7},()=>({status:"pass"}))})),coverage:{reachedEnd:true,structurallyComplete:true}};
+            const opts={criteriaMode:"legacy_12569",semesterCode:"1/2569"};
+            assert.equal(criteria12569Scorecard(report).total,max);
+            report.weeks[0].checklist[4].status="fail";report.weeks[1].checklist[3].status="fail";report.weeks[0].checklist[6].status="fail";
+            assert.equal(criteria12569Scorecard(report).total,max);
+            report.weeks[0].checklist[1].status="needs_review";
+            const payload=buildDashboardRecord(report,"",opts);
+            assert.equal(legacyReviewKeys(payload).length,1);
+            assert.equal(score12569Snapshot(payload,{"criterion:1:2":true}).total,max);
+            const empty=emptyCentralResult({courseType:"GR",gnTrack:track,...opts});
+            assert.equal(empty.threshold,threshold);
+            assert.equal(score12569Snapshot(empty).total,0);
+          }
+          JS
 
       - name: Package, split and update the download page
         shell: bash
@@ -78,6 +102,7 @@ jobs:
           page=Path("download-extension.html")
           text=page.read_text(encoding="utf-8").replace("0.13.34",version)
           text=re.sub(r'    const PARTS=\[.*?\n    \];','    const PARTS=[\n'+',\n'.join(entries)+'\n    ];',text,flags=re.S)
+          text=re.sub(r"const EXPECTED_SIZE=\d+",f"const EXPECTED_SIZE={len(data)}",text)
           text=re.sub(r'const EXPECTED_SHA256="[A-F0-9]+"',f'const EXPECTED_SHA256="{digest}"',text)
           page.write_text(text,encoding="utf-8")
           readme=Path("downloads/dashboard/README.md")
