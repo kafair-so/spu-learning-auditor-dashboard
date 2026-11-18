@@ -53,7 +53,21 @@ test("every reviewable criterion exposes matching direct evidence links", () => 
   assert.match(evidence,/หลักฐานที่เกี่ยวข้องกับรายการนี้/);
   assert.match(evidence,/activitySession\(item\)!==Number\(session\)/);
   assert.match(evidence,/item\.status==="needs_review"\?criterionEvidenceLinks/);
-  assert.match(evidencePage,/audit-evidence\.js\?v=20261117a/);
+  assert.match(evidencePage,/audit-evidence\.js\?v=20261118a/);
+});
+
+test("new evidence presentation separates Admin detail from teacher reporting", () => {
+  const css=read("audit-evidence-v2.css");
+  assert.match(evidencePage,/audit-evidence-v2\.css\?v=20261118a/);
+  assert.match(evidence,/Admin · รายละเอียดและหลักฐานครบถ้วน/);
+  assert.match(evidence,/รายงานผลสำหรับผู้สอน/);
+  assert.match(evidence,/sessionOverview/);
+  assert.match(evidence,/data-evidence-tab="detail"/);
+  assert.match(evidence,/teacher-privacy-note/);
+  assert.match(evidence,/history\.slice\(0,3\)/);
+  assert.match(css,/\.session-strip/);
+  assert.match(css,/\.teacher-summary-grid/);
+  assert.match(css,/@media\(max-width:760px\)/);
 });
 
 test("unchanged canonical destinations reuse central confirmation but broken links do not", () => {
