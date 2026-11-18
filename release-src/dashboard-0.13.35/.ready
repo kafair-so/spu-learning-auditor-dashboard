@@ -1,1 +1,1 @@
-Dashboard 0.13.35 source staged and locally verified: 46/46 extension tests and 48/48 dashboard tests.
+GR-only legacy 1/2569 rebuild: complete background restored from CRC-verified baseline, source syntax and synthetic score checks passed, API v49 deployed. Release and browser acceptance not yet verified.
