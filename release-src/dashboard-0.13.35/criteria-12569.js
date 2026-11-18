@@ -80,7 +80,7 @@ function theoryScore(weeks, coverage) {
     + proportional(post, 7.5, possible)
     + activities.reduce((sum, status) => sum + possible(status), 0)
   );
-  const pending = structurePending(coverage) || [...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
+  const pending = structurePending(coverage) || [first[0]?.status, first[1]?.status, ...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
   return {...parts, total, totalMax:100, passScore:80, potentialTotal:structurePending(coverage) ? 100 : potential, pending};
 }
 
@@ -114,7 +114,7 @@ function practicalScore(weeks, coverage) {
   );
   const gates = {video:video.completeSessions >= 7, preTest:rowsPass(pre) >= 7, postTest:rowsPass(post) >= 7, firstSessionActivity:PASS.has(first[5]?.status)};
   const potentialGates = {video:video.completeSessions + video.reviewSessions >= 7, preTest:rowsPossible(pre) >= 7, postTest:rowsPossible(post) >= 7, firstSessionActivity:possible(first[5]?.status) === 1};
-  const pending = structurePending(coverage) || [...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
+  const pending = structurePending(coverage) || [first[0]?.status, first[1]?.status, ...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
   return {...parts, total, totalMax:50, passScore:40, potentialTotal, pending, gates, potentialGates};
 }
 
@@ -130,3 +130,37 @@ export function criteria12569Scorecard(report = {}) {
   return {...score, track, status, scoringMode:CRITERIA_12569_SCORE_MODEL};
 }
 
+
+
+// The review UI uses original checklist positions, not weighted points.
+export function legacyReviewKeys(payload = {}) {
+  const snap = payload.evidenceSnapshot || {};
+  if (payload.coverageComplete !== true || structurePending(snap.coverage || {})) return [];
+  const weeks = Array.isArray(snap.weeks) ? snap.weeks : [];
+  return weeks.flatMap((week, index) => {
+    const sessionNumber = Number(week.session || index + 1);
+    const allowed = sessionNumber === 1 ? [1,2,3,4,6] : [1,2,3,5,6,7];
+    return (week.criteria || []).filter(item => item.status === "needs_review" && allowed.includes(Number(item.criterion)))
+      .map(item => ({session:sessionNumber, criterion:Number(item.criterion), detail:item.detail || ""}));
+  });
+}
+
+export function score12569Snapshot(payload = {}, decisions = {}) {
+  const snap = payload.evidenceSnapshot || {};
+  const track = (payload.criteriaScorecard || snap.criteriaScorecard || {}).track;
+  if (!["theory","practical"].includes(track) || !Array.isArray(snap.weeks) || !snap.weeks.length) {
+    throw new Error("legacy_score_snapshot_missing");
+  }
+  const weeks = snap.weeks.map((week, index) => ({
+    section:week.section || `ครั้งที่ ${index + 1}`,
+    checklist:Array.from({length:7}, (_, i) => {
+      const item = (week.criteria || []).find(criterion => Number(criterion.criterion) === i + 1) || {};
+      const key = `criterion:${week.session || index + 1}:${i + 1}`;
+      const resolved = Object.prototype.hasOwnProperty.call(decisions, key);
+      const value = {...item, status:resolved ? (decisions[key] ? "pass" : "fail") : item.status};
+      if (resolved) delete value.scoreValue;
+      return value;
+    })
+  }));
+  return criteria12569Scorecard({gnTrack:track, weeks, coverage:snap.coverage || {}});
+}
