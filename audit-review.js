@@ -238,8 +238,8 @@
         if(!state.job?.jobId||!state.result)throw new Error("ผลจาก Extension ไม่มีรหัสงานหรือข้อมูลผลตรวจ");
         if(String(state.result.group||"").toUpperCase()!=="GR")throw new Error("ขอบเขตงานนี้ไม่อนุญาตให้ส่งผลนอกกลุ่ม GR");
         const submission=await AuditApi.submitResult(state.job.jobId,state.result);
-        if(submission?.sheetSync?.ok===false)throw new Error("บันทึกผลในฐานข้อมูลแล้ว แต่ซิงก์ Sheet ไม่สำเร็จ: "+submission.sheetSync.error);
         await AuditWorker.acknowledge(state.job.jobId);
+        if(submission?.sheetSync?.ok===false||submission?.sheetSync?.configured===false){await loadResults();await loadQueueOverview();stopWorker("บันทึกผลในฐานข้อมูลแล้ว แต่ซิงก์ Sheet ไม่สำเร็จ — ตรวจสอบก่อนเริ่มงานถัดไป: "+(submission.sheetSync.error||"ยังไม่ได้ตั้งค่า webhook"));return;}
         processedThisSession++;await loadResults();await loadQueueOverview();
         setWorkerProgress(100,`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว`,true,"ตรวจครบทุกองค์ประกอบแล้ว");
         setWorkerMessage(`ส่งผล ${state.job.courseCode||state.job.courseId} เข้าระบบกลางแล้ว · รอบนี้เสร็จ ${processedThisSession.toLocaleString(locale())} วิชา`);
