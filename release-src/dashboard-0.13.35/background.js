@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 61674)
-Total output lines: 3116
-
 import { RULES, secondsFromClock, clock, mediaTimeResult, countedVideoSeconds, podcastComplianceResult, gnCoverageResult, mandatoryCoverageResult, normalizeCourseTrack, inferCourseTrack, canonicalMediaTarget, declaredDurationFromTitle, markDuplicateMediaItems, markHiddenTitleAlternatives, collapseDuplicateDestinationItems, verifiedVideoCandidate, creditBasedVideoToleranceMinutes } from "./rules.js";
 import { classifyActivityWithEvidence, isTeachingPlanFile, promoteSectionLessonCandidates } from "./classifier.js";
 import { MEDIA_PROVIDER_ORIGINS, providerOriginsForUrl, accessGateFromEvidence } from "./providers.js";
@@ -1330,7 +1327,532 @@ async function discoverH5pMediaSource(tabId) {
           const path = value.path || value.src || value.source || value.videoId || value.id;
           if (path && (/youtube/i.test(mime) || /youtube/i.test(String(value.sourceType || "")))) sourceValues.push({path:String(path), youtube:true});
           else if (path && /\.(?:mp4|webm|m4v|mov|m3u8)(?:[?#].*)?$/i.test(String(path))) sourceValues.push({path:String(path), youtube:false});
-          for…11674 tokens truncated…   }
+          for (const child of Object.values(value)) visit(child);
+        };
+        visit(contents);
+        const definedSource = sourceValues[0];
+        if (definedSource) {
+          if (definedSource.youtube) {
+            if (/^https?:/i.test(definedSource.path)) return definedSource.path;
+            if (/^[\w-]{11}$/.test(definedSource.path)) return `https://www.youtube.com/watch?v=${definedSource.path}`;
+          }
+          if (/^https?:/i.test(definedSource.path)) return definedSource.path;
+        }
+        const base = urls.find((url) => /\/content\/\d+(?:$|[?#])/i.test(url));
+        const strings = [...serialized.matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)].map((match) => match[1].replace(/\\\//g, "/"));
+        const mediaPath = strings.find((value) => /\.(?:mp4|webm|m4v|mov|m3u8)(?:[?#].*)?$/i.test(value));
+        const chosenPath = definedSource?.path || mediaPath;
+        if (chosenPath) return /^https?:/i.test(chosenPath) ? chosenPath : base ? `${base.replace(/\/$/, "")}/${chosenPath.replace(/^\.?\//, "")}` : null;
+      } catch { /* H5P fallback below */ }
+      return null;
+    }
+  }), 6000, "อ่านแหล่งวิดีโอจาก H5P");
+  return results.map((item) => item.result).find(Boolean) || null;
+}
+
+async function waitForH5pMediaSource(tabId, runId) {
+  // H5P creates the YouTube iframe after its shell has loaded. Poll the live
+  // DOM briefly; do not spend minutes retrying one H5P activity.
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline) {
+    await throwIfCancelled(runId);
+    const source = await discoverH5pMediaSource(tabId).catch(() => null);
+    if (source) return source;
+    await waitInterruptibly(350, runId);
+  }
+  return null;
+}
+
+async function refreshMediaPreview(tabId, runId, deadline, recoveryState) {
+    let latest = null;
+    while (recoveryState.refreshes < 4) {
+      if (Date.now() >= deadline) break;
+      await throwIfCancelled(runId);
+      recoveryState.refreshes += 1;
+      const reloadAttempt = recoveryState.refreshes;
+      await recordAuditDiagnostic("media-refresh",{tabId,runId,refreshes:reloadAttempt});
+      await withDeadline(() => chrome.tabs.reload(tabId), 5000, "รีเฟรชหน้าเล่นวิดีโอ");
+      await waitForTabSettled(tabId, runId, Math.max(500, Math.min(8000, deadline - Date.now())));
+      for (let poll = 0; poll < 3; poll += 1) {
+        if (Date.now() >= deadline) break;
+        await throwIfCancelled(runId);
+        const accessGate = await probeAccessGate(tabId).catch(() => null);
+        if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, foreground:true, reloadAttempt };
+        latest = await probeMedia(tabId, poll > 0);
+        if (latest.adShowing) latest.durationSeconds = null;
+        if (latest.durationSeconds) return { ...latest, foreground: true, reloadAttempt, recoveredAfterReload: true };
+        await waitInterruptibly(900, runId);
+      }
+    }
+    return { ...(latest || {}), reloadAttempt:recoveryState.refreshes };
+}
+
+async function readOneDriveInForeground(tabId, runId, deadline, recoveryState) {
+  return withTemporaryForeground(tabId, async () => {
+    let latest = null;
+    let reloaded = false;
+    let stableCandidate = null;
+    let stableCandidateCount = 0;
+    for (let poll = 0; poll < 18 && Date.now() < deadline; poll += 1) {
+      await throwIfCancelled(runId);
+      const accessGate = await probeAccessGate(tabId).catch(() => null);
+      if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, foreground:true };
+      latest = await probeSharePointPlayer(tabId, poll > 1).catch(() => null);
+      if (!latest?.durationSeconds) latest = await probeMedia(tabId, poll > 1);
+      if (latest.adShowing) latest.durationSeconds = null;
+      if (latest.durationSeconds) {
+        const authoritative = ["sharepoint-player-clock", "sharepoint-accessible-duration", "onedrive-metadata"].includes(latest.source);
+        const rounded = Math.round(Number(latest.durationSeconds));
+        if (authoritative) return { ...latest, foreground:true, recoveredAfterForeground:true };
+        if (stableCandidate === rounded) stableCandidateCount += 1;
+        else { stableCandidate = rounded; stableCandidateCount = 1; }
+        // A real media duration is stable. A progressive SharePoint boundary
+        // follows the playhead and changes from poll to poll, so never publish
+        // it as the clip length after a single observation.
+        if (stableCandidateCount >= 2) return { ...latest, foreground:true, recoveredAfterForeground:true, durationSeconds:rounded };
+      }
+      // Keep one visible player tab alive. A single reload is enough to recover
+      // SharePoint's abandoned-session screen without repeatedly opening tabs.
+      if (!reloaded && poll === 8 && Date.now() + 2500 < deadline) {
+        reloaded = true;
+        recoveryState.refreshes += 1;
+        await withDeadline(() => chrome.tabs.reload(tabId), 5000, "รีเฟรชหน้าเล่น SharePoint");
+        await waitForTabSettled(tabId, runId, Math.max(500, Math.min(6500, deadline - Date.now())));
+      }
+      await waitInterruptibly(700, runId);
+    }
+    return { ...(latest || {}), durationSeconds:null, unconfirmedDurationSeconds:stableCandidate, foreground:true, reloaded };
+  });
+}
+
+async function readNotebookInForeground(tabId, runId, deadline) {
+  return withTemporaryForeground(tabId, async () => {
+    let latest = null;
+    for (let poll = 0; poll < 24 && Date.now() < deadline; poll += 1) {
+      await throwIfCancelled(runId);
+      const accessGate = await probeAccessGate(tabId).catch(() => null);
+      if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, foreground:true };
+      latest = await probeTopFrameProviderMedia(tabId, poll > 0, "notebooklm");
+      if (latest.durationSeconds) return { ...latest, foreground:true, recoveredAfterForeground:true };
+      await waitInterruptibly(700, runId);
+    }
+    return { ...(latest || {}), foreground:true };
+  });
+}
+
+async function readGooglePhotosInForeground(tabId, runId, deadline) {
+  return withTemporaryForeground(tabId, async () => {
+    let latest = null;
+    for (let poll = 0; poll < 14 && Date.now() < deadline; poll += 1) {
+      await throwIfCancelled(runId);
+      const gate = await probeAccessGate(tabId).catch(() => null);
+      if (gate) return {accessible:false,durationSeconds:null,mediaStatus:gate.status,accessNote:gate.accessNote,foreground:true};
+      latest = await probeMedia(tabId, poll > 0);
+      if (latest.durationSeconds) return {...latest,foreground:true,recoveredAfterForeground:true};
+      await waitInterruptibly(650, runId);
+    }
+    return {...(latest || {}),foreground:true};
+  });
+}
+
+async function responseTextWithin(response, byteLimit = 1200000) {
+  const reader = response.body?.getReader?.();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = "";
+  try {
+    while (total < byteLimit) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value?.byteLength || 0;
+      text += decoder.decode(value, { stream:true });
+      if (total >= byteLimit) break;
+    }
+    text += decoder.decode();
+    return text;
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}
+
+async function readFastMediaMetadata(targetUrl, maxWaitMs = 4500) {
+  if (!isFastMetadataHost(targetUrl)) return null;
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(250, maxWaitMs));
+  try {
+    const response = await fetch(targetUrl, { redirect:"manual", credentials:"include", signal:controller.signal, headers:{ Accept:"text/html,application/xhtml+xml" } });
+    const locationHeader = response.headers.get("location");
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      const redirectGate = locationHeader && accessGateFromEvidence({url:new URL(locationHeader,targetUrl).href});
+      if (redirectGate?.status === "access_denied") return {accessible:false,durationSeconds:null,mediaStatus:"access_denied",accessNote:redirectGate.accessNote,source:"provider-redirect",fastMetadataMs:Date.now()-startedAt};
+      if (locationHeader && /(?:login\.microsoftonline\.com|accounts\.google\.com)/i.test(locationHeader)) {
+        return { accessible:false, durationSeconds:null, mediaStatus:"login_required", accessNote:"ต้องลงชื่อเข้าใช้ผู้ให้บริการก่อนจึงตรวจลิงก์นี้ได้", source:"provider-redirect", fastMetadataMs:Date.now() - startedAt };
+      }
+      return null;
+    }
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const directMediaType = mediaTypeFromProviderEvidence({ contentType, targetUrl, finalUrl:response.url });
+    if (!contentType.includes("html") && !contentType.includes("json") && !contentType.includes("javascript")) {
+      return directMediaType ? { accessible:true, durationSeconds:null, mediaDetected:true, mediaType:directMediaType, mediaStatus:"metadata_missing", accessNote:"ยืนยันชนิดสื่อจาก Content-Type แต่ยังไม่พบเวลา", source:"provider-content-type", fastMetadataMs:Date.now() - startedAt } : null;
+    }
+    const markup = await responseTextWithin(response);
+    const unavailable = unavailableMediaFromProviderMarkup(markup, targetUrl, response.url);
+    if (unavailable) {
+      return { accessible:false, durationSeconds:null, ...unavailable, source:"youtube-playability", fastMetadataMs:Date.now() - startedAt };
+    }
+    // Remove large script/style blocks before limiting the text. Provider pages often
+    // put their visible access/not-found message after tens of KB of bootstrap code.
+    const stripped = markup
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 24000);
+    const gate = filterProviderMarkupAccessGate(accessGateFromEvidence({ url:response.url, bodyText:stripped }), targetUrl, response.url);
+    if (["missing_file", "empty_media", "login_required", "access_denied"].includes(gate?.status)) {
+      return { accessible:false, durationSeconds:null, mediaStatus:gate.status === "missing_file" ? "link_unavailable" : gate.status, accessNote:gate.accessNote, source:"provider-response", fastMetadataMs:Date.now() - startedAt };
+    }
+    const found = durationFromProviderMarkup(markup, targetUrl, response.url);
+    const mediaType = mediaTypeFromProviderEvidence({ contentType, markup, targetUrl, finalUrl:response.url });
+    return found
+      ? { ...found, accessible:true, mediaDetected:true, mediaType, mediaStatus:"duration_read", accessNote:"", fastMetadataMs:Date.now() - startedAt }
+      : { accessible:true, durationSeconds:null, mediaDetected:Boolean(mediaType), mediaType, mediaStatus:"metadata_missing", accessNote:"", source:"provider-response", fastMetadataMs:Date.now() - startedAt };
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
+async function readMedia(targetUrl, runId, deadline = Date.now() + 90000, declaredDurationSeconds = null, recoveryState = {refreshes:0}) {
+  await recordAuditDiagnostic("media-read",{url:targetUrl,runId,refreshes:recoveryState.refreshes});
+  const isMoodle = isLmsHost(targetUrl);
+  const hasPermission = isMoodle || await withDeadline(() => chrome.permissions.contains({ origins: providerOriginsForUrl(targetUrl) }), 3000, "ตรวจสิทธิ์อ่านผู้ให้บริการ");
+  if (!hasPermission) return { accessible: null, durationSeconds: null, needsProviderPermission: true, mediaStatus:"permission_required", accessNote: "ยังไม่ได้อนุญาตสิทธิ์อ่านโดเมนปลายทาง" };
+  const fastMetadata = await readFastMediaMetadata(targetUrl, Math.min(4500, Math.max(250, deadline - Date.now())));
+  if (fastMetadata?.durationSeconds || ["link_unavailable", "empty_media", "login_required", "access_denied"].includes(fastMetadata?.mediaStatus)) return fastMetadata;
+  if (fastMetadata?.accessible && declaredDurationSeconds) return {
+    ...fastMetadata,
+    durationSeconds:declaredDurationSeconds,
+    mediaDetected:true,
+    mediaStatus:"duration_read_declared",
+    source:"title-declared-duration",
+    accessNote:"ยืนยันว่าลิงก์เปิดได้ และใช้เวลาที่ระบุแบบเจาะจงในชื่อรายการ เพราะผู้ให้บริการไม่ส่ง metadata เวลา"
+  };
+  if (Date.now() >= deadline) return { accessible:null, durationSeconds:null, mediaStatus:"inspection_timeout", accessNote:"ตรวจ metadata ครบเวลารายการแล้ว — ไปตรวจรายการถัดไป" };
+  const host = new URL(targetUrl).hostname;
+  const isH5P = /\/mod\/(h5pactivity|hvp)\/view\.php/.test(targetUrl);
+  const isYouTube = /(?:^|\.)youtube(?:-nocookie)?\.com$|youtu\.be$/i.test(host);
+  const isNotebook = /(?:^|\.)notebook(?:lm)?\.google\.com$/i.test(host);
+  const isHeyGen = /(?:^|\.)heygen\.com$/i.test(host);
+  const isDrive = /(^|\.)drive\.google\.com$/i.test(host);
+  const isGooglePhotos = /^(?:photos\.google\.com|photos\.app\.goo\.gl)$/i.test(host);
+  const isOneDrive = /(^|\.)(?:1drv\.ms|onedrive\.live\.com|sharepoint\.com)$/i.test(host);
+  const slowProvider = isH5P || isYouTube || isNotebook || isOneDrive || isGooglePhotos || /heygen|vidyard|loom|canva|drive\.google/.test(host);
+  // Some providers initialise their player only after the page has been idle.
+  // Retry in a fresh background tab, rather than treating one empty duration as
+  // a missing video. Only failed links pay the extra waiting time.
+  const tabAttempts = isOneDrive ? 1 : isH5P || isYouTube ? 2 : slowProvider ? 3 : 2;
+  const polls = isOneDrive ? 1 : isH5P ? 2 : isYouTube ? 4 : slowProvider ? 7 : 5;
+  let last = { accessible: false, durationSeconds: null };
+  let opened = false;
+  let confirmedNoPlayerAttempts = 0;
+  for (let tabAttempt = 1; tabAttempt <= tabAttempts; tabAttempt += 1) {
+    if (Date.now() >= deadline) break;
+    let tab;
+    let noVideoProbe = {};
+    try {
+      // An access-denied screen normally renders before a video preview.  Give
+      // it a small window, classify it, and close rather than paying the full
+      // player timeout (often 15+ seconds per inaccessible link).
+      tab = await createInactiveTab(targetUrl, runId, (isH5P || isYouTube) ? 3500 : 2800);
+      opened = true;
+      const redirectedTab = await withDeadline(() => chrome.tabs.get(tab.id), 2500, "อ่าน URL หลัง redirect").catch(() => null);
+      const redirectedHost = (() => { try { return new URL(redirectedTab?.url || targetUrl).hostname; } catch { return ""; } })();
+      const tabIsOneDrive = isOneDrive || /(^|\.)(?:1drv\.ms|onedrive\.live\.com|sharepoint\.com)$/i.test(redirectedHost);
+      let accessGate = await probeAccessGate(tab.id).catch(() => null);
+      accessGate = await confirmMissingFileAfterOneRefresh(tab.id, accessGate, runId);
+      if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, attempts:tabAttempt };
+      await waitInterruptibly(tabIsOneDrive ? 450 : isH5P ? 600 : isGooglePhotos ? 250 : declaredDurationSeconds ? 300 : slowProvider ? 3500 : 2200, runId);
+      accessGate = await probeAccessGate(tab.id).catch(() => null);
+      accessGate = await confirmMissingFileAfterOneRefresh(tab.id, accessGate, runId);
+      if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, attempts:tabAttempt };
+      if (declaredDurationSeconds) return {
+        accessible:true,
+        durationSeconds:declaredDurationSeconds,
+        mediaDetected:true,
+        mediaStatus:"duration_read_declared",
+        source:"title-declared-duration",
+        accessNote:"ยืนยันว่าหน้าปลายทางเปิดได้ และใช้เวลาที่ระบุแบบเจาะจงในชื่อรายการ เพราะหน้า player ยังไม่เปิดเผย metadata",
+        attempts:tabAttempt
+      };
+      // InteractiveVideo may embed YouTube or a local MP4 inside H5P content.
+      // Discover the real source first so the player shell is never timed.
+      if (isH5P) {
+        const h5pSource = await waitForH5pMediaSource(tab.id, runId);
+        if (h5pSource) {
+          // Release the H5P shell before opening the underlying provider. If
+          // two H5P shells kept both tab slots while recursing, neither source
+          // player could open.
+          await closeAuditTab(tab.id);
+          tab = null;
+          const sourceResult = await readMedia(h5pSource, runId, deadline, null, recoveryState);
+          return { ...sourceResult, source: "h5p-media-source", h5pSourceUrl: h5pSource };
+        }
+      }
+      for (let poll = 0; poll < polls; poll += 1) {
+        if (Date.now() >= deadline) break;
+        await throwIfCancelled(runId);
+        if (tabIsOneDrive) {
+          const accessGate = await probeAccessGate(tab.id).catch(() => null);
+          if (accessGate) return { accessible:false, durationSeconds:null, mediaStatus:accessGate.status, accessNote:accessGate.accessNote, attempts:tabAttempt, polls:poll + 1 };
+        }
+        // Some Drive streams publish a finite duration only after their muted
+        // player has initialised. This happens in the temporary audit tab, not
+        // in the user's visible tab, and is required for files that otherwise
+        // remain falsely marked "needs review" despite being playable.
+        // Read embedded metadata before attempting playback.  Playback is a
+        // last local fallback, avoiding a full Preview wait whenever a
+        // provider has already exposed a reliable duration.
+        const result = tabIsOneDrive
+          ? await probeSharePointPlayer(tab.id, poll > 0).catch(() => probeMedia(tab.id, poll > 0))
+          : (isNotebook || isHeyGen)
+          ? await probeTopFrameProviderMedia(tab.id, poll > 0, isNotebook ? "notebooklm" : "heygen")
+          : await probeMedia(tab.id, isH5P || poll > 0);
+        // YouTube's HTML video exposes an ad duration first. Never accept it
+        // as the teaching-video duration; continue until the main player loads.
+        last = { ...result, durationSeconds: result.adShowing ? null : result.durationSeconds, attempts: tabAttempt, polls: poll + 1 };
+        noVideoProbe = updateNoVideoProbe(noVideoProbe, last);
+        if (last.cloudFolder) return { ...last, durationSeconds:null, mediaStatus:"cloud_folder", accessNote:"ปลายทางเป็นโฟลเดอร์ Cloud ไม่ใช่วิดีโอหนึ่งคลิป — ไม่นับเวลาของโฟลเดอร์; ตรวจจากลิงก์ไฟล์วิดีโอรายคลิป" };
+        const authoritativeOneDriveDuration = ["sharepoint-player-clock", "sharepoint-accessible-duration", "onedrive-metadata"].includes(last.source);
+        if (last.durationSeconds && (!tabIsOneDrive || authoritativeOneDriveDuration)) return { ...last, mediaStatus:"duration_read", accessNote: "" };
+        await waitInterruptibly(isH5P ? 600 : slowProvider ? 1900 : 1500, runId);
+      }
+      if (tabIsOneDrive && !last.durationSeconds && Date.now() < deadline) {
+        const foreground = await foregroundProviderLimiter.run(() => readOneDriveInForeground(tab.id, runId, deadline, recoveryState));
+        last = { ...foreground, attempts: tabAttempt, polls: polls + 10 };
+        if (last.cloudFolder) return { ...last, durationSeconds:null, mediaStatus:"cloud_folder", accessNote:"ปลายทางเป็นโฟลเดอร์ Cloud ไม่ใช่วิดีโอหนึ่งคลิป — ไม่นับเวลาของโฟลเดอร์; ตรวจจากลิงก์ไฟล์วิดีโอรายคลิป" };
+        if (last.durationSeconds) return { ...last, mediaStatus:"duration_read", accessNote: "อ่านเวลาได้จากแท็บ SharePoint/OneDrive เบื้องหน้า" };
+        if (["access_denied", "login_required", "link_unavailable"].includes(last.mediaStatus)) return last;
+        if (/NotAllowedError|user gesture|gesture/i.test(last.playError || "") || last.mediaDetected || last.videoReadyState >= 1) {
+          return { ...last, accessible:true, mediaStatus:"play_required", accessNote:"เปิดคลิปได้ แต่ SharePoint/OneDrive ต้องให้ผู้ใช้กดเล่นเพื่อเปิดเผยเวลา — เปิดรายการนี้ค้างไว้แล้วกดเล่น จากนั้นตรวจอีกครั้ง" };
+        }
+        return { ...last, accessible:true, mediaStatus:"play_required", accessNote:last.hasTransientPlayerError
+          ? `เปิดคลิปได้ แต่ player ต้องทำงานในแท็บเบื้องหน้า (${last.playerErrorText || "ยังไม่พร้อม"}) — กดเล่นแล้วตรวจอีกครั้ง`
+          : "เปิดคลิปได้ แต่ยังไม่เปิดเผยเวลา — กดเล่นในแท็บเบื้องหน้าแล้วตรวจอีกครั้ง" };
+      }
+      if (isGooglePhotos && !last.durationSeconds && Date.now() < deadline) {
+        const foreground = await foregroundProviderLimiter.run(() => readGooglePhotosInForeground(tab.id, runId, deadline));
+        last = {...foreground,attempts:tabAttempt,polls:polls + 14};
+        if (last.durationSeconds) return {...last,mediaStatus:"duration_read",accessNote:"อ่านเวลาได้จากตัวเล่น Google Photos หลังเปิดแท็บตรวจชั่วคราว"};
+        if (["access_denied", "login_required", "link_unavailable"].includes(last.mediaStatus)) return last;
+      }
+      if (isNotebook && !last.durationSeconds && Date.now() < deadline) {
+        const foreground = await foregroundProviderLimiter.run(() => readNotebookInForeground(tab.id, runId, deadline));
+        last = { ...foreground, attempts:tabAttempt, polls:polls + 20 };
+        if (last.durationSeconds) return { ...last, mediaStatus:"duration_read", accessNote:"อ่านเวลาได้จากตัวเล่น NotebookLM หลังเปิดแท็บตรวจชั่วคราว" };
+        if (["access_denied", "login_required", "link_unavailable"].includes(last.mediaStatus)) return last;
+      }
+      if (!tabIsOneDrive && !last.durationSeconds && recoveryState.refreshes < 4 && Date.now() < deadline) {
+        last = await refreshMediaPreview(tab.id, runId, deadline, recoveryState);
+        if (last.durationSeconds) return {...last, mediaStatus:"duration_read", accessNote:"อ่านเวลาจริงได้หลังรีเฟรชหน้าเล่น"};
+        if (["access_denied", "login_required", "link_unavailable"].includes(last.mediaStatus)) return last;
+      }
+      if (noVideoProbe.confirmed) confirmedNoPlayerAttempts += 1;
+    } catch (error) {
+      if (error?.name === "AuditCancelled") throw error;
+      last = { accessible: false, error: error.message, timedOut:isAuditStepTimeout(error), durationSeconds: null, attempts: tabAttempt };
+    } finally {
+      if (tab?.id) await closeAuditTab(tab.id);
+    }
+    if (tabAttempt < tabAttempts && Date.now() < deadline) await waitInterruptibly(Math.min(1800 * tabAttempt, Math.max(0, deadline - Date.now())), runId);
+  }
+  if (isH5P && last.youtubeEmbedUrl) {
+    const sourceResult = await readMedia(last.youtubeEmbedUrl, runId, deadline, null, recoveryState);
+    if (sourceResult.durationSeconds) return { ...sourceResult, source: "h5p-youtube-source", h5pSourceUrl: last.youtubeEmbedUrl };
+  }
+  if (confirmedNoPlayerAttempts >= 2) return { ...last, accessible:true, durationSeconds:null, mediaDetected:false, mediaStatus:"no_video", accessNote:"เปิดปลายทางและตรวจซ้ำแล้ว แต่ไม่พบตัวเล่นหรือสื่อวิดีโอ" };
+  if (Date.now() >= deadline || last.timedOut) return { ...last, durationSeconds:null, mediaStatus:"player_not_ready", accessNote:"หน้าเล่นยังโหลดข้อมูลเวลาไม่สำเร็จ — ระบบจะเปิดใหม่ด้วยรอบกู้คืนอัตโนมัติ" };
+  if (last.error) return { ...last, mediaStatus:"link_error", accessNote: `เปิดปลายทางไม่ได้: ${last.error}` };
+  if (opened) return { ...last, mediaStatus:"duration_unavailable", accessNote: "เปิดปลายทางได้ แต่ระบบลองรอและเริ่มเล่นแล้ว แต่ผู้ให้บริการไม่เปิดเผยเวลา" };
+  return { ...last, mediaStatus:"link_error", accessNote: "เปิดปลายทางไม่ได้" };
+}
+
+// A phrase such as "การเขียน figure ครั้งที่ 1" can describe a subtopic,
+// not the course's first week. The imported mapper votes from every named item
+// inside each Moodle SECTION so one decorative heading cannot merge weeks.
+
+function result(status, detail) { return { status, detail }; }
+function presentExternal(items, label) {
+  if (!items.length) return result("fail", `ไม่พบ${label}`);
+  const externalItems = items.filter((item) => item.linkStatus === "external");
+  if (externalItems.length) return result("pass", `พบ${label}เป็นลิงก์ภายนอก ${externalItems.length} รายการ`);
+  if (items.every((item) => item.linkStatus === "internal")) return result("fail", `พบ${label} แต่เป็นกิจกรรมภายใน Moodle`);
+  return result("needs_review", `พบ${label} แต่ยังยืนยันปลายทางลิงก์ไม่ได้`);
+}
+function presentAiTutor(items) {
+  if (!items.length) return result("fail", "ไม่พบลิงก์ AI Tutor");
+  const confirmed = items.filter((item) => item.aiChatStatus === "confirmed" && item.aiChatConfirmed);
+  if (confirmed.length) return result("pass", `พบลิงก์ AI Tutor ที่เปิดเป็นหน้าแชทกับ AI ${confirmed.length} รายการ`);
+  if (items.some((item) => ["access_denied","login_required","link_unavailable"].includes(item.aiChatStatus))) {
+    return result("fail", "ลิงก์ AI Tutor ไม่สามารถเข้าถึงได้");
+  }
+  if (items.some((item) => item.aiChatStatus === "not_chat")) {
+    return result("fail", "ลิงก์ AI Tutor เปิดได้ แต่ปลายทางไม่ใช่หน้าแชทกับ AI");
+  }
+  if (items.some((item) => item.aiChatStatus === "permission_required")) {
+    return result("needs_review", "พบลิงก์ AI Tutor แต่เครื่องตรวจยังไม่มีสิทธิ์ยืนยันหน้าแชท");
+  }
+  return result("needs_review", "พบลิงก์ AI Tutor แต่ระบบยังยืนยันหน้าแชทไม่ได้");
+}
+function presentQuiz(items, label) {
+  const itemNames = (values) => values.map((item) => String(item.title || "ไม่ระบุชื่อ").replace(/\s+(?:Quiz|File|URL)$/i, "")).join(", ");
+  const moodleQuizzes = items.filter((item) => /\/mod\/quiz\/view\.php/i.test(item.href || ""));
+  // The university rule does not count Moodle Quiz for the Pre/Post rows.
+  // Keep it visible as excluded evidence so the reviewer can see why a named
+  // Quiz did not grant a pass, while allowing a separate question heading,
+  // question file or written task to satisfy the row.
+  const tolerated = moodleQuizzes.filter((item) => item.currentSemesterQuiz?.eligible);
+  const excluded = moodleQuizzes.filter((item) => !item.currentSemesterQuiz?.eligible);
+  const eligibleItems = items.filter((item) => !/\/mod\/quiz\/view\.php/i.test(item.href || "") || item.currentSemesterQuiz?.eligible);
+  const quizNote = `${tolerated.length ? ` · ผ่อนปรน Moodle Quiz ภาค 1/2569 Week 1–10 จำนวน ${tolerated.length} รายการ` : ""}${excluded.length ? ` · พบ Quiz ในระบบ Moodleที่ไม่นับตามเกณฑ์ ${excluded.length} รายการ: ${itemNames(excluded)}` : ""}`;
+  const answer = (status, detail) => result(status, detail + quizNote);
+  // Pre/Post may be supplied as a question file (PDF/resource) or as an
+  // external link. Presence of the explicitly named file is sufficient.
+  const namedFiles = eligibleItems.filter((item) => /\/mod\/resource\/view\.php/i.test(item.href || "")
+    || item.fileTypeHint || /\.(?:pdf|docx?|pptx?)(?:$|[?#])/i.test(item.externalUrl || item.href || ""));
+  if (namedFiles.length) return answer("pass", `พบ${label}ในรูปแบบไฟล์ ${namedFiles.length} รายการ: ${itemNames(namedFiles)}`);
+  const writtenAssignments = eligibleItems.filter((item) => /\/mod\/assign\/view\.php/i.test(item.href || ""));
+  if (writtenAssignments.length) return answer("pass", `พบ${label}เป็นคำถามแบบอัตนัย/ตอบส่งงานใน Moodle ${writtenAssignments.length} รายการ: ${itemNames(writtenAssignments)}`);
+  const titledQuestions = eligibleItems.filter((item) => /[?？]|(?:อย่างไร|อะไร|เพราะเหตุใด|ทำไม|ข้อใด|เท่าไร)(?:\s|$|[?.])/i.test(item.title || ""));
+  if (titledQuestions.length) return answer("pass", `พบ${label}เป็นคำถามในหัวข้อ ${titledQuestions.length} รายการ: ${itemNames(titledQuestions)}`);
+  const textAssessments = eligibleItems.filter((item) => item.evidenceType === "assessment_text");
+  if (textAssessments.length) return answer("pass", `พบ${label}เป็นโจทย์และคำสั่งส่งคำตอบใน Section ${textAssessments.length} รายการ: ${itemNames(textAssessments)}`);
+  if (eligibleItems.some(item => item.forumTaskConfirmed && /\/mod\/(?:forum|chat)\/view\.php/i.test(item.href || ''))) return answer('pass', `พบ${label}`);
+  const external = presentExternal(eligibleItems, label);
+  return answer(external.status, external.detail);
+}
+
+function podcastEvaluationForWeek(list, requiredSeconds) {
+  const allCountable = list.filter((item) => item.kind === "podcast" && item.linkStatus === "external");
+  const duplicates = allCountable.filter((item) => item.countingEligible === false);
+  const candidates = allCountable.filter((item) => item.countingEligible !== false);
+  const videos = candidates.filter((item) => item.mediaType === "video");
+  const audios = candidates.filter((item) => item.mediaType === "audio");
+  const unknownTypes = candidates.filter((item) => !item.mediaType && !["access_denied", "login_required", "link_unavailable", "link_error"].includes(item.mediaStatus));
+  const internal = list.filter((item) => item.kind === "podcast" && item.podcastDelivery === "internal_upload");
+  const internalVideos = internal.filter((item) => item.mediaType === "video");
+  const failedLinks = candidates.filter((item) => ["access_denied", "login_required", "link_unavailable", "link_error"].includes(item.mediaStatus));
+  const knownSeconds = audios.reduce((sum, item) => sum + Number(item.durationSeconds || 0), 0);
+  const unconfirmedAudio = audios.filter((item) => !item.durationSeconds).length;
+  const status = podcastComplianceResult(candidates, requiredSeconds);
+  const single = candidates.length === 1 && !duplicates.length && !internal.length ? candidates[0] : null;
+  const singleSource = "Podcast ภายนอก";
+  const singleDetail = single?.mediaType === "video"
+    ? `${singleSource} 1 รายการ — ปลายทางเป็นวิดีโอ (ไม่ผ่านและไม่นับเวลา): ${single.title || "ไม่ระบุชื่อ"} · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    : failedLinks.length === 1 && single === failedLinks[0]
+    ? `${singleSource} 1 รายการ — ${single.accessNote || "ลิงก์เปิดไม่ได้"} · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    : unknownTypes.length === 1 && single === unknownTypes[0]
+    ? `${singleSource} 1 รายการ — ยังยืนยันว่าเป็นคลิปเสียงหรือวิดีโอไม่ได้ · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    : single?.mediaType === "audio" && !single.durationSeconds
+    ? `${singleSource} 1 รายการ — ยืนยันว่าเป็นคลิปเสียงแล้ว แต่รอผู้ตรวจกรอกและยืนยันเวลา · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    : single?.mediaType === "audio"
+    ? `${singleSource} 1 รายการ — ผู้ตรวจยืนยันเวลาคลิปเสียงแล้ว · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    : null;
+  const detail = singleDetail || (`${audios.length} คลิปเสียงภายนอกที่นับได้ · ผู้ตรวจยืนยันเวลา ${audios.filter((item) => item.reviewerDurationConfirmed).length}/${audios.length} รายการ · ${clock(knownSeconds)} / ${clock(requiredSeconds)}`
+    + (videos.length ? ` · พบ Podcast รูปแบบวิดีโอ ${videos.length} รายการ (ไม่ผ่านและไม่นับเวลา): ${videos.map((item) => item.title || "ไม่ระบุชื่อ").join(", ")}` : "")
+    + (internalVideos.length ? ` · พบ Podcast รูปแบบวิดีโอใน Moodle ${internalVideos.length} รายการ (ไม่ผ่านและไม่นับเวลา)` : "")
+    + (unknownTypes.length ? ` · ยังยืนยันว่าเป็นคลิปเสียงหรือวิดีโอไม่ได้ ${unknownTypes.length} รายการ` : "")
+    + (failedLinks.length ? ` · ${failedLinks.map((item) => item.accessNote || "ลิงก์ Podcast เปิดไม่ได้").join(" · ")}` : "")
+    + (unconfirmedAudio ? ` · รอผู้ตรวจกรอกและยืนยันเวลา ${unconfirmedAudio} รายการ` : "")
+    + (duplicates.length ? ` · พบปลายทางซ้ำ ${duplicates.length} รายการ (ไม่นับซ้ำ)` : "")
+    + (internal.length ? ` · พบ Podcast อัปโหลดใน Moodle ${internal.length} รายการ (ไม่ผ่าน: ต้องเป็นคลิปเสียงผ่านลิงก์ภายนอก)` : ""));
+  return { podcasts:audios.length, externalPodcasts:candidates.length, podcastVideos:videos.length, unknownPodcastTypes:unknownTypes.length, internalPodcasts:internal.length, knownPodcastSeconds:knownSeconds, unreadAudioPodcasts:unconfirmedAudio, unknownPodcasts:unconfirmedAudio + unknownTypes.length, podcastRequiredSeconds:requiredSeconds, podcastStatus:status, definitivePodcastFailure:status === "fail", result:result(status, detail) };
+}
+
+function checklistForWeek(section, list, metrics, isFirst, courseType, instructorEvidence = null) {
+  const allExternalVideos = list.filter((item) => item.kind === "video" && item.linkStatus === "external");
+  const duplicateVideos = allExternalVideos.filter((item) => item.countingEligible === false && !item.reviewExcluded);
+  const cloudFolders = allExternalVideos.filter((item) => item.mediaStatus === "cloud_folder");
+  const videos = allExternalVideos.filter((item) => item.countingEligible !== false && item.mediaStatus !== "cloud_folder");
+  const internalVideos = list.filter((item) => item.kind === "video" && item.linkStatus !== "external");
+  const uploadedInternalVideos = internalVideos.filter((item) => item.linkStatus === "internal" && (item.internalVideoDelivery === "internal_upload" || item.resource?.isVideo || item.fileTypeHint === "video" || /(?:video|media)/i.test(String(item.moduleTypeHint || "")) || item.evidenceType === "video_internal_media"));
+  const unresolvedInternalVideos = internalVideos.filter((item) => !uploadedInternalVideos.includes(item));
+  const allFiles = list.filter((item) => item.kind === "file" || item.kind === "file_link");
+  // Preserve the verified PDF subset for precise wording. The approved
+  // teaching-document tolerance below still passes a known non-PDF document
+  // and explicitly discloses its actual type in the result.
+  const files = allFiles.filter((item) => item.fileVerification === "pdf" || item.isPdf);
+  const planItems = allFiles.filter(isTeachingPlanFile);
+  const materialItems = allFiles.filter((item) => !isTeachingPlanFile(item));
+  const misplacedDocumentAssignments = list.filter((item) => item.misplacedDocumentAssignment);
+  const misplacedPlanAssignments = misplacedDocumentAssignments.filter(isTeachingPlanFile);
+  const misplacedMaterialAssignments = misplacedDocumentAssignments.filter((item) => !isTeachingPlanFile(item));
+  const planFiles = planItems.filter((item) => item.fileVerification === "pdf" || item.isPdf);
+  const materials = materialItems.filter((item) => item.fileVerification === "pdf" || item.isPdf);
+  // The first-session document criterion includes the course outline and the
+  // 15-session teaching plan. From session 2 onward plan/material stay split.
+  const firstSessionDocuments = files;
+  const fileName = (item) => {
+    const label = String(item.title || "ไฟล์ไม่ระบุชื่อ").replace(/\s+File$/i, "");
+    if (item.resource?.previewStatus === "file_too_large") return label + " (ไฟล์ใหญ่เกินกว่าจะเปิดดูตัวอย่าง — ไม่ใช่ PDF)";
+    if (item.resource?.sourceType === "google_editor") return label + " (Google Docs/Slides/Sheets — ไม่ใช่ PDF)";
+    if (item.resource?.sourceType === "online_document") return label + " (เอกสารออนไลน์ Gamma — ไม่ใช่ PDF)";
+    if (item.resource?.sourceType === "image") return label + " (ไฟล์รูปภาพ" + (item.resource?.contentType ? " " + item.resource.contentType : "") + " — ไม่ใช่ PDF)";
+    const targetName = String(item.resource?.name || "").trim();
+    // Preserve both the activity label and the resolved filename. A Moodle
+    // resource can be titled "แผนทางเดินเอกสาร" while its target has another
+    // filename; showing only the latter made two distinct activities look like
+    // a scanner duplicate in the report.
+    if (targetName && !label.toLocaleLowerCase("th").includes(targetName.toLocaleLowerCase("th"))) return `${label} (ไฟล์ปลายทาง: ${targetName})`;
+    return targetName || label;
+  };
+  const fileDetail = (items) => {
+    const nonPdf = items.filter((item) => item.fileVerification === "not_pdf");
+    const unresolved = items.filter((item) => !item.isPdf && item.fileVerification !== "not_pdf");
+    const nonPdfText = nonPdf.length ? " · ยืนยันว่าไม่ใช่ PDF " + nonPdf.length + " รายการ: " + nonPdf.map(fileName).join(", ") : "";
+    const unresolvedText = unresolved.length ? " · เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ " + unresolved.length + " รายการ: " + unresolved.map(fileName).join(", ") : "";
+    return nonPdfText + unresolvedText;
+  };
+  const documentResult = (confirmed, candidates, label, misplaced = []) => {
+    const placementDetail = misplaced.length ? ` · ${MISPLACED_DOCUMENT_MESSAGE}` : "";
+    const detail = fileDetail(candidates) + placementDetail;
+    if (confirmed.length) return result("pass", "พบ File PDF " + label + " " + confirmed.length + " รายการ: " + confirmed.map(fileName).join(", ") + detail);
+    // Approved tolerance: the existence of a teaching document satisfies the
+    // row even when it is not PDF. Keep actual type evidence in the detail.
+    if (candidates.length) return result("pass", "พบเอกสาร " + label + " " + candidates.length + " รายการ: " + candidates.map(fileName).join(", ") + detail);
+    return result("fail", "ไม่พบเอกสาร " + label + detail);
+  };
+  const pre = list.filter((item) => item.kind === "pre_quiz");
+  const post = list.filter((item) => item.kind === "post_quiz");
+  const moodleQuizzes = list.filter((item) => ["quiz", "pre_quiz", "post_quiz"].includes(item.kind) && /\/mod\/quiz\/view\.php/i.test(item.href || ""));
+  // Pre/Post/ordinary Moodle Quiz is assessment evidence, never an
+  // end-of-chapter Assignment. Keep this safeguard at checklist time as well
+  // as classification time so a misplaced visual label cannot grant a pass.
+  const activities = list.filter((item) => (item.kind === "assignment" || item.currentSemesterQuiz?.eligible && item.currentSemesterQuiz.role === "assignment") && (!/\/mod\/quiz\/view\.php/i.test(item.href || "") || item.currentSemesterQuiz?.eligible) && !item.misplacedDocumentAssignment);
+  const activityDetail = (foundText, missingText) => {
+    const toleratedActivityQuizzes = moodleQuizzes.filter((item) => item.currentSemesterQuiz?.eligible && item.currentSemesterQuiz.role === "assignment");
+    const excludedActivityQuizzes = moodleQuizzes.filter((item) => !toleratedActivityQuizzes.includes(item));
+    const quizNote = `${toleratedActivityQuizzes.length ? ` · ผ่อนปรน Moodle Quiz ภาค 1/2569 Week 1–10 จำนวน ${toleratedActivityQuizzes.length} รายการ` : ""}${excludedActivityQuizzes.length ? ` · พบ Quiz ในระบบ Moodle ${excludedActivityQuizzes.length} รายการ แต่ไม่นับเป็นกิจกรรมท้ายบท` : ""}`;
+    const activityNames = activities.map((item) => {
+      const name = String(item.title || "ไม่ระบุชื่อ").replace(/\s+(?:File|URL)$/i, "");
+      const source = /\/mod\/assign\/view\.php/i.test(item.href || "") ? "Moodle Assignment"
+        : /\/mod\/resource\/view\.php/i.test(item.href || "") ? "ไฟล์คำสั่งงาน"
+        : item.evidenceType === "assignment_text" ? "ข้อความคำสั่งใน Moodle" : "กิจกรรมใน Moodle";
+      return `${name} (${source})`;
+    }).join(", ");
+    return activities.length ? result("pass", `${foundText}: ${activityNames}${quizNote}`) : result(isFirst ? "fail" : "not_applicable", missingText + quizNote);
+  };
+  const tutors = list.filter((item) => item.kind === "ai_tutor");
+  const unreadMediaDetail = (items) => {
+    const labels = { duration_pending:"ยังอ่านเวลาไม่สำเร็จ (ยังไม่ยืนยันผล)", access_denied:"ติดสิทธิ์ผู้ให้บริการ", login_required:"ต้องลงชื่อเข้าใช้", link_unavailable:"ลิงก์วิดีโอไม่สามารถเข้าถึงได้", empty_media:"ปลายทางเปิดได้ แต่อัลบั้มว่างและไม่มีวิดีโอ", no_video:"ปลายทางเปิดได้ แต่ไม่พบตัวเล่นหรือวิดีโอ", inspection_timeout:"ตรวจปลายทางเกินเวลา", course_time_budget:"ถึงงบเวลาตรวจรายวิชา", player_not_ready:"หน้าเล่นยังไม่พร้อม", play_required:"ต้องกดเล่น", provider_unsupported:"ผู้ให้บริการไม่รองรับ", link_error:"ลิงก์เสีย", permission_required:"ต้องอนุญาตสิทธิ์", reviewer_confirmed_unreadable:"ผู้ตรวจยืนยันว่าเป็นวิดีโอ แต่ไม่มีเวลาที่ตรวจสอบได้" };
+    const counts = new Map();
+    for (const item of items.filter((item) => !item.durationSeconds)) {
+      const reviewerConfirmed = item.classification?.reviewDecision === "pre_recorded" || (item.classification?.evidence || []).some(entry => entry.source === "ผู้ตรวจ" && /ยืนยันเป็นวิดีโอ/.test(entry.value || ""));
+      const label = item.mediaStatus === "access_denied" && reviewerConfirmed
+        ? "ผู้ตรวจยืนยันว่าเป็นวิดีโอแล้ว แต่ปลายทางติดสิทธิ์ผู้ให้บริการ"
+        : labels[item.mediaStatus] || "อ่านเวลาไม่ได้";
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
     return [...counts].map(([label, count]) => `${label} ${count} คลิป`).join(" · ");
   };
   const videoIssues = unreadMediaDetail(videos);
@@ -2592,4 +3114,3 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   else return;
   return message.type === "AUDIT";
 });
-
