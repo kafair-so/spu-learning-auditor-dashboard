@@ -7,7 +7,7 @@ import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDec
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
-const COURSE_CSV_URL = Deno.env.get("COURSE_CSV_URL") || "";
+const MAIN_DATA_CSV_URLS = {GS:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1655346225&single=true&output=csv',GR:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=1339443713&single=true&output=csv'};
 const SHEET_STATUS_WEBHOOK_URL = Deno.env.get("SHEET_STATUS_WEBHOOK_URL") || "";
 const SHEET_STATUS_WEBHOOK_SECRET = Deno.env.get("SHEET_STATUS_WEBHOOK_SECRET") || "";
 const STATUS_SPREADSHEET_ID = "1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg";
@@ -215,7 +215,9 @@ function adminResultRecord(row) {
   const score = row.score == null ? null : Number(row.score);
   const reviewable = Number(row.reviewable_points || 0);
   const scoreModel = String(source.scoreModel || "");
-  const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
+  const legacy = source.criteriaMode === "legacy_12569" && scoreModel === "legacy_course_type_v1";
+  const maxScore = legacy ? (Number(row.passing_score) === 40 ? 50 : 100) : AUDIT_MAX_SCORE;
+  const scoreNeedsRefresh = row.internal_status === "needs_review" && !legacy && scoreModel !== "weekly_criterion_v2";
   return {
     runId: row.run_id,
     auditId: row.external_audit_id,
@@ -230,8 +232,9 @@ function adminResultRecord(row) {
     internalStatus: row.internal_status,
     publicStatus: row.public_status || "",
     confirmedScore: score,
-    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(AUDIT_MAX_SCORE, score + reviewable),
-    maxScore: AUDIT_MAX_SCORE,
+    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(maxScore, score + reviewable),
+    maxScore,
+    criteriaMode: source.criteriaMode || "current",
     scoreModel,
     scoreNeedsRefresh,
     threshold: row.passing_score == null ? null : Number(row.passing_score),
@@ -261,7 +264,9 @@ function historyRunRecord(row) {
   const score = row.score == null ? null : Number(row.score);
   const reviewable = Number(row.reviewable_points || 0);
   const scoreModel = String(source.scoreModel || "");
-  const scoreNeedsRefresh = row.internal_status === "needs_review" && scoreModel !== "weekly_criterion_v2";
+  const legacy = source.criteriaMode === "legacy_12569" && scoreModel === "legacy_course_type_v1";
+  const maxScore = legacy ? (Number(row.passing_score) === 40 ? 50 : 100) : AUDIT_MAX_SCORE;
+  const scoreNeedsRefresh = row.internal_status === "needs_review" && !legacy && scoreModel !== "weekly_criterion_v2";
   return {
     ...source,
     runId: row.run_id,
@@ -271,8 +276,9 @@ function historyRunRecord(row) {
     internalStatus: row.internal_status,
     publicStatus: row.public_status || "",
     confirmedScore: score,
-    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(AUDIT_MAX_SCORE, score + reviewable),
-    maxScore: AUDIT_MAX_SCORE,
+    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(maxScore, score + reviewable),
+    maxScore,
+    criteriaMode: source.criteriaMode || "current",
     scoreModel,
     scoreNeedsRefresh,
     threshold: row.passing_score == null ? null : Number(row.passing_score),
@@ -595,7 +601,7 @@ function parseCsv(text) {
 }
 
 function courseId(row) {
-  try { return new URL(row.courseLink).searchParams.get("id") || ""; }
+  try { const url = new URL(row.courseLink); const id = url.searchParams.get("id") || ""; return /^\d+$/.test(id) && url.protocol === "https:" && ["dlearning.spu.ac.th","ilearning.spu.ac.th"].includes(url.hostname) && url.pathname === "/course/view.php" ? id : ""; }
   catch { return ""; }
 }
 
@@ -609,12 +615,21 @@ function isSoloSpecialInstructorCourse(row) {
 }
 
 async function syncCatalog() {
-  if (!COURSE_CSV_URL) throw Object.assign(new Error("course_csv_url_not_configured"), { status: 500 });
-  const response = await fetch(`${COURSE_CSV_URL}${COURSE_CSV_URL.includes("?") ? "&" : "?"}_=${Date.now()}`);
-  if (!response.ok) throw new Error(`catalog_http_${response.status}`);
-  const rawRows = parseCsv(await response.text()).filter(row =>
-    ["GR", "GS"].includes(String(row.group || "").trim().toUpperCase())
-    && !isSoloSpecialInstructorCourse(row));
+  const parts = await Promise.all(Object.entries(MAIN_DATA_CSV_URLS).map(async ([group, url]) => {
+    const response = await fetch(`${url}&_=${Date.now()}`, { cache:"no-store" });
+    if (!response.ok) throw new Error(`catalog_${group}_http_${response.status}`);
+    const records = parseCsv(await response.text());
+    if (!records.length || !["coursename","link","รหัสวิชา","ประเภทผู้ปฏิบัติงาน"].every(key => Object.prototype.hasOwnProperty.call(records[0], key))) {
+      throw Object.assign(new Error(`invalid_catalog_headers_${group}`), { status:422 });
+    }
+    const eligible = records.filter(row => String(row.coursename || "").startsWith("691" + group + "-") && String(row["ประเภทผู้ปฏิบัติงาน"] || "").trim());
+    if (!eligible.length) throw Object.assign(new Error(`empty_catalog_${group}`), { status:422 });
+    return eligible.map(row => ({
+      group, courseCode:row["รหัสวิชา"], courseProfile:row.coursename, courseName:row.fullname,
+      faculty:row.name, instructors:row["อ.ผู้สอน"] || row.teachernames, courseLink:row.link
+    }));
+  }));
+  const rawRows = parts.flat();
   if (!rawRows.length || rawRows.some(row => !courseId(row))) {
     throw Object.assign(new Error("invalid_or_incomplete_course_catalog"), { status: 422 });
   }
@@ -623,7 +638,7 @@ async function syncCatalog() {
   for (const row of rawRows) {
     const id = courseId(row);
     const group = String(row.group || "").trim().toUpperCase();
-    if (byId.has(id) && (byId.get(id).course_code !== (row.courseCode || null) || byId.get(id).course_group !== group)) {
+    if (byId.has(id)) {
       throw Object.assign(new Error("conflicting_duplicate_course_id"), { status: 422 });
     }
     byId.set(id, {
