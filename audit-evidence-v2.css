@@ -133,3 +133,17 @@
 .reviewer-summary h3{margin:4px 0 7px;font-size:19px}
 .reviewer-summary p{margin:0;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .theme-dark .reviewer-summary{border-color:#42658e;background:#20364f;color:#e3edf9}
+
+
+/* Mockup-aligned course header metadata. */
+.evidence-course-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:var(--ev-muted);font-size:14px;font-weight:650;letter-spacing:0;text-transform:none}
+.evidence-course-meta i,.course-detail-line i{font-style:normal;color:#9aabbd}
+.course-type-chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:#e9f0ff;color:var(--ev-blue);font-weight:850}
+.evidence-course-hero #course{margin:10px 0 5px}
+.course-detail-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:var(--ev-muted);font-size:15px;line-height:1.55}
+.course-open-link{display:inline-block;margin-top:5px;font-size:14px}
+.theme-dark .course-type-chip{background:#203d70;color:#dbe8ff}
+@media(max-width:760px){
+  .evidence-course-meta,.course-detail-line{font-size:13px}
+  .evidence-course-hero #course{margin-top:8px}
+}
