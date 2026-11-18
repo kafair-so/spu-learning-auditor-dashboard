@@ -38,6 +38,7 @@ export function normalizeCentralJob(payload = {}) {
 
 export function failedCentralResult(job, error, {runId = "", version = ""} = {}) {
   const message = text(error?.message || error || "งานตรวจไม่สำเร็จ");
+  const legacyPractical = job.criteriaMode === "legacy_12569" && job.gnTrack === "practical";
   return {
     schemaVersion:2,
     recordType:"spu_learning_audit_result",
@@ -56,7 +57,7 @@ export function failedCentralResult(job, error, {runId = "", version = ""} = {})
     confirmedScore:0,
     reviewablePoints:0,
     possibleScore:0,
-    threshold:job.courseType === "GN" ? 0 : 80,
+    threshold:legacyPractical ? 40 : job.courseType === "GN" ? 0 : 80,
     reason:"worker_error",
     scoreModel:job.criteriaMode === "legacy_12569" ? "legacy_course_type_v1" : "weekly_criterion_v2",
     criteriaMode:job.criteriaMode,
@@ -67,6 +68,10 @@ export function failedCentralResult(job, error, {runId = "", version = ""} = {})
 }
 
 export function emptyCentralResult(job, scan = {}, {runId = "", version = ""} = {}) {
+  const legacy = job.criteriaMode === "legacy_12569";
+  const practical = job.gnTrack === "practical";
+  const emptyWeeks = Array.from({length:15},(_,i)=>({session:i+1,section:`ครั้งที่ ${i+1}`,criteria:Array.from({length:7},(_,j)=>({criterion:j+1,status:"fail"}))}));
+  const card = {track:practical?"practical":"theory",total:0,totalMax:practical?50:100,passScore:practical?40:80,potentialTotal:0,status:"fail",scoringMode:"legacy_course_type_v1"};
   return {
     schemaVersion:2,
     recordType:"spu_learning_audit_result",
@@ -85,13 +90,16 @@ export function emptyCentralResult(job, scan = {}, {runId = "", version = ""} = 
     confirmedScore:0,
     reviewablePoints:0,
     possibleScore:0,
-    threshold:job.courseType === "GN" ? 0 : 80,
+    threshold:legacy&&practical ? 40 : job.courseType === "GN" ? 0 : 80,
+    hasContent:false,
+    ...(legacy?{criteriaScorecard:card}:{}),
     reason:"successful_scan_found_no_course_content",
     scoreModel:job.criteriaMode === "legacy_12569" ? "legacy_course_type_v1" : "weekly_criterion_v2",
     criteriaMode:job.criteriaMode,
     semesterCode:job.semesterCode,
     coverageComplete:true,
     evidenceSnapshot:{
+      ...(legacy?{criteriaScorecard:card,weeks:emptyWeeks}:{}),
       emptyReason:scan.emptyReason || "ไม่พบเนื้อหารายวิชา",
       coverage:scan.coverage || {},
       activities:[]
