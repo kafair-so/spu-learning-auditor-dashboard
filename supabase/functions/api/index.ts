@@ -542,6 +542,7 @@ async function decideAdminResult(request, runId) {
     throw Object.assign(new Error("review_items_not_available"), { status:409 });
   }
   const submitted = Array.isArray(payload.reviewDecisions) ? payload.reviewDecisions : [];
+  if(legacy&&submitted.some(item=>typeof item?.accepted!=="boolean"))throw Object.assign(new Error("review_decisions_invalid"),{status:400});
   const supplied = new Map(submitted.map((item) => [String(item?.key || ""), item?.accepted === true]));
   if (submitted.length !== reviewKeys.length || supplied.size !== reviewKeys.length || reviewKeys.some((key) => !supplied.has(key))) {
     throw Object.assign(new Error("review_decisions_incomplete"), { status:400 });
@@ -557,7 +558,7 @@ async function decideAdminResult(request, runId) {
   const decision = (legacy ? weighted.status === "pass" : confirmedScore >= threshold) ? "pass" : "has_content";
   const reviewerNote = String(payload.note || "").trim().slice(0, 1000);
   const evidenceDecisions = Array.isArray(payload.evidenceDecisions) ? payload.evidenceDecisions.slice(0,500).map((item) => ({
-    key:String(item?.key || "").slice(0,500),
+    key:String(item?.key || "").slice(0,legacy?4096:500),
     criterionKey:String(item?.criterionKey || "").slice(0,100),
     decision:["use","not_use"].includes(item?.decision) ? item.decision : "",
     seconds:Math.max(0,Math.min(43200,Math.round(Number(item?.seconds || 0))))
@@ -577,6 +578,21 @@ async function decideAdminResult(request, runId) {
     resolvedSource.criteriaScorecard = weighted;
     resolvedSource.evidenceSnapshot.criteriaScorecard = weighted;
     resolvedSource.reviewableCriteria = [];
+    for(const week of resolvedSource.evidenceSnapshot.weeks||[]){
+      for(const item of week.criteria||[]){
+        const key=`criterion:${week.session}:${item.criterion}`;
+        if(!supplied.has(key))continue;
+        if(Object.prototype.hasOwnProperty.call(item,"scoreValue"))delete item.scoreValue;
+        const media=evidenceDecisions.filter(entry=>entry.criterionKey===key);
+        if(media.length){const used=media.filter(entry=>entry.decision==="use"),seconds=used.reduce((sum,entry)=>sum+entry.seconds,0);item.originalDetail=item.originalDetail||item.detail;item.detail=`ผู้ตรวจยืนยัน ${used.length} จาก ${media.length} ลิงก์ · เวลารวม ${Math.floor(seconds/3600)}:${String(Math.floor(seconds%3600/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")} · ${supplied.get(key)?"ผ่าน":"ไม่ผ่าน"}`;}
+      }
+    }
+    for(const activity of resolvedSource.evidenceSnapshot.activities||[]){
+      const session=Number(activity.auditSession)||Number(String(activity.section||"").match(/\d+/)?.[0])||0;
+      const key=`criterion:${session}:${session===1?4:3}`;
+      const entry=evidenceDecisions.find(item=>item.criterionKey===key&&item.key===String(activity.externalUrl||activity.href||"").trim());
+      if(entry&&["video","video_candidate"].includes(activity.kind)){activity.mediaReviewDecision=entry.decision;activity.reviewerDurationSeconds=entry.decision==="use"?entry.seconds:0;activity.reviewerDurationConfirmed=true;activity.reviewerConfirmedAt=reviewConfirmation.confirmedAt;activity.reviewExcluded=entry.decision==="not_use";}
+    }
   }
   const {data:latestCourse,error:latestError} = await db.from("courses").select("latest_internal_run_id").eq("course_id",currentRun.course_id).single();
   if (latestError) throw latestError;
