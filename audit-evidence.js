@@ -69,14 +69,16 @@
   const actionableIssues=item=>{
     const text=`${item.label||""} ${item.detail||""}`.toLowerCase(),issues=[];
     const add=(key,label,action)=>issues.push({key,label,action,session:item.session});
-    const access=/ติดสิทธิ์|ไม่มีสิทธิ์|เข้าถึงไม่ได้|เปิดไม่ได้|ไม่สามารถเข้าถึง|ขอสิทธิ์/.test(text);
+    const access=/ลิงก์เสีย|link[_ -]?error|ติดสิทธิ์|ไม่มีสิทธิ์|เข้าถึงไม่ได้|เปิดไม่ได้|ไม่สามารถเข้าถึง|ขอสิทธิ์|เปิดปลายทางไม่ได้|ไม่พบปลายทาง/.test(text);
     const duration=/เวลา|นาที|ชั่วโมง|\d+\s*:\s*\d+/.test(text);
     if(/ข้อมูลผู้สอน|การติดต่อ/.test(text)&&!item.reviewerConfirmedMissing&&!item.confirmedByReviewer)return issues;
     if(/แบบทดสอบก่อนเรียน|แบบทดสอบหลังเรียน|pre[ -]?test|post[ -]?test/.test(text)){add("quiz-name","แบบทดสอบก่อนและหลังเรียน","เปลี่ยนชื่อ Quiz ให้ระบุชัดเจนว่าเป็น Pre/Post-test หรือแบบทดสอบก่อน/หลังเรียน");return issues;}
     if(/วิดีโอ|video|record/.test(text)){
-      if(access)add("video-access","สิทธิ์เข้าถึงวิดีโอ","แก้สิทธิ์ของลิงก์วิดีโอให้ผู้ตรวจเปิดดูได้");
-      if(duration)add("video-duration","เวลารวมของวิดีโอ","เพิ่มหรือปรับวิดีโอให้มีเวลารวมไม่น้อยกว่า 1 ชั่วโมง 30 นาที");
-      if(!access&&!duration)add("video-content","วิดีโอบันทึกการสอนล่วงหน้า","เพิ่มหรือปรับวิดีโอบันทึกการสอนล่วงหน้าให้ครบตามเกณฑ์");
+      if(access){
+        add("video-access","เปิดปลายทางไม่ได้","แก้ไขลิงก์หรือสิทธิ์การเข้าถึง เพื่อให้ผู้ตรวจเปิดปลายทางของวิดีโอได้");
+        return issues;
+      }
+      add("video-duration","เวลารวมของวิดีโอไม่ครบตามเกณฑ์","เพิ่มลิงก์คลิปการสอน หรือเพิ่ม/ปรับวิดีโอที่เปิดได้ให้มีเวลารวมครบตามเกณฑ์ของสัปดาห์นั้น");
       return issues;
     }
     if(/podcast|คลิปเสียง/.test(text)){
