@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { applyAutomaticPublicationGate } from "./audit-quality.mjs";
+import { legacyReviewKeys, score12569Snapshot } from "./criteria-12569.mjs";
 import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDecisions } from "./review-reuse.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -269,6 +270,7 @@ function historyRunRecord(row) {
   const scoreNeedsRefresh = row.internal_status === "needs_review" && !legacy && scoreModel !== "weekly_criterion_v2";
   return {
     ...source,
+    ...(legacy ? {reviewableCriteria:legacyReviewKeys(source)} : {}),
     runId: row.run_id,
     auditedAt: row.audited_at,
     receivedAt: row.created_at,
@@ -293,6 +295,7 @@ function publicHistoryRunRecord(row) {
     receivedAt: row.created_at,
     auditorVersion: row.auditor_version || "",
     publicStatus: row.public_status || "",
+    criteriaMode: row.source_payload?.criteriaMode || "current",
     evidenceAvailable: Boolean(row.evidence_object_path)
   };
 }
@@ -505,15 +508,17 @@ async function decideAdminResult(request, runId) {
     .select("run_id,course_id,internal_status,score,passing_score,reviewable_points,audited_at,evidence_object_path,source_payload")
     .eq("run_id", runId).single();
   if (currentRunError) throw currentRunError;
-  if (currentRun.source_payload?.criteriaMode === "legacy_12569" || currentRun.source_payload?.criteria_mode === "legacy_12569") throw Object.assign(new Error("legacy_weighted_review_not_available"), { status:409 });
-  if (!["needs_review", "has_content"].includes(currentRun.internal_status) || Number(currentRun.reviewable_points || 0) <= 0) {
+  const legacy = currentRun.source_payload?.criteriaMode === "legacy_12569";
+  const legacyKeys = legacy ? legacyReviewKeys(currentRun.source_payload) : [];
+  if (!["needs_review", "has_content"].includes(currentRun.internal_status) || (legacy ? !legacyKeys.length : Number(currentRun.reviewable_points || 0) <= 0)) {
     throw Object.assign(new Error("review_decision_not_available"), { status:409 });
   }
   const minimum = Math.max(0, Number(currentRun.score || 0));
-  const maximum = Math.min(AUDIT_MAX_SCORE, minimum + Math.max(0, Number(currentRun.reviewable_points || 0)));
+  const cap = legacy ? (Number(currentRun.passing_score) === 40 ? 50 : 100) : AUDIT_MAX_SCORE;
+  const maximum = Math.min(cap, minimum + Math.max(0, Number(currentRun.reviewable_points || 0)));
   const source = currentRun.source_payload || {};
   const snapshot = source.evidenceSnapshot || {};
-  const reviewableCriteria = Array.isArray(source.reviewableCriteria) && source.reviewableCriteria.length
+  const reviewableCriteria = legacy ? legacyKeys : Array.isArray(source.reviewableCriteria) && source.reviewableCriteria.length
     ? source.reviewableCriteria
     : (snapshot.weeks || []).flatMap((week, weekIndex) => (week.criteria || [])
       .filter((item) => item.status === "needs_review")
@@ -525,8 +530,8 @@ async function decideAdminResult(request, runId) {
   const criterionKeys = reviewableCriteria.map((item) => `criterion:${item.session}:${item.criterion}`);
   const manualReviewKeys = manualKeys.map((key) => `manual:${key}`);
   const criterionLimit = manualReviewKeys.length ? Math.max(0, reviewCount - manualReviewKeys.length) : reviewCount;
-  const reviewKeys = [...criterionKeys.slice(0, criterionLimit), ...manualReviewKeys].slice(0, reviewCount);
-  if (!reviewKeys.length || reviewKeys.length !== Math.round(maximum - minimum)) {
+  const reviewKeys = legacy ? criterionKeys : [...criterionKeys.slice(0, criterionLimit), ...manualReviewKeys].slice(0, reviewCount);
+  if (!reviewKeys.length || (!legacy && reviewKeys.length !== Math.round(maximum - minimum))) {
     throw Object.assign(new Error("review_items_not_available"), { status:409 });
   }
   const submitted = Array.isArray(payload.reviewDecisions) ? payload.reviewDecisions : [];
@@ -534,9 +539,11 @@ async function decideAdminResult(request, runId) {
   if (submitted.length !== reviewKeys.length || supplied.size !== reviewKeys.length || reviewKeys.some((key) => !supplied.has(key))) {
     throw Object.assign(new Error("review_decisions_incomplete"), { status:400 });
   }
-  const confirmedScore = minimum + reviewKeys.filter((key) => supplied.get(key)).length;
+  const weighted = legacy ? score12569Snapshot(source, Object.fromEntries(supplied)) : null;
+  if (legacy && (score12569Snapshot(source).total !== minimum || weighted.passScore !== Number(currentRun.passing_score) || weighted.status === "needs_review")) throw Object.assign(new Error("legacy_score_recheck_required"), {status:409});
+  const confirmedScore = legacy ? weighted.total : minimum + reviewKeys.filter((key) => supplied.get(key)).length;
   const threshold = Number(currentRun.passing_score || 80);
-  const decision = confirmedScore >= threshold ? "pass" : "has_content";
+  const decision = (legacy ? weighted.status === "pass" : confirmedScore >= threshold) ? "pass" : "has_content";
   const reviewerNote = String(payload.note || "").trim().slice(0, 1000);
   const evidenceDecisions = Array.isArray(payload.evidenceDecisions) ? payload.evidenceDecisions.slice(0,500).map((item) => ({
     key:String(item?.key || "").slice(0,500),
@@ -555,6 +562,14 @@ async function decideAdminResult(request, runId) {
     confirmedScore, possibleScore:confirmedScore, internalStatus:decision, publicStatus:decision
   });
   resolvedSource.reviewConfirmation = reviewConfirmation;
+  if (legacy) {
+    resolvedSource.criteriaScorecard = weighted;
+    resolvedSource.evidenceSnapshot.criteriaScorecard = weighted;
+    resolvedSource.reviewableCriteria = [];
+  }
+  const {data:latestCourse,error:latestError} = await db.from("courses").select("latest_internal_run_id").eq("course_id",currentRun.course_id).single();
+  if (latestError) throw latestError;
+  if (latestCourse.latest_internal_run_id !== currentRun.run_id) throw Object.assign(new Error("review_run_not_latest"),{status:409});
   const note = `reviewer_confirmation:${actor.email}${reviewerNote ? ` | ${reviewerNote}` : ""}`;
   const { data: run, error: runError } = await db.from("audit_runs")
     .update({ internal_status:decision, public_status:decision, score:confirmedScore, reviewable_points:0, internal_note:note, source_payload:resolvedSource })
@@ -949,7 +964,7 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
   if (!activities.length) return payload;
   const { data:recentRuns, error } = await db.from("audit_runs")
     .select("run_id,score,passing_score,source_payload,created_at")
-    .eq("course_id", courseId).order("created_at", { ascending:false }).limit(10);
+    .eq("course_id", courseId).eq("criteria_mode","current").eq("semester_code",payload.semesterCode || "").order("created_at", { ascending:false }).limit(10);
   if (error) throw error;
   const previous = (recentRuns || []).find((run) => run?.source_payload?.reviewConfirmation?.decisions);
   if (!previous) return payload;
@@ -998,6 +1013,12 @@ async function submitResult(request, jobId) {
     await attachPriorEvidenceDecisions(course, submittedPayload);
   }
   const { payload, gate } = applyAutomaticPublicationGate(submittedPayload);
+  if (expectedCriteria.criteriaMode === "legacy_12569" && payload.internalStatus !== "audit_failed") {
+    if (!gate.approved) throw Object.assign(new Error("legacy_result_quality_invalid"), {status:422});
+    const weighted = score12569Snapshot(payload);
+    if (weighted.total !== Number(payload.confirmedScore) || weighted.passScore !== Number(payload.threshold) || (weighted.status === "pass" && payload.internalStatus !== "pass") || (weighted.status !== "pass" && payload.internalStatus === "pass") || (weighted.status === "needs_review" && payload.internalStatus !== "needs_review")) throw Object.assign(new Error("legacy_result_score_mismatch"), {status:422});
+    payload.reviewableCriteria = legacyReviewKeys(payload);
+  }
   const externalId = String(payload.auditId || payload.runId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
   if (!externalId || !course || !allowed.has(payload.internalStatus)) throw Object.assign(new Error("invalid_audit_result"), { status: 400 });
@@ -1008,9 +1029,10 @@ async function submitResult(request, jobId) {
   });
   if (uploadError) throw uploadError;
   const hasConfirmedScore = payload.confirmedScore != null || payload.score != null;
-  const confirmedScore = Math.max(0, Math.min(AUDIT_MAX_SCORE, Number(payload.confirmedScore ?? payload.score ?? 0)));
+  const maxScore = expectedCriteria.criteriaMode === "legacy_12569" ? (Number(payload.threshold) === 40 ? 50 : 100) : AUDIT_MAX_SCORE;
+  const confirmedScore = Math.max(0, Math.min(maxScore, Number(payload.confirmedScore ?? payload.score ?? 0)));
   const reportedPossibleScore = Number(payload.possibleScore ?? confirmedScore);
-  const reviewablePoints = Math.max(0, Math.min(AUDIT_MAX_SCORE, reportedPossibleScore) - confirmedScore);
+  const reviewablePoints = Math.max(0, Math.min(maxScore, reportedPossibleScore) - confirmedScore);
   const { data, error } = await db.rpc("record_audit_result_v2", {
     p_job_id: jobId, p_external_audit_id: externalId, p_internal_status: payload.internalStatus,
     p_score: hasConfirmedScore ? confirmedScore : null, p_passing_score: payload.threshold ?? null,
