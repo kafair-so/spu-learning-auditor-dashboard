@@ -1380,3 +1380,15 @@ Total output lines: 1971
 - ตรวจ DB แบบ read-only หลังหยุด: ไม่พบ open jobs หรือ legacy jobs/runs; ไม่มีการย้อนหรือลบผลตรวจจริง เพราะไม่ได้สร้างผลตรวจใหม่ในรอบนี้; ยังไม่ทดสอบ webhook live และไม่เริ่ม bulk audit
 
 - อัปเดตล่าสุด: ผู้ใช้ยืนยันว่า Deploy Apps Script รุ่น GR-only แล้วในโปรเจกต์เดิม; เป็นการยืนยันจากผู้ใช้ ยังไม่ได้ตรวจ endpoint ภายนอกหรือทดสอบเขียนผลจริง งานพัฒนาอื่นยังหยุดตามคำสั่งล่าสุด และห้ามดำเนินการกับ GS, AI Tutor, Podcast.
+
+
+## 81. GR-only continuation — 2026-11-18
+
+- ขอบเขต GR เท่านั้น; ห้ามเปลี่ยน GS, AI Tutor, Podcast หรือข้อมูลผลตรวจของผู้ร่วมงาน; Apps Script GR-only ผู้ใช้ยืนยัน deploy แล้ว แต่ยังไม่ทดสอบ webhook จริง
+- ตรวจ Main Data 69/1-GR: 149 รายวิชา (125 เดิม + 24 ใหม่); ไม่พบ Course ID ซ้ำหรือชนกลุ่มอื่น; นำเข้าเฉพาะ 24 รายวิชาใหม่ลง courses แบบ insert-only สำเร็จ; เก็บผลเดิม 125 รายวิชาครบ; GS คง 40 active/43 total; ไม่ได้เขียนผลตรวจจริงใน Sheet
+- API GR-only: คิว/รับงาน/ยกเลิกคิว/ยืนยันผล/ส่ง Sheet จำกัด GR; ไม่เรียก global retired-evidence cleanup เพื่อไม่แตะ GS; catalog ใหม่อ่าน GR โดยตรง; เก็บการแสดงผล GS เดิมแบบ read-only. API v49 ACTIVE, อ่านกลับ source 4 ไฟล์ตรง GitHub; ไม่มีการเปลี่ยน schema, migration หรือ auth settings
+- สูตร legacy weighted 100/50, เกณฑ์ 80/40, snapshot parity, review, empty/failed status; ซ่อม background.js ที่ต้นฉบับ staged มีข้อความ truncation จาก ZIP 0.13.34 (CRC32 ตรง 985559022) ปรับเฉพาะการส่ง job context และ empty track. Commit 0e74573ebc38f496d59e4e28b23a4b7b599b53fe
+- ทดสอบ syntax และ synthetic model checks 34 รายการผ่าน; mock Apps Script/API guards 9 รายการผ่าน (ไม่เขียนจริง); ไม่อ้าง full integration/browser test หรือชุด tests เดิมทั้งหมด
+- Workflow CI commit ce621ce9f11b2623c2daaf4db4c7dafcb6c75a6b: ตรวจ SHA/size ของ baseline 0.13.34, เพิ่ม smoke tests และแก้ EXPECTED_SIZE/EXPECTED_SHA256, รองรับ manual dispatch. Run เดิม 44233526575 ยืนยัน failure จากข้อความ truncation ใน background.js; การประกอบ ZIP โดยตรงผ่าน connector ติดข้อจำกัดจำนวน calls; จะ trigger CI ด้วย .ready หลัง commit เอกสารนี้
+- หน้าคิวหลังบ้าน GR-only และหน้า evidence weighted review commit แล้ว; ยังไม่ยืนยัน Pages ใน browser; release 0.13.35 ยังไม่พบ ณ เวลาบันทึก ต้องตรวจ release.json และหน้า Download หลัง CI; ห้ามเริ่ม bulk audit จนกว่าจะติดตั้ง Extension รุ่นที่ยืนยันแล้วและทดสอบรายวิชา GR หนึ่งวิชาจริง + V/W/X ตรงกัน
+- ห้ามรัน audit ของ GS, ห้าม clear คิว GS, ห้ามแก้ Google Sheets ส่วนอื่น; การล้าง retired evidence ทั่วระบบถูกปิดใน workflow GR จนกว่าจะมีแบบ scoped.
