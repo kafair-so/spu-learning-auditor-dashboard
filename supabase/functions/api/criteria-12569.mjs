@@ -284,6 +284,26 @@ export function reconcileLegacyResult(payload,expected){
  if(!payload.hasContent&&(baseline.total!==0||snap.weeks.some(w=>(w.criteria||[]).some(i=>PASS.has(i.status)))||snap.activities.some(i=>!["forum","url","supplementary"].includes(i.kind))))throw legacyError("legacy_no_content_mismatch");
  if(payload.internalStatus==="no_content"&&payload.hasContent)throw legacyError("legacy_no_content_mismatch");
  payload.courseProfile=expected.profile;
+ // An empty Moodle shell has section boxes but no auditable activities.
+ // A completed empty scan is not an incomplete scan of populated sections.
+ const cov=snap.coverage;
+ const originalStatus=payload.legacyScoreReconciliation?.received?.internalStatus||received.internalStatus;
+ const verifiedEmpty=originalStatus==="no_content"&&payload.hasContent===false&&received.confirmedScore===0&&baseline.total===0
+   &&cov.reachedEnd===true&&snap.activities.length===0
+   &&cov.nonForumActivityCount===0&&cov.auditableActivityCount===0
+   &&String(snap.emptyReason||"").trim()==="ไม่พบเนื้อหารายวิชา"
+   &&cov.topologyReviewRequired!==true&&Number(cov.unmappedNonForumActivityCount||0)===0
+   &&Number(cov.unresolvedClassificationCount||0)===0&&Number(cov.unresolvedScoringEvidenceCount||0)===0
+   &&snap.weeks.every(w=>w.criteria.every(i=>i.status==="fail"||i.status==="not_applicable"));
+ if(verifiedEmpty){
+   const final={...baseline,track:expected.track,total:0,totalMax:expected.track==="practical"?50:100,passScore:expected.threshold,potentialTotal:0,status:"fail"};
+   payload.criteriaScorecard=final;snap.criteriaScorecard=final;payload.confirmedScore=0;payload.possibleScore=0;payload.reviewablePoints=0;payload.reviewableCriteria=[];
+   payload.legacyReviewBlocked=false;payload.internalStatus="no_content";payload.publicStatus="no_content";
+   payload.publicResult={...(payload.publicResult||{}),status:"no_content",score:null};
+   payload.reason="successful_scan_found_no_course_content";
+   payload.legacyScoreReconciliation={received,baselineScore:baseline.total,baselineStatus:baseline.status,serverScore:0,serverStatus:"no_content",track:expected.track,changed:received.internalStatus!=="no_content",verifiedEmpty:true};
+   return payload;
+ }
  prepareLegacyReview(payload);
  const final=payload.criteriaScorecard;
  if(final.track!==expected.track||final.passScore!==expected.threshold||!Number.isFinite(final.total)||final.total<0||final.total>final.totalMax)throw legacyError("legacy_score_snapshot_invalid");
@@ -291,10 +311,10 @@ export function reconcileLegacyResult(payload,expected){
  payload.confirmedScore=final.total;
  payload.possibleScore=Math.min(final.totalMax,Math.max(final.total,final.potentialTotal));
  payload.reviewablePoints=payload.possibleScore-final.total;
- payload.internalStatus=payload.legacyReviewBlocked?"needs_review":!payload.hasContent?"no_content":final.status==="pass"?"pass":final.status==="needs_review"?"needs_review":"has_content";
+ payload.internalStatus=payload.legacyReviewBlocked||!payload.hasContent?"needs_review":final.status==="pass"?"pass":final.status==="needs_review"?"needs_review":"has_content";
  payload.publicStatus=payload.internalStatus==="needs_review"?null:payload.internalStatus;
  payload.publicResult={...(payload.publicResult||{}),status:payload.publicStatus,score:null};
- payload.reason=payload.legacyReviewBlocked?"legacy_structure_review_required":payload.internalStatus==="needs_review"?"legacy_review_can_change_outcome":payload.internalStatus==="no_content"?"successful_scan_found_no_course_content":payload.internalStatus==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
+ payload.reason=payload.legacyReviewBlocked||!payload.hasContent?"legacy_structure_review_required":payload.internalStatus==="needs_review"?"legacy_review_can_change_outcome":payload.internalStatus==="no_content"?"successful_scan_found_no_course_content":payload.internalStatus==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
  payload.legacyScoreReconciliation={received,baselineScore:baseline.total,baselineStatus:baseline.status,serverScore:final.total,serverStatus:payload.internalStatus,track:expected.track,changed:received.confirmedScore!==final.total||received.internalStatus!==payload.internalStatus};
  return payload;
 }
