@@ -128,7 +128,7 @@ export function criteria12569Decision(report = {}, previousPublicStatus = "") {
     : publicStatuses.has(previousPublicStatus) ? previousPublicStatus : "";
   return {
     internalStatus, publicStatus, confirmedScore, reviewablePoints, possibleScore,
-    threshold:scorecard.passScore, reason, scoreModel:CRITERIA_12569_SCORE_MODEL,
+    threshold:scorecard.passScore, reason, hasContent, scoreModel:CRITERIA_12569_SCORE_MODEL,
     reviewableCriteria:[], criteriaScorecard:scorecard
   };
 }
@@ -172,6 +172,7 @@ export function buildDashboardRecord(report = {}, previousPublicStatus = "", opt
           criterion:criterionIndex + 1,
           label:(weekIndex === 0 ? firstSessionLabels : weeklyLabels)[criterionIndex] || `หัวข้อที่ ${criterionIndex + 1}`,
           status:item.status || "",
+          ...(Number.isFinite(item.scoreValue)?{scoreValue:item.scoreValue}:{}),
           detail:item.detail || ""
         }))
       })),
