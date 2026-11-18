@@ -2336,7 +2336,8 @@ async function runCentralWorkerJob(payload) {
     let result;
     let reportId = null;
     if (scan.emptyCourse) {
-      result = emptyCentralResult(job, scan, {runId,version});
+      const emptyTrack = inferCourseTrack(scan.courseTitle || job.courseTitle,job.courseProfile) || normalizeCourseTrack(job.gnTrack);
+      result = emptyCentralResult({...job,gnTrack:emptyTrack}, scan, {runId,version});
     } else {
       const report = await auditCourse({
         ...scan,
