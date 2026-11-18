@@ -120,3 +120,16 @@
 .evidence-course-hero .course-title-line,.evidence-course-hero .course-profile-line{display:block;overflow-wrap:anywhere}
 .evidence-course-hero .course-profile-line{width:100%;margin-top:8px;font-size:clamp(1.08rem,1.55vw,1.38rem);line-height:1.4;letter-spacing:.01em}
 @media(max-width:760px){.evidence-course-hero .course-profile-line{font-size:1.05rem}}
+
+
+/* Published outcomes: red means confirmed fail; orange remains review only. */
+.course-outcome.fail{border-color:#ef9da4;background:var(--ev-red-soft);color:var(--ev-red)}
+.result-summary.fail{border-color:#ef9da4;border-left-color:var(--ev-red);background:var(--ev-red-soft)}
+.teacher-status.fail{border-color:#efb7bb;background:var(--ev-red-soft)}
+.teacher-status.fail .teacher-summary-icon{background:#fbdadd;color:var(--ev-red)}
+.teacher-status.review{border-color:#f1ca87;background:var(--ev-amber-soft)}
+.teacher-status.pass{border-color:#9edbc2;background:var(--ev-green-soft)}
+.reviewer-summary{margin:14px 0;padding:18px 20px;border:1px solid #b8cceb;border-left:5px solid var(--ev-blue);border-radius:14px;background:#f3f7ff;color:var(--ev-navy)}
+.reviewer-summary h3{margin:4px 0 7px;font-size:19px}
+.reviewer-summary p{margin:0;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.theme-dark .reviewer-summary{border-color:#42658e;background:#20364f;color:#e3edf9}
