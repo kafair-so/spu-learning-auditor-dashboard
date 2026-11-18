@@ -1436,3 +1436,11 @@ Total output lines: 1971
 - API เก็บ `reviewConfirmation.note` สำหรับผลใหม่ และอ่านหมายเหตุเดิมจาก `internal_note` โดยตัด reviewer/email ออกก่อนส่งทั้ง admin/public history. Source commit `e71fe695a0e09310aa870ea6bce103fa2f7cea0b`; Production API v52 ACTIVE และอ่าน source กลับยืนยัน helper, public field, stored note และ query fields ครบ.
 - UI commits `148092a4dc03e814dd087746413a1e63ec085d4b`, `45fe2e04a2f4a82553b0f3c3c3a7855152aee897`, `52fe1a720507d979cdddd09920f3e636412431ee`, `a99dc9ad78963acaaa4d1740f8aa763b16ae43c9`; cache สุดท้าย `20261118review12` commit `0664dc2dfa90e7dfc8489f42ab2617c0c65ac769`. ตรวจ Production แบบ no-store แล้ว HTML/JS/CSS ชุด review12 ขึ้นครบ.
 - ไม่แก้ผลตรวจหรือคะแนน CLB423, ไม่เขียน Main Data, ไม่เปลี่ยน GS, AI Tutor, Podcast, สูตรคะแนน หรือ Extension.
+
+
+## 87. Separate inaccessible video links from duration gaps — 2026-11-18
+
+- ผู้ใช้ยืนยันว่าปัญหาวิดีโอต้องแยกเป็นสองสาเหตุแบบไม่ซ้ำกัน: (1) มีลิงก์แต่ลิงก์เสีย ติดสิทธิ์ หรือหาปลายทางไม่พบ ให้สรุปเฉพาะ “เปิดปลายทางไม่ได้” และห้ามกล่าวว่าเวลาไม่ครบ เพราะยังอ่านเวลาไม่ได้; (2) ลิงก์เปิดได้แต่เวลารวมต่ำกว่าเกณฑ์ หรือไม่มีลิงก์คลิปการสอนในสัปดาห์นั้น ให้สรุป “เวลารวมของวิดีโอไม่ครบตามเกณฑ์”.
+- ปรับ `actionableIssues` ให้ access failure มีลำดับก่อน duration และ return ทันที จึงไม่สร้างสองหัวข้อจาก criterion เดียว; เพิ่มรูปแบบตรวจจับ `ลิงก์เสีย`, `link_error`, `เปิดปลายทางไม่ได้`, `ไม่พบปลายทาง` และสิทธิ์เข้าถึง. Access action ระบุให้แก้ลิงก์หรือสิทธิ์เท่านั้น ไม่กล่าวเรื่องเวลา.
+- ทดสอบ 3 กรณีผ่าน: CLB423 detail ที่มี 0:00 พร้อมลิงก์เสีย => เปิดปลายทางไม่ได้เพียงข้อเดียว; ลิงก์เปิดได้แต่ 42:18/1:30:00 => เวลาไม่ครบ; ไม่มีลิงก์คลิป => เวลาไม่ครบ. Source commit `88c9ea0f2f28fb340598e7b96886f6e006bc62f5`; cache `20261118review13` commit `e0455e0bcb9d5f706e19b9f6666ecc40b39fdd29`.
+- ตรวจ Production แบบ no-store แล้ว HTML และ JavaScript review13 ขึ้นครบ. ไม่เปลี่ยน API, คะแนน, ผลตรวจ, Main Data, GS, AI Tutor, Podcast หรือ Extension.
