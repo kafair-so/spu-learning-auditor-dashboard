@@ -2,7 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { applyAutomaticPublicationGate } from "./audit-quality.mjs";
-import { legacyReviewKeys, score12569Snapshot } from "./criteria-12569.mjs";
+import { legacyReviewKeys, score12569Snapshot, prepareLegacyReview, validateLegacyVideoDecisions } from "./criteria-12569.mjs";
 import { applyReviewDecisionStatuses, canonicalReviewTarget, reusePriorReviewDecisions } from "./review-reuse.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -258,6 +258,7 @@ function resolvedRunSource(row) {
       internalStatus:row.internal_status, publicStatus:row.public_status || row.internal_status
     });
   }
+  if (row.internal_status === "needs_review" && source.group === "GR") prepareLegacyReview(source);
   return source;
 }
 
@@ -279,7 +280,7 @@ function historyRunRecord(row) {
     internalStatus: row.internal_status,
     publicStatus: row.public_status || "",
     confirmedScore: score,
-    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(maxScore, score + reviewable),
+    possibleScore: score == null || scoreNeedsRefresh ? null : (legacy && row.internal_status === "needs_review" ? Number(source.possibleScore ?? score) : Math.min(maxScore, score + reviewable)),
     maxScore,
     criteriaMode: source.criteriaMode || "current",
     scoreModel,
@@ -514,14 +515,15 @@ async function decideAdminResult(request, runId) {
   if (currentRunError) throw currentRunError;
   await assertGrCourse(currentRun.course_id);
   const legacy = currentRun.source_payload?.criteriaMode === "legacy_12569";
-  const legacyKeys = legacy ? legacyReviewKeys(currentRun.source_payload) : [];
-  if (!["needs_review", "has_content"].includes(currentRun.internal_status) || (legacy ? !legacyKeys.length : Number(currentRun.reviewable_points || 0) <= 0)) {
+  const source = currentRun.source_payload || {};
+  if (legacy) prepareLegacyReview(source);
+  const legacyKeys = legacy ? legacyReviewKeys(source) : [];
+  if (!["needs_review", "has_content"].includes(currentRun.internal_status) || (legacy ? source.legacyReviewBlocked || (!legacyKeys.length && (currentRun.internal_status !== "needs_review" || source.criteriaScorecard?.status === "needs_review")) : Number(currentRun.reviewable_points || 0) <= 0)) {
     throw Object.assign(new Error("review_decision_not_available"), { status:409 });
   }
   const minimum = Math.max(0, Number(currentRun.score || 0));
   const cap = legacy ? (Number(currentRun.passing_score) === 40 ? 50 : 100) : AUDIT_MAX_SCORE;
   const maximum = Math.min(cap, minimum + Math.max(0, Number(currentRun.reviewable_points || 0)));
-  const source = currentRun.source_payload || {};
   const snapshot = source.evidenceSnapshot || {};
   const reviewableCriteria = legacy ? legacyKeys : Array.isArray(source.reviewableCriteria) && source.reviewableCriteria.length
     ? source.reviewableCriteria
@@ -536,13 +538,17 @@ async function decideAdminResult(request, runId) {
   const manualReviewKeys = manualKeys.map((key) => `manual:${key}`);
   const criterionLimit = manualReviewKeys.length ? Math.max(0, reviewCount - manualReviewKeys.length) : reviewCount;
   const reviewKeys = legacy ? criterionKeys : [...criterionKeys.slice(0, criterionLimit), ...manualReviewKeys].slice(0, reviewCount);
-  if (!reviewKeys.length || (!legacy && reviewKeys.length !== Math.round(maximum - minimum))) {
+  if (!legacy && (!reviewKeys.length || reviewKeys.length !== Math.round(maximum - minimum))) {
     throw Object.assign(new Error("review_items_not_available"), { status:409 });
   }
   const submitted = Array.isArray(payload.reviewDecisions) ? payload.reviewDecisions : [];
   const supplied = new Map(submitted.map((item) => [String(item?.key || ""), item?.accepted === true]));
   if (submitted.length !== reviewKeys.length || supplied.size !== reviewKeys.length || reviewKeys.some((key) => !supplied.has(key))) {
     throw Object.assign(new Error("review_decisions_incomplete"), { status:400 });
+  }
+  if (legacy) {
+    try { validateLegacyVideoDecisions(source, reviewKeys, Array.isArray(payload.evidenceDecisions)?payload.evidenceDecisions:[], supplied); }
+    catch(error){throw Object.assign(new Error(error.message),{status:400});}
   }
   const weighted = legacy ? score12569Snapshot(source, Object.fromEntries(supplied)) : null;
   if (legacy && (score12569Snapshot(source).total !== minimum || weighted.passScore !== Number(currentRun.passing_score) || weighted.status === "needs_review")) throw Object.assign(new Error("legacy_score_recheck_required"), {status:409});
@@ -804,7 +810,7 @@ async function adminEvidence(request, courseId, runId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return evidence(request, courseId, runId);
   const { data: run, error } = await db.from("audit_runs")
-    .select("evidence_object_path,source_payload").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
+    .select("evidence_object_path,source_payload,internal_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
   const resolvedSnapshot = run ? resolvedRunSource(run).evidenceSnapshot : null;
   if (resolvedSnapshot && typeof resolvedSnapshot === "object") return { snapshot:resolvedSnapshot };
@@ -1052,8 +1058,13 @@ async function submitResult(request, jobId) {
     const weighted = score12569Snapshot(payload);
     if (payload.internalStatus === "no_content" && (payload.hasContent !== false || weighted.total !== 0)) throw Object.assign(new Error("legacy_no_content_mismatch"),{status:422});
     if (weighted.total !== Number(payload.confirmedScore) || weighted.passScore !== Number(payload.threshold) || (weighted.status === "pass" && payload.internalStatus !== "pass") || (weighted.status !== "pass" && payload.internalStatus === "pass") || (weighted.status === "needs_review" && payload.internalStatus !== "needs_review")) throw Object.assign(new Error("legacy_result_score_mismatch"), {status:422});
-    payload.reviewableCriteria = legacyReviewKeys(payload);
-    payload.possibleScore = Math.max(weighted.total,weighted.potentialTotal);
+    prepareLegacyReview(payload);
+    if(payload.legacyReviewBlocked) { payload.internalStatus="needs_review";payload.publicStatus=null; }
+    else if(payload.internalStatus !== "no_content") {
+      const card=payload.criteriaScorecard;
+      payload.internalStatus=card.status==="pass"?"pass":card.status==="needs_review"?"needs_review":"has_content";
+      payload.publicStatus=payload.internalStatus==="needs_review"?null:payload.internalStatus;
+    }
   }
   const externalId = String(payload.auditId || payload.runId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
