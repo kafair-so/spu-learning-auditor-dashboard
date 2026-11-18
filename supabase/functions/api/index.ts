@@ -378,7 +378,7 @@ async function listAdminResults(request) {
 async function queueOverview(request) {
   await reviewer(request);
   const { data: catalog, error: catalogError } = await db.from("courses")
-    .select("course_id").eq("active", true).limit(5000);
+    .select("course_id").eq("active", true).eq("course_group","GR").limit(5000);
   if (catalogError) throw catalogError;
   const activeCourseIds = new Set((catalog || []).map(course => course.course_id));
   const { data, error } = await db.from("audit_jobs").select(
@@ -456,6 +456,7 @@ async function cancelQueuedJob(request, jobId) {
     .select("job_id,course_id,status").eq("job_id", jobId).maybeSingle();
   if (findError) throw findError;
   if (!job) throw Object.assign(new Error("queue_job_not_found"), { status:404 });
+  await assertGrCourse(job.course_id);
   if (job.status === "running") throw Object.assign(new Error("queue_job_is_running"), { status:409 });
   if (job.status !== "queued") throw Object.assign(new Error("queue_job_not_waiting"), { status:409 });
   const now = new Date().toISOString();
@@ -469,13 +470,15 @@ async function cancelQueuedJob(request, jobId) {
 
 async function clearQueuedJobs(request) {
   const actor = await reviewer(request);
+  const ids = await grCourseIds(false);
+  if (!ids.length) return {cancelled:0,runningSkipped:0};
   const now = new Date().toISOString();
   const { data, error } = await db.from("audit_jobs").update({
     status:"cancelled", last_error:`queue_cleared_by:${actor.email}`, updated_at:now, completed_at:now
-  }).eq("status", "queued").select("job_id");
+  }).eq("status", "queued").in("course_id",ids).select("job_id");
   if (error) throw error;
   const { count: running, error: countError } = await db.from("audit_jobs")
-    .select("job_id", { count:"exact", head:true }).eq("status", "running");
+    .select("job_id", { count:"exact", head:true }).eq("status", "running").in("course_id",ids);
   if (countError) throw countError;
   return { cancelled:(data || []).length, runningSkipped:Number(running || 0) };
 }
@@ -672,7 +675,7 @@ async function syncCatalog() {
     });
   }
   const courses = [...byId.values()];
-  const {data:protectedRows,error:protectedError} = await db.from("courses").select("course_id").eq("course_group","GS").in("course_id",courses.map(row=>row.course_id));
+  const {data:protectedRows,error:protectedError} = await db.from("courses").select("course_id").neq("course_group","GR").in("course_id",courses.map(row=>row.course_id));
   if (protectedError) throw protectedError;
   if (protectedRows?.length) throw Object.assign(new Error("catalog_conflicts_with_protected_gs"),{status:409});
   const { count: previousCount, error: previousError } = await db.from("courses")
@@ -693,7 +696,7 @@ async function syncCatalog() {
     course_url: course.course_url
   })).sort((a, b) => a.course_id.localeCompare(b.course_id));
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(fingerprint)));
-  const version = `sheet-${Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 20)}`;
+  const version = `sheet-gr-${Array.from(new Uint8Array(hash)).map(byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 20)}`;
   courses.forEach(course => { course.catalog_version = version; });
   for (let offset = 0; offset < courses.length; offset += 500) {
     const { error } = await db.from("courses").upsert(courses.slice(offset, offset + 500), { onConflict: "course_id" });
@@ -706,7 +709,7 @@ async function syncCatalog() {
   const staleIds = (stale || []).map(item => item.course_id);
   if (staleIds.length) {
     const { error: disableError } = await db.from("courses")
-      .update({ active: false, updated_at: now }).in("course_id", staleIds);
+      .update({ active: false, updated_at: now }).eq("course_group","GR").in("course_id", staleIds);
     if (disableError) throw disableError;
     const { error: cancelError } = await db.from("audit_jobs")
       .update({ status: "cancelled", last_error: "course_removed_from_active_catalog", updated_at: now })
@@ -823,27 +826,16 @@ async function ingestReviewerResult(request) {
   if (String(payload.group || "").toUpperCase() !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
   await assertGrCourse(course);
   const now = new Date().toISOString();
-  const { error: courseError } = await db.from("courses").upsert({
-    course_id: course,
-    course_code: payload.courseCode || null,
-    course_title: payload.courseTitle || payload.courseProfile || payload.courseCode || `Course ${course}`,
-    course_group: payload.group || null,
-    course_url: payload.courseUrl || null,
-    catalog_version: "reviewer-upload",
-    active: true,
-    last_seen_at: now,
-    updated_at: now
-  }, { onConflict: "course_id" });
-  if (courseError) throw courseError;
+  const {criteriaMode,semesterCode}=criteriaRequest(payload);
 
-  const jobKey = `manual:${course}:${externalId}`;
+  const jobKey = `manual:${course}:${criteriaMode}:${semesterCode}:${externalId}`;
   let { data: job, error: jobError } = await db.from("audit_jobs")
     .select("job_id,status").eq("job_key", jobKey).maybeSingle();
   if (jobError) throw jobError;
   if (job?.status === "completed") return { courseId: course, duplicate: true };
   if (!job) {
     const inserted = await db.from("audit_jobs").insert({
-      job_key: jobKey, course_id: course, kind: "retry", status: "running",
+      job_key: jobKey, course_id: course, kind: "retry", status: "running",criteria_mode:criteriaMode,semester_code:semesterCode,
       priority: 100, claimed_by: user.email, claimed_at: now,
       lease_expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(), attempts: 1
     }).select("job_id,status").single();
@@ -1000,6 +992,33 @@ async function attachPriorEvidenceDecisions(courseId, payload) {
   return payload;
 }
 
+async function grCourseIds(activeOnly = true) {
+  let query = db.from("courses").select("course_id").eq("course_group","GR");
+  if (activeOnly) query = query.eq("active",true);
+  const {data,error} = await query.limit(5000);
+  if (error) throw error;
+  return (data || []).map(row=>row.course_id);
+}
+
+async function claimGrJob(worker) {
+  const ids = await grCourseIds();
+  if (!ids.length) return null;
+  for (let attempt=0;attempt<4;attempt++) {
+    const now = new Date().toISOString();
+    const eligible = `status.eq.queued,and(status.eq.running,lease_expires_at.lt.${now})`;
+    const {data:candidate,error:findError} = await db.from("audit_jobs").select("job_id,course_id,attempts").in("course_id",ids).or(eligible).order("priority",{ascending:false}).order("created_at",{ascending:true}).limit(1).maybeSingle();
+    if (findError) throw findError;
+    if (!candidate) return null;
+    await assertGrCourse(candidate.course_id);
+    const {data,error} = await db.from("audit_jobs").update({
+      status:"running",claimed_by:worker,claimed_at:now,lease_expires_at:new Date(Date.now()+45*60000).toISOString(),attempts:Number(candidate.attempts||0)+1,updated_at:now
+    }).eq("job_id",candidate.job_id).eq("course_id",candidate.course_id).or(eligible).select("*").maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+  }
+  return null;
+}
+
 async function assertGrCourse(courseId) {
   const {data,error} = await db.from("courses").select("course_group").eq("course_id",courseId).maybeSingle();
   if (error) throw error;
@@ -1019,6 +1038,7 @@ async function submitResult(request, jobId) {
   submittedPayload.criteriaMode = expectedCriteria.criteriaMode;
   submittedPayload.semesterCode = expectedCriteria.semesterCode;
   const course = String(submittedPayload.courseId || "").trim();
+  if (String(submittedPayload.group || "").toUpperCase() !== "GR") throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
   if (course !== String(jobMeta.course_id)) throw Object.assign(new Error("audit_result_course_mismatch"), { status:409 });
   await assertGrCourse(course);
   normalizeCloudAudioEvidence(submittedPayload);
@@ -1032,6 +1052,7 @@ async function submitResult(request, jobId) {
     const weighted = score12569Snapshot(payload);
     if (weighted.total !== Number(payload.confirmedScore) || weighted.passScore !== Number(payload.threshold) || (weighted.status === "pass" && payload.internalStatus !== "pass") || (weighted.status !== "pass" && payload.internalStatus === "pass") || (weighted.status === "needs_review" && payload.internalStatus !== "needs_review")) throw Object.assign(new Error("legacy_result_score_mismatch"), {status:422});
     payload.reviewableCriteria = legacyReviewKeys(payload);
+    payload.possibleScore = Math.max(weighted.total,weighted.potentialTotal);
   }
   const externalId = String(payload.auditId || payload.runId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
@@ -1057,7 +1078,7 @@ async function submitResult(request, jobId) {
     p_evidence_sha256: payload.evidenceSha256 || null, p_source_payload: payload
   });
   if (error) throw error;
-  await purgeRetiredEvidence().catch(error => console.warn("retired_evidence_cleanup_failed", error));
+  // Global retired-evidence cleanup is intentionally not invoked by GR-only work.
   const { data:sheetCourse, error:sheetCourseError } = await db.from("courses").select("course_group").eq("course_id", course).single();
   if (sheetCourseError) throw sheetCourseError;
   const { data:published, error:publishedError } = await db.from("courses").select("published_run_id,public_status").eq("course_id", course).single();
@@ -1148,12 +1169,11 @@ Deno.serve(async request => {
       return respond(request, 200, await ingestReviewerResult(request));
     }
     if (request.method === "POST" && parts.join("/") === "v1/worker/jobs/claim") {
-      const user = await reviewer(request); const { data, error } = await db.rpc("claim_next_audit_job", { p_worker: user.email, p_lease_minutes: 45 });
-      if (error) throw error;
+      const user = await reviewer(request); const data = await claimGrJob(user.email);
       if (!data?.job_id) return respond(request, 200, { job:null });
       const { data:course, error:courseError } = await db.from("courses")
         .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
-        .eq("course_id", data.course_id).single();
+        .eq("course_id", data.course_id).eq("course_group","GR").single();
       if (courseError) throw courseError;
       return respond(request, 200, { job:{...data,course} });
     }
