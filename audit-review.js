@@ -441,6 +441,7 @@
     const syncQueueScope=()=>{if(!queueScope)return;const labels={course:"ตรวจเฉพาะรายวิชา",gr:"ตรวจรายวิชา GR",gs:"ตรวจรายวิชา GS",all:"ตรวจรายวิชาทั้งหมด"};if(courseScope)courseScope.hidden=queueScope.value!=="course";if(queueActionLabel)queueActionLabel.textContent=labels[queueScope.value]||labels.course;$("queueMissing").hidden=queueScope.value==="course";};
     queueScope?.addEventListener("change",syncQueueScope);syncQueueScope();
     if(queueScope&&!document.querySelector(".scope-segments")){const segments=document.createElement("div");segments.className="scope-segments";const labels={course:["รายวิชาเดียว","One course"],gr:["เฉพาะ GR","GR only"],gs:["เฉพาะ GS","GS only"],all:["ทุกวิชา","All courses"]};segments.innerHTML=Object.entries(labels).map(([value,label])=>`<button class="scope-segment" type="button" data-scope-value="${value}">${window.OOEI18n?.t(...label)||label[0]}</button>`).join("");queueScope.after(segments);const syncSegments=()=>segments.querySelectorAll("[data-scope-value]").forEach(button=>{const selected=button.dataset.scopeValue===queueScope.value;button.classList.toggle("active",selected);button.setAttribute("aria-pressed",String(selected));});segments.addEventListener("click",event=>{const button=event.target.closest("[data-scope-value]");if(!button)return;queueScope.value=button.dataset.scopeValue;queueScope.dispatchEvent(new Event("change"));syncSegments();});queueScope.addEventListener("change",syncSegments);window.addEventListener("ooe:languagechange",()=>{segments.querySelectorAll("[data-scope-value]").forEach(button=>button.textContent=window.OOEI18n.t(...labels[button.dataset.scopeValue]));});syncSegments();}
+    if(queueScope&&!$("queueCriteriaMode")){const card=document.createElement("div");card.className="scope-card";card.innerHTML='<div><strong>เลือกเกณฑ์การตรวจ</strong><p class="muted">เกณฑ์ผ่อนปรนใช้เฉพาะภาค 1/2569 และเก็บผลตรวจแยกจากเกณฑ์ปกติ</p></div><select id="queueCriteriaMode" aria-label="เลือกเกณฑ์การตรวจ"><option value="current">เกณฑ์ปกติของ Dashboard</option><option value="legacy_12569">เกณฑ์ผ่อนปรน ภาค 1/2569</option></select>';queueScope.closest(".scope-card")?.after(card);}
     const fileInput=$("files"),fileDrop=$("fileDrop"),fileStatus=$("fileDropStatus");
     const showFiles=()=>{const count=fileInput?.files?.length||0;if(fileStatus)fileStatus.textContent=count?`เลือกแล้ว ${count.toLocaleString(locale())} ไฟล์ · ${[...fileInput.files].map(file=>file.name).join(", ")}`:"รองรับไฟล์ JSON หลายไฟล์พร้อมกัน";};
     fileInput?.addEventListener("change",showFiles);
@@ -541,7 +542,8 @@
       const originalLabel=requeue.textContent,courseId=requeue.dataset.queueCourse;
       try{
         requeue.disabled=true;requeue.textContent="กำลังเพิ่มคิว…";
-        const result=await AuditApi.queueCourse(courseId);
+        const criteriaMode=$("queueCriteriaMode")?.value||"current";
+        const result=await AuditApi.queueCourse(courseId,criteriaMode,criteriaMode==="legacy_12569"?"1/2569":"");
         const reason={course_is_running:"กำลังตรวจอยู่",course_already_queued:"อยู่ในคิวแล้ว",course_not_available:"ไม่พบในบัญชีรายวิชา"}[result.reason]||result.reason||"อยู่ในคิวแล้ว";
         requeue.textContent=result.queued?"✓ เพิ่มเข้าคิวแล้ว":reason;
         requeue.classList.toggle("primary",Boolean(result.queued));
@@ -572,7 +574,7 @@
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
-    try{const scope=$("queueScope")?.value||"gr";const labels={gr:"รายวิชา GR",gs:"รายวิชา GS",all:"รายวิชาทั้งหมด"};setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=scope==="all"?await AuditApi.refreshAll():await AuditApi.queueSelected(scope);setQueueMessage(scope==="all"?`สร้างคิวตรวจรายวิชาทั้งหมดแล้ว · รหัสชุด ${result.batchId||"—"}`:`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"gr";const labels={gr:"รายวิชา GR",gs:"รายวิชา GS",all:"รายวิชาทั้งหมด"};const criteriaMode=$("queueCriteriaMode")?.value||"current";const semesterCode=criteriaMode==="legacy_12569"?"1/2569":"";setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope,criteriaMode,semesterCode);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว · ${criteriaMode==="legacy_12569"?"เกณฑ์ผ่อนปรน 1/2569":"เกณฑ์ปกติ"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("queueCourseAdd")?.addEventListener("click",async()=>{
@@ -580,7 +582,8 @@
       const course=selectedCourseFromPicker();
       setQueueBusy(true,`กำลังเพิ่ม ${course.courseCode||course.courseId} เข้าคิวตรวจ…`);
       if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");
-      const result=await AuditApi.queueCourse(course.courseId);
+      const criteriaMode=$("queueCriteriaMode")?.value||"current";
+      const result=await AuditApi.queueCourse(course.courseId,criteriaMode,criteriaMode==="legacy_12569"?"1/2569":"");
       setQueueMessage(result.queued?`เพิ่ม ${course.courseCode||course.courseId} เข้าคิวตรวจแล้ว`:`ยังไม่เพิ่มคิว: ${result.reason||"รายวิชานี้กำลังอยู่ในคิว"}`);
       if(result.queued)$("queueCourseSearch").value="";
       await loadQueueOverview();if(workerRunning)scheduleWorker(0);
