@@ -21,7 +21,10 @@
       maxScore:first(record.maxScore,record.max_score,110),
       threshold:first(record.threshold,record.passingScore,record.passing_score,null),
       auditedAt:first(record.auditedAt,record.audited_at,""),
+      receivedAt:first(record.receivedAt,record.received_at,record.createdAt,record.created_at,""),
       publishedAt:first(record.publishedAt,record.published_at,""),
+      semesterCode:first(record.semesterCode,record.semester_code,""),
+      reviewerSummary:first(record.reviewerSummary,record.reviewer_summary,""),
       runId:first(record.runId,record.run_id,record.publishedRunId,record.published_run_id,""),
       auditorVersion:first(record.auditorVersion,record.auditor_version,""),
       evidenceAvailable:Boolean(first(record.evidenceAvailable,record.evidence_available,false))
