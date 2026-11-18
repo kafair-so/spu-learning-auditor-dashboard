@@ -114,3 +114,9 @@
   .gr-legacy-review .mock-facts .fact strong{font-size:21px}
   .gr-legacy-review .component-tile{grid-template-columns:40px minmax(0,1fr)}
 }
+
+
+/* Course heading: keep the profile complete on a separate line. */
+.evidence-course-hero .course-title-line,.evidence-course-hero .course-profile-line{display:block;overflow-wrap:anywhere}
+.evidence-course-hero .course-profile-line{width:100%;margin-top:8px;font-size:clamp(1.08rem,1.55vw,1.38rem);line-height:1.4;letter-spacing:.01em}
+@media(max-width:760px){.evidence-course-hero .course-profile-line{font-size:1.05rem}}
