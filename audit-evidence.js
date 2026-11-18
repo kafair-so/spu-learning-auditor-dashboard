@@ -168,14 +168,13 @@
   };
 
   function render(selected,history,superAdmin=false){
-    const courseCode=String(selected.courseCode||"").trim(),courseProfile=String(selected.courseProfile||"").trim().replace(/^\[\s*/,"").replace(/\s*\]$/,"");
-    let courseTitle=String(selected.courseTitle||"").trim();
-    if(courseProfile){
-      const bracketedProfile=`[${courseProfile}]`;
-      if(courseTitle.endsWith(bracketedProfile))courseTitle=courseTitle.slice(0,-bracketedProfile.length).trim();
-      else if(courseTitle.endsWith(courseProfile))courseTitle=courseTitle.slice(0,-courseProfile.length).replace(/\[\s*$/,"").trim();
-    }
-    const courseName=[...new Set([courseCode,courseTitle||(!courseProfile?selected.courseProfile:"")].filter(Boolean))].join(" · ")||String(selected.courseId||"");
+    const courseCode=String(selected.courseCode||"").trim();
+    const rawCourseTitle=String(selected.courseTitle||selected.courseProfile||"").trim();
+    const rawCourseProfile=String(selected.courseProfile||"").trim();
+    const profileMatch=rawCourseTitle.match(/\[([^\[\]]+)\]\s*$/)||rawCourseProfile.match(/\[([^\[\]]+)\]\s*$/);
+    const courseProfile=profileMatch?profileMatch[1].trim():rawCourseProfile.replace(/^\[\s*/,"").replace(/\s*\]$/,"");
+    const courseTitle=rawCourseTitle.replace(/\s*\[[^\[\]]+\]\s*$/,"").trim();
+    const courseName=[...new Set([courseCode,courseTitle].filter(Boolean))].join(" · ")||String(selected.courseId||"");
     $("course").innerHTML=`<span class="course-title-line">${esc(courseName)}</span>${courseProfile?`<span class="course-profile-line">[${esc(courseProfile)}]</span>`:""}`;
     if(selected.courseUrl)$("courseLink").innerHTML=`<a href="${esc(selected.courseUrl)}" target="_blank" rel="noopener">เปิดรายวิชา ↗</a>`;
     if(!history.length){$("runs").innerHTML='<section class="panel empty-note">รายวิชานี้ยังไม่มีผลการตรวจในระบบ</section>';return;}
