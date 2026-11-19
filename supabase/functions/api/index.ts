@@ -332,7 +332,7 @@ function resolvedRunSource(row) {
       internalStatus:row.internal_status, publicStatus:row.public_status || row.internal_status
     });
   }
-  if (row.internal_status === "needs_review" && source.group === "GR") {
+  if (row.internal_status === "needs_review" && source.group === "GR" && !(source.criteriaMode==="legacy_12569"&&Number(row.passing_score)===80)) {
     prepareLegacyReview(source);
     if(source.criteriaMode==="legacy_12569"&&(!Number.isFinite(Number(source.confirmedScore))||Number(source.confirmedScore)!==Number(row.score))){
       source.legacyReviewBlocked=true;source.legacyRecommendedStatus="audit_failed";source.reviewableCriteria=[];source.possibleScore=Number(row.score||0);
@@ -1258,6 +1258,8 @@ async function submitResult(request, jobId) {
       console.info("legacy_result_reconciled",JSON.stringify({jobId,courseId:course,...payload.legacyScoreReconciliation}));
     }
   }
+  // Technical failures remain failures; normalize only the legacy theory threshold.
+  if(expectedCriteria.criteriaMode==="legacy_12569"&&expectedCriteria.semesterCode==="1/2569"&&payload.internalStatus==="audit_failed"&&Number(payload.threshold)===80)payload.threshold=70;
   const externalId = String(payload.auditId || payload.runId || "").trim();
   const allowed = new Set(["pass", "needs_review", "has_content", "no_content", "audit_failed"]);
   if (!externalId || !course || !allowed.has(payload.internalStatus)) throw Object.assign(new Error("invalid_audit_result"), { status: 400 });

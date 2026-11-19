@@ -21,8 +21,8 @@
     ["backup","การสำรองเนื้อหา","จัดเก็บเนื้อหาและวิดีโอตามช่วงเวลาที่มหาวิทยาลัยกำหนด"]
   ];
   const isLegacy=run=>run.criteriaMode==="legacy_12569";
-  const resultTone=run=>{
-    const status=run?.publicStatus||run?.internalStatus||"audit_failed";
+  const resultTone=(run,admin=false)=>{
+    const status=(admin?run?.internalStatus||run?.publicStatus:run?.publicStatus||run?.internalStatus)||"audit_failed";
     if(status==="pass")return"pass";
     if(status==="needs_review")return"review";
     if(status==="has_content")return run?.publicStatus==="has_content"?"fail":"review";
@@ -191,7 +191,7 @@
 
   const setCourseOutcome=(run,superAdmin)=>{
     const node=$("courseOutcome");if(!node||!run)return;
-    const status=run.publicStatus||run.internalStatus||"audit_failed",tone=resultTone(run),label=superAdmin&&isLegacy(run)&&status==="needs_review"?(run.legacyReviewBlocked?"ต้องตรวจสอบการอ่านข้อมูล":reviewCandidates(run).length?`รอยืนยัน ${reviewCandidates(run).length} รายการ`:"พร้อมบันทึกผลตามคะแนน"):AuditBridge.LABELS[status]||status;
+    const status=(superAdmin?run.internalStatus||run.publicStatus:run.publicStatus||run.internalStatus)||"audit_failed",tone=resultTone(run,superAdmin),label=superAdmin&&isLegacy(run)&&status==="needs_review"?(run.legacyReviewBlocked?"ต้องตรวจสอบการอ่านข้อมูล":reviewCandidates(run).length?`รอยืนยัน ${reviewCandidates(run).length} รายการ`:"พร้อมบันทึกผลตามคะแนน"):AuditBridge.LABELS[status]||status;
     node.hidden=false;node.className=`course-outcome ${tone}`;
     node.innerHTML=`<span>ผลการตรวจล่าสุด</span><strong>${esc(label)}</strong><small>${superAdmin?"มุมมองผู้ตรวจ · มีรายละเอียดและหลักฐานครบถ้วน":"มุมมองผู้สอน · แสดงเฉพาะผลที่เผยแพร่และสิ่งที่ต้องแก้ไข"}</small>`;
   };
@@ -265,7 +265,7 @@
       const prioritySection=legacyAdmin&&priorityCards.length?`<section class="priority-panel"><div class="priority-head"><div><span class="evidence-eyebrow">ควรดูเป็นอันดับแรก</span><h2>รายการที่ต้องดำเนินการ</h2></div><span class="priority-count">${priorityCards.length} รายการ</span></div><div class="priority-grid">${priorityCards.join("")}</div>${detailDrawers.some(d=>d.includes("data-video-time"))?`<button type="button" class="secondary" data-reject-all-videos>ไม่นำลิงก์วิดีโอที่รอยืนยันทั้งหมดมานับ</button><p class="muted">ใช้เฉพาะเมื่อได้ตรวจสอบแล้วว่าลิงก์เหล่านี้ไม่สามารถนำมาคิดคะแนนได้จริง การเลือกนี้ยังไม่บันทึกผล</p>`:""}</section>`:"";
       const manualCandidates=reviewCandidates(run).filter(item=>item.kind==="manual");
       const manualRows=superAdmin&&index===0&&manualCandidates.length?`<section class="manual-review"><h3>ตารางที่ 3 — ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน</h3><p class="muted">มีครบ 5 ข้อ ข้อละ 1 คะแนน และระบบจะรวมคะแนนจากตัวเลือกนี้ทันที</p><ol>${manualCandidates.map(item=>`<li><strong>${esc(item.label)}</strong><div class="muted">${esc(item.detail)}</div>${reviewChoice(item.key,item.label,true)}</li>`).join("")}</ol></section>`:"";
-      const status=run.publicStatus||run.internalStatus,tone=resultTone(run);
+      const status=superAdmin?run.internalStatus||run.publicStatus:run.publicStatus||run.internalStatus,tone=resultTone(run,superAdmin);
       const maximum=Number.isFinite(Number(run.maxScore))?Number(run.maxScore):110;
       const possible=Number.isFinite(Number(run.possibleScore))?Math.min(maximum,Number(run.possibleScore)):null;
       const explanation=statusExplanation(status,run,superAdmin),quality=qualityMessage(run);

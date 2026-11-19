@@ -1,6 +1,7 @@
 export const CRITERIA_12569_MODE = "legacy_12569";
 export const CRITERIA_12569_SEMESTER = "1/2569";
 export const CRITERIA_12569_SCORE_MODEL = "legacy_course_type_v1";
+export const LEGACY_THEORY_PASS_SCORE = 70; // GR semester 1/2569 only
 
 const PASS = new Set(["pass", "pass_tolerance"]);
 const pass = status => PASS.has(status) ? 1 : 0;
@@ -80,7 +81,7 @@ function theoryScore(weeks, coverage) {
     + activities.reduce((sum, status) => sum + possible(status), 0)
   );
   const pending = structurePending(coverage) || [first[0]?.status, first[1]?.status, ...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
-  return {...parts, total, totalMax:100, passScore:80, potentialTotal:Math.max(total,potential===79.5?80:potential), pending};
+  return {...parts, total, totalMax:100, passScore:LEGACY_THEORY_PASS_SCORE, potentialTotal:Math.max(total,potential===79.5?80:potential), pending};
 }
 
 function practicalScore(weeks, coverage) {
@@ -323,7 +324,7 @@ export function parseLegacyCourseProfile(value){
  const profiles=[...new Set(matches.map(m=>m[1].toUpperCase()))];
  if(profiles.length!==1)return null;
  const profile=profiles[0],suffix=profile.match(/\((T|TT|L|LL)\)$/)[1];
- return {profile,track:suffix.startsWith("L")?"practical":"theory",threshold:suffix.startsWith("L")?40:80};
+ return {profile,track:suffix.startsWith("L")?"practical":"theory",threshold:suffix.startsWith("L")?40:LEGACY_THEORY_PASS_SCORE};
 }
 const legacyError=(message,status=422)=>Object.assign(new Error(message),{status});
 
@@ -333,7 +334,10 @@ const legacyError=(message,status=422)=>Object.assign(new Error(message),{status
 export function reconcileLegacyResult(payload,expected){
  if(!expected||payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569")throw legacyError("legacy_course_type_not_verified",409);
  const snap=payload.evidenceSnapshot,card=payload.criteriaScorecard,sc=snap?.criteriaScorecard;
- if(!card||card.track!==expected.track||sc?.track!==expected.track||Number(payload.threshold)!==expected.threshold)throw legacyError("legacy_course_track_mismatch",409);
+ // Compatible with retained/in-flight Extension versions that still report 80.
+ const suppliedThreshold=Number(payload.threshold);
+ const validThreshold=suppliedThreshold===expected.threshold||(expected.track==="theory"&&expected.threshold===LEGACY_THEORY_PASS_SCORE&&suppliedThreshold===80);
+ if(!card||card.track!==expected.track||sc?.track!==expected.track||!validThreshold)throw legacyError("legacy_course_track_mismatch",409);
  for(const value of [payload.courseProfile,payload.courseTitle]){
   const parsed=parseLegacyCourseProfile(value);
   if(parsed&&parsed.profile!==expected.profile)throw legacyError("legacy_course_profile_mismatch",409);
@@ -370,6 +374,7 @@ export function reconcileLegacyResult(payload,expected){
  if(!payload.hasContent&&(baseline.total!==0||snap.weeks.some(w=>(w.criteria||[]).some(i=>PASS.has(i.status)))||snap.activities.some(i=>!["forum","url","supplementary"].includes(i.kind))))throw legacyError("legacy_no_content_mismatch");
  if(payload.internalStatus==="no_content"&&payload.hasContent)throw legacyError("legacy_no_content_mismatch");
  payload.courseProfile=expected.profile;
+ payload.threshold=expected.threshold;
  if(!Number.isInteger(Number(expected.credits))||Number(expected.credits)<1)throw legacyError("legacy_course_credits_not_verified",409);
  payload.courseCredits=Number(expected.credits);
  // An empty Moodle shell has section boxes but no auditable activities.
