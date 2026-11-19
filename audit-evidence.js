@@ -143,7 +143,8 @@
     const nominal=legacyVideo?c*(first?900:1800):durationSecondsFromDetail(detail,fallbackRequired);
     const required=legacyVideo?nominal-(first?(c===1?3:c===2?5:10):(c===1?5:c===2?10:20))*60:nominal;
     const seen=new Set(),items=(activities||[]).map((item,activityIndex)=>({item,activityIndex})).filter(({item})=>{
-      if(!spec.kinds.includes(item?.kind)||activitySession(item)!==Number(session))return false;
+      const mappedSession=legacy&&item&&Object.prototype.hasOwnProperty.call(item,"auditSession")?Number(item.auditSession)||0:activitySession(item);
+      if(!spec.kinds.includes(item?.kind)||mappedSession!==Number(session))return false;
       if(legacy&&!readOnly&&spec.kinds.includes("video")&&(item.reviewExcluded||item.countingEligible===false))return false;
       return !spec.titlePattern||spec.titlePattern.test(`${item.title||""} ${item.groupContext||""}`);
     }).map(({item,activityIndex})=>{
