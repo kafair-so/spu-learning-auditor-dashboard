@@ -18,7 +18,8 @@ downloads/dashboard/<version>/parts/extension-<version>.part<number>
 - 0.13.33
 - 0.13.34
 - 0.13.35
-- 0.13.37 (รุ่นที่หน้า Download ใช้งาน)
+- 0.13.37
+- 0.13.38 (รุ่นที่หน้า Download ใช้งาน)
 
 หน้า `download-extension.html` จะอ่านทุก part ของรุ่นปัจจุบันจากโฟลเดอร์นี้ ตรวจขนาดรวมและ SHA-256 แล้วจึงประกอบเป็น ZIP ให้ผู้ใช้
 
