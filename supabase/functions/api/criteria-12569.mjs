@@ -247,6 +247,22 @@ export function prepareLegacyReview(payload={}){
  payload.legacyReviewBlocked=payload.coverageComplete!==true||structurePending(coverage);
  payload.reviewableCriteria=payload.legacyReviewBlocked?[]:legacyReviewKeys(payload);
  payload.legacyRecommendedStatus=payload.legacyReviewBlocked?"audit_failed":weighted.status==="pass"?"pass":weighted.status==="needs_review"&&payload.reviewableCriteria.length?"needs_review":weighted.status==="fail"?"has_content":"audit_failed";
+ // Diagnostic, not a publication decision: show the maximum using the times
+ // already read, while leaving legitimate manual duration corrections allowed.
+ delete payload.legacyObservedPotentialScore;
+ if(payload.legacyRecommendedStatus==="needs_review"){
+   const decisions={};let hasVideo=false;
+   for(const key of payload.reviewableCriteria){
+     const session=Number(key.session),criterion=Number(key.criterion),id="criterion:"+session+":"+criterion;
+     if(criterion===(session===1?4:3)){
+       hasVideo=true;
+       const item=snap.weeks.find(w=>Number(w.session)===session)?.criteria.find(i=>Number(i.criterion)===criterion);
+       const total=legacyVideoLinks(payload,session).filter(i=>legacyVideoMode(i)!=="excluded").reduce((sum,i)=>sum+foundVideoSeconds(i),0);
+       decisions[id]=Boolean(item)&&total>=legacyVideoRequired(item,session);
+     }else decisions[id]=true;
+   }
+   if(hasVideo)payload.legacyObservedPotentialScore=score12569Snapshot(payload,decisions).total;
+ }
  return payload;
 }
 export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
