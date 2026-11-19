@@ -1,0 +1,141 @@
+name: Build Dashboard Extension 0.13.39
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - release-src/dashboard-0.13.39/.ready
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild from the verified 0.13.38 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re, zipfile, shutil, hashlib
+          parts=sorted(Path("downloads/dashboard/0.13.38/parts").glob("extension-0.13.38.part*"),key=lambda p:int(re.search(r"part(\d+)$",p.name).group(1)))
+          archive=Path("SPU-Learning-Auditor-Dashboard-0.13.38.zip")
+          data=b"".join(p.read_bytes() for p in parts)
+          assert len(parts)==24 and len(data)==9330120 and hashlib.sha256(data).hexdigest().upper()=="7A16A3A944C68920E85439CB5E0BF8DF601BF5049C6009274A3D3C18745FBAC1", "0.13.38 baseline verification failed"
+          archive.write_bytes(data)
+          build=Path("build/dashboard-0.13.39")
+          shutil.rmtree(build,ignore_errors=True)
+          build.mkdir(parents=True)
+          with zipfile.ZipFile(archive) as z:z.extractall(build)
+          for source in Path("release-src/dashboard-0.13.39").glob("*"):
+              if source.name==".ready":continue
+              shutil.copy2(source,build/source.name)
+          PY
+          python release-tools/patch-dashboard-0.13.39.py
+
+      - name: Verify the staged runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p "require('./build/dashboard-0.13.39/manifest.json').version")" = "0.13.39"
+          node --check build/dashboard-0.13.39/criteria-12569.js
+          node --check build/dashboard-0.13.39/dashboard-export.js
+          node --check build/dashboard-0.13.39/central-worker-contract.js
+          node --check build/dashboard-0.13.39/background.js
+          node --check build/dashboard-0.13.39/gr-instructor-context.js
+          node release-tools/test-dashboard-0.13.39.mjs
+          node --check build/dashboard-0.13.39/legacy-topology-repair.js
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {repairLegacyCourseTopology} from './build/dashboard-0.13.39/legacy-topology-repair.js';
+          const rows=[{key:'intro',section:'Welcome',chosenSession:1},...Array.from({length:15},(_,i)=>({key:'s'+i,section:'Week '+i+' : ครั้งที่ '+(i+1)+' Topic',declaredSession:i,chosenSession:i===0?2:i}))];
+          const topology={mappingRows:rows,mapping:new Map(rows.map(r=>[r.key,r.chosenSession])),reviewRequired:true,safetyIssues:['ลำดับครั้งเรียนย้อนกลับที่ Week 1 : ครั้งที่ 2 Topic'],expectedSessions:15,confidence:'high'};
+          const payload={courseUrl:'https://dlearning.spu.ac.th/course/view.php?id=21399',courseType:'GR',criteriaMode:'legacy_12569',semesterCode:'1/2569',coverage:{reachedEnd:true,structurallyComplete:true}};
+          assert.equal(repairLegacyCourseTopology(topology,payload,[],a=>a.key),true);
+          assert.equal(topology.mapping.get('s14'),15);
+          assert.equal(topology.reviewRequired,false);
+          JS
+          grep -q "criteria12569Decision" build/dashboard-0.13.39/dashboard-export.js
+          grep -q "buildDashboardRecord(saved, \"\", job)" build/dashboard-0.13.39/background.js
+          node --input-type=module <<'JS'
+          import assert from "node:assert/strict";
+          import { criteria12569Scorecard, legacyReviewKeys, score12569Snapshot } from "./build/dashboard-0.13.39/criteria-12569.js";
+          import { buildDashboardRecord } from "./build/dashboard-0.13.39/dashboard-export.js";
+          import { emptyCentralResult } from "./build/dashboard-0.13.39/central-worker-contract.js";
+          for (const track of ["theory","practical"]) {
+            const max=track==="practical"?50:100, threshold=track==="practical"?40:80;
+            const report={courseType:"GR",gnTrack:track,weeks:Array.from({length:15},(_,i)=>({section:`Session ${i+1}`,checklist:Array.from({length:7},()=>({status:"pass"}))})),coverage:{reachedEnd:true,structurallyComplete:true}};
+            const opts={criteriaMode:"legacy_12569",semesterCode:"1/2569"};
+            assert.equal(criteria12569Scorecard(report).total,max);
+            report.weeks[0].checklist[4].status="fail";report.weeks[1].checklist[3].status="fail";report.weeks[0].checklist[6].status="fail";
+            assert.equal(criteria12569Scorecard(report).total,max);
+            report.weeks[0].checklist[1].status="needs_review";
+            const payload=buildDashboardRecord(report,"",opts);
+            assert.equal(legacyReviewKeys(payload).length,1);
+            assert.equal(score12569Snapshot(payload,{"criterion:1:2":true}).total,max);
+            const empty=emptyCentralResult({courseType:"GR",gnTrack:track,...opts});
+            assert.equal(empty.threshold,threshold);
+            assert.equal(score12569Snapshot(empty).total,0);
+          }
+          JS
+
+      - name: Package, split and update the download page
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json, re, shutil, zipfile
+          version="0.13.39"
+          build=Path("build")/f"dashboard-{version}"
+          archive=Path(f"SPU-Learning-Auditor-Dashboard-{version}.zip")
+          archive.unlink(missing_ok=True)
+          with zipfile.ZipFile(archive,"w",zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+              for path in sorted(build.rglob("*")):
+                  if path.is_file():z.write(path,path.relative_to(build).as_posix())
+          with zipfile.ZipFile(archive) as z:
+              bad=z.testzip()
+              if bad:raise SystemExit(f"corrupt member: {bad}")
+          data=archive.read_bytes()
+          digest=hashlib.sha256(data).hexdigest().upper()
+          target=Path("downloads/dashboard")/version/"parts"
+          shutil.rmtree(target.parent,ignore_errors=True)
+          target.mkdir(parents=True)
+          size=400000
+          chunks=[data[i:i+size] for i in range(0,len(data),size)]
+          entries=[]
+          for index,chunk in enumerate(chunks,1):
+              name=f"extension-{version}.part{index}"
+              (target/name).write_bytes(chunk)
+              entries.append(f'      {{url:"downloads/dashboard/{version}/parts/{name}",size:{len(chunk)}}}')
+          page=Path("download-extension.html")
+          text=page.read_text(encoding="utf-8").replace("0.13.38",version)
+          text=re.sub(r'    const PARTS=\[.*?\n    \];','    const PARTS=[\n'+',\n'.join(entries)+'\n    ];',text,flags=re.S)
+          text=re.sub(r"const EXPECTED_SIZE=\d+",f"const EXPECTED_SIZE={len(data)}",text)
+          text=re.sub(r'const EXPECTED_SHA256="[A-F0-9]+"',f'const EXPECTED_SHA256="{digest}"',text)
+          page.write_text(text,encoding="utf-8")
+          admin=Path("audit-review.html")
+          at=admin.read_text(encoding="utf-8")
+          assert at.count("0.13.38")>=3, "admin release marker missing"
+          admin.write_text(at.replace("0.13.38",version),encoding="utf-8")
+          readme=Path("downloads/dashboard/README.md")
+          rt=readme.read_text(encoding="utf-8").replace("- 0.13.38 (รุ่นที่หน้า Download ใช้งาน)","- 0.13.38\n- 0.13.39 (รุ่นที่หน้า Download ใช้งาน)")
+          readme.write_text(rt,encoding="utf-8")
+          Path("downloads/dashboard/0.13.39/release.json").write_text(json.dumps({"version":version,"size":len(data),"parts":len(chunks),"sha256":digest},ensure_ascii=False,indent=2),encoding="utf-8")
+          print(json.dumps({"size":len(data),"parts":len(chunks),"sha256":digest}))
+          PY
+
+      - name: Publish the verified release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add downloads/dashboard/0.13.39 download-extension.html downloads/dashboard/README.md audit-review.html
+          git commit -m "release: publish Dashboard Extension 0.13.39"
+          git push

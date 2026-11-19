@@ -264,6 +264,30 @@ export function applyLegacyMoodleQuizActivities(payload={}){
  return changes;
 }
 
+
+// The previous Extension annotated eligible Moodle assessments but called the
+// external-link-only evaluator, yielding a false fail. Recover only the
+// existing, explicit 1/2569 tolerance and a real mapped Pre/Post Moodle quiz.
+export function applyLegacyMoodlePrePost(payload={}){
+ if(payload.group!=="GR"||payload.criteriaMode!==CRITERIA_12569_MODE||payload.semesterCode!==CRITERIA_12569_SEMESTER||payload.coverageComplete!==true||payload.internalStatus==="audit_failed"||payload.reviewConfirmation?.confirmedAt)return [];
+ const snap=payload.evidenceSnapshot||{},items=snap.activities||[],changes=[];
+ const id=a=>String(a.href||"").match(/^https:\/\/(?:dlearning|ilearning)\.spu\.ac\.th\/mod\/quiz\/view\.php\?(?:[^#]*&)?id=(\d+)(?:[&#]|$)/i)?.[1]||"";
+ for(const w of snap.weeks||[]){
+   const n=Number(w.session);if(!Number.isInteger(n)||n<2||n>10)continue;
+   for(const [k,kind,label] of [[5,"pre_quiz","แบบทดสอบก่อนเรียน"],[6,"post_quiz","แบบทดสอบหลังเรียน"]]){
+     const c=(w.criteria||[]).find(x=>Number(x.criterion)===k),key="criterion:"+n+":"+k;
+     if(!c||c.status!=="fail"||c.confirmedByReviewer||c.reviewerConfirmedMissing||Object.prototype.hasOwnProperty.call(payload.reviewConfirmation?.decisions||{},key)||!String(c.detail||"").includes("ผ่อนปรน Moodle Quiz"))continue;
+     const matches=items.filter(a=>a.kind===kind&&Number(a.auditSession)===n&&a.countingEligible!==false&&!a.reviewExcluded&&id(a));
+     const unique=[...new Map(matches.map(a=>[id(a),a])).values()];
+     if(!unique.length)continue;
+     const original={...c};c.originalStatus=c.originalStatus||c.status;c.originalDetail=c.originalDetail||c.detail;c.status="pass";delete c.scoreValue;
+     c.detail="พบ"+label+" ใน Moodle Quiz "+unique.length+" รายการ: "+unique.map(a=>String(a.title||"Quiz").replace(/\s+Quiz$/i,"")).join(", ");c.legacyMoodleQuizCorrected=true;
+     changes.push({session:n,criterion:k,old:original,newItem:{...c}});
+   }
+ }
+ return changes;
+}
+
 export function prepareLegacyReview(payload={}){
  if(payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569"||payload.reviewConfirmation?.confirmedAt||payload.internalStatus==="audit_failed")return payload;
  const snap=payload.evidenceSnapshot||{},coverage=snap.coverage||{};
@@ -289,6 +313,7 @@ export function prepareLegacyReview(payload={}){
   item.detail="เวลาวิดีโอที่นับได้ "+durationText(observed)+" / ขั้นต่ำหลังผ่อนปรน "+durationText(required)+(manual.length?" · รอยืนยันประเภท "+manual.length+" คลิป":"");
   item.legacyVideoReview={required,nominal:expectedNominal,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
  }
+ applyLegacyMoodlePrePost(payload);
  applyLegacyMoodleQuizActivities(payload);
  for(const item of snap.activities){if(videoKinds.has(item.kind)){item.legacyVideoMode=legacyVideoMode(item);item.legacyFoundSeconds=foundVideoSeconds(item);}}
  const initial=score12569Snapshot(payload);
