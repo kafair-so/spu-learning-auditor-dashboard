@@ -43,6 +43,9 @@ function english(raw){
  const release=trim.match(/^(⇩\s*)?ดาวน์โหลด Dashboard (\d+\.\d+\.\d+)$/);
  if(release)return raw.replace(trim, (release[1]||"")+"Download Dashboard "+release[2]);
  if(exact[trim])return raw.replace(trim,exact[trim]);
+ const remove=trim.match(/^ลบ (.*?) ออกจากคิวตรวจใช่หรือไม่\?\nผลตรวจเดิมของรายวิชาจะไม่ถูกลบ$/);if(remove)return `Remove ${remove[1]} from the audit queue?\nPrevious course results will not be deleted.`;
+ const clear=trim.match(/^ลบรายวิชาที่รอเริ่มตรวจทั้งหมด (.*?) วิชาออกจากคิวใช่หรือไม่\?\nผลตรวจเดิมและวิชาที่กำลังตรวจจะไม่ถูกลบ$/);if(clear)return `Remove all ${clear[1]} queued courses?\nPrevious results and courses currently being audited will not be deleted.`;
+ const owner=trim.match(/^ยืนยันโอนสิทธิ์ Owner ให้ (.*?)\nบัญชีของคุณจะเปลี่ยนเป็น Super Admin$/);if(owner)return `Transfer ownership to ${owner[1]}?\nYour account will become Super Admin.`;
  let value=raw.replace(thaiDate,(_s,d,m,y,t)=>{const month=monthNames.includes(m)?monthNames.indexOf(m):monthShort.indexOf(m),year=Number(y)>=2400?Number(y)-543:Number(y);return new Intl.DateTimeFormat("en-US",{month:monthNames.includes(m)?"long":"short",day:"numeric",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(year,month,Number(d))))+(t?" at "+t:"")});
  // Exact status labels separated by separators (not substrings in user data).
  return value.split(/(\s*·\s*|\s+\/\s+|\s*—\s*)/).map(part=>{

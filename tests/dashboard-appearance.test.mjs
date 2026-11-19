@@ -15,6 +15,7 @@ assert.equal(api.english('รายละเอียดรายครั้ง
 assert.equal(api.english('⇩ ดาวน์โหลด Dashboard 0.13.38'),'⇩ Download Dashboard 0.13.38');
 assert.equal(api.english('19 พฤศจิกายน 2569 เวลา 04:14'),'November 19, 2026 at 04:14');
 assert.equal(api.english('พบลิงก์วิดีโอภายนอก 2 รายการ · เวลาที่อ่านและนับได้ 1:37:03 / 1:30:00'),'External video links found 2 items · Read and counted duration 1:37:03 / 1:30:00');
+assert.equal(api.english('ลบ ALB311 ออกจากคิวตรวจใช่หรือไม่?\nผลตรวจเดิมของรายวิชาจะไม่ถูกลบ'),'Remove ALB311 from the audit queue?\nPrevious course results will not be deleted.');
 const n=makeNode('ภาพรวมองค์ประกอบ');nodes.push(n);
 api.translate();assert.equal(n.nodeValue,'Component overview');api.translate();assert.equal(n.nodeValue,'Component overview');
 n.nodeValue='รายละเอียดรายครั้ง';api.translate();assert.equal(n.nodeValue,'Session details');
@@ -22,6 +23,6 @@ api.setLanguage('th');assert.equal(api.current(),'th');assert.equal(n.nodeValue,
 api.setLanguage('en');assert.equal(n.nodeValue,'Session details');
 n.nodeValue='ผ่านเกณฑ์';api.translate();assert.equal(n.nodeValue,'Meets criteria');api.setLanguage('th');assert.equal(n.nodeValue,'ผ่านเกณฑ์');
 const skip=makeNode('ชื่อวิชา หลักฐาน');skip.parentElement.closest=()=>true;nodes.push(skip);api.setLanguage('en');assert.equal(skip.nodeValue,'ชื่อวิชา หลักฐาน');
-for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261119langtheme2'));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme2'))}
+for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261119langtheme3'));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme3'))}
 const css=fs.readFileSync('audit-dark-complete.css','utf8');for(const k of ['--ev-card:#172332','preflight-list li','teacher-summary-grid article','component-tile.fail','review-drawer','media-tag.pass','component-summary tr.fail'])assert.ok(css.includes(k));
 console.log('Language source, reversible updates, URL preference, dates, evidence labels and dark stylesheet coverage OK');

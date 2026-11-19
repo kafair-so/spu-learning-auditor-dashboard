@@ -2,6 +2,7 @@
   const $=id=>document.getElementById(id);
   const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const badge=status=>status?`<span class="status ${AuditBridge.COLORS[status]}">${AuditBridge.LABELS[status]}</span>`:"—";
+  const uiText=value=>window.OOEI18n?.text(value)??value;
   const locale=()=>window.OOEI18n?.current?.()==="en"?"en-US":"th-TH";
   const score=value=>value!==null&&value!==""&&Number.isFinite(Number(value))?Number(value).toLocaleString(locale()):"—";
   const CATALOG_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSrdzF0uLqoeVFjT2Dovsl3l82J7PdBgnTk2g_0VZTSMsZyceTrOgUn4l-JLixxY34FVqxzhMhqUQNP/pub?gid=131857057&single=true&output=csv";
@@ -569,14 +570,14 @@
   async function removeQueueJob(jobId){
     const job=(queueOverviewData?.pending||[]).find(item=>item.jobId===jobId);if(!job)return;
     const label=job.courseCode||job.courseTitle||job.courseId;
-    if(!window.confirm(`ลบ ${label} ออกจากคิวตรวจใช่หรือไม่?\nผลตรวจเดิมของรายวิชาจะไม่ถูกลบ`))return;
+    if(!window.confirm(uiText(`ลบ ${label} ออกจากคิวตรวจใช่หรือไม่?\nผลตรวจเดิมของรายวิชาจะไม่ถูกลบ`)))return;
     try{setQueueBusy(true,`กำลังลบ ${label} ออกจากคิว…`);await AuditApi.removeQueuedJob(jobId);setQueueMessage(`ลบ ${label} ออกจากคิวแล้ว`);await loadQueueOverview();}
     catch(error){setQueueMessage(queueRemovalMessage(error),"error");await loadQueueOverview().catch(()=>{});}
     finally{setQueueBusy(false);}
   }
   async function clearQueue(){
     const queued=(queueOverviewData?.pending||[]).filter(job=>job.status==="queued");if(!queued.length)return;
-    if(!window.confirm(`ลบรายวิชาที่รอเริ่มตรวจทั้งหมด ${queued.length.toLocaleString(locale())} วิชาออกจากคิวใช่หรือไม่?\nผลตรวจเดิมและวิชาที่กำลังตรวจจะไม่ถูกลบ`))return;
+    if(!window.confirm(uiText(`ลบรายวิชาที่รอเริ่มตรวจทั้งหมด ${queued.length.toLocaleString(locale())} วิชาออกจากคิวใช่หรือไม่?\nผลตรวจเดิมและวิชาที่กำลังตรวจจะไม่ถูกลบ`)))return;
     try{setQueueBusy(true,"กำลังล้างคิวที่รอเริ่มตรวจ…");const result=await AuditApi.clearQueuedJobs();const running=Number(result.runningSkipped||0);setQueueMessage(`ล้างคิวแล้ว ${Number(result.cancelled||0).toLocaleString(locale())} วิชา${running?` · คงวิชาที่กำลังตรวจไว้ ${running.toLocaleString(locale())} วิชา`:""}`);await loadQueueOverview();}
     catch(error){setQueueMessage(queueRemovalMessage(error),"error");}
     finally{setQueueBusy(false);}
@@ -752,7 +753,7 @@
   $("closeErrorReport").addEventListener("click",()=>{$("errorReport").hidden=true;});
   $("downloadErrorReport").addEventListener("click",downloadErrorReport);
   $("queueMissing").addEventListener("click",async()=>{
-    try{const scope=$("queueScope")?.value||"course";if(scope!=="gr")return;if(!confirm("ยืนยันสร้างคิวตรวจรายวิชา GR ทั้งชุดตามเกณฑ์ที่เลือกหรือไม่? หากต้องการตรวจเพียงวิชาเดียว ให้กลับไปเลือก รายวิชาเดียว"))return;const labels={gr:"รายวิชา GR"};const criteriaMode=$("queueCriteriaMode")?.value||"current";const semesterCode=criteriaMode==="legacy_12569"?"1/2569":"";setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope,criteriaMode,semesterCode);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว · ${criteriaMode==="legacy_12569"?"เกณฑ์ผ่อนปรน 1/2569":"เกณฑ์ปกติ"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
+    try{const scope=$("queueScope")?.value||"course";if(scope!=="gr")return;if(!confirm(uiText("ยืนยันสร้างคิวตรวจรายวิชา GR ทั้งชุดตามเกณฑ์ที่เลือกหรือไม่? หากต้องการตรวจเพียงวิชาเดียว ให้กลับไปเลือก รายวิชาเดียว")))return;const labels={gr:"รายวิชา GR"};const criteriaMode=$("queueCriteriaMode")?.value||"current";const semesterCode=criteriaMode==="legacy_12569"?"1/2569":"";setQueueBusy(true,`กำลังอ่านข้อมูลล่าสุดและสร้างคิว ${labels[scope]}…`);if(!AuditApi.enabled())throw new Error("ยังไม่ได้ตั้งค่า Backend API");const result=await AuditApi.queueSelected(scope,criteriaMode,semesterCode);setQueueMessage(`สร้างคิว${labels[scope]} ${Number(result.queued||0).toLocaleString(locale())} วิชาแล้ว · ${criteriaMode==="legacy_12569"?"เกณฑ์ผ่อนปรน 1/2569":"เกณฑ์ปกติ"}`);await loadQueueOverview();if(workerRunning)scheduleWorker(0);}
     catch(error){setQueueMessage(error.message||String(error),"error");}finally{setQueueBusy(false);}
   });
   $("queueCourseAdd")?.addEventListener("click",async()=>{
@@ -780,7 +781,7 @@
     try{
       const email=$("adminEmail").value.trim().toLowerCase();
       const displayName=$("adminName").value.trim(),role=$("adminRole").value;
-      if(role==="owner"&&email!==window.OOEReviewer?.email&&!confirm(`ยืนยันโอนสิทธิ์ Owner ให้ ${email}\nบัญชีของคุณจะเปลี่ยนเป็น Super Admin`))return;
+      if(role==="owner"&&email!==window.OOEReviewer?.email&&!confirm(uiText(`ยืนยันโอนสิทธิ์ Owner ให้ ${email}\nบัญชีของคุณจะเปลี่ยนเป็น Super Admin`)))return;
       const result=await AuditApi.saveAccessUser(email,displayName,role);
       if(result.ownerTransferred)window.OOEReviewer.role="super_admin";
       $("adminRole").disabled=false;resetAccessForm();
