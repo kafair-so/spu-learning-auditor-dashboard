@@ -132,12 +132,16 @@
     if(/ข้อมูลและแนะนำรายวิชา|แนะนำรายวิชา/.test(text))return {kinds:["file","file_link","url"],openLabel:"เปิดหลักฐาน",fallback:"ข้อมูลแนะนำรายวิชา",titlePattern:/แนะนำรายวิชา|course\s*outline|คำอธิบายรายวิชา/i};
     return null;
   };
-  const criterionEvidenceLinks=(activities,session,label,detail,criterionKey,legacy=false,readOnly=false)=>{
+  const criterionEvidenceLinks=(activities,session,label,detail,criterionKey,legacy=false,readOnly=false,creditCount=null)=>{
     const spec=criterionEvidenceSpec(label,detail);
     if(!spec)return"";
     if(legacy&&spec.kinds.includes("video"))spec.kinds=["video","video_candidate"];
     const itemized=!readOnly&&spec.kinds.some(kind=>["video","video_candidate","recording","podcast"].includes(kind));
-    const fallbackRequired=spec.kinds.includes("podcast")?600:(Number(session)===1?2700:5400),required=durationSecondsFromDetail(detail,fallbackRequired);
+    const fallbackRequired=spec.kinds.includes("podcast")?600:(Number(session)===1?2700:5400);
+    const first=Number(session)===1,c=Number(creditCount);
+    const legacyVideo=legacy&&spec.kinds.includes("video")&&Number.isInteger(c)&&c>0;
+    const nominal=legacyVideo?c*(first?900:1800):durationSecondsFromDetail(detail,fallbackRequired);
+    const required=legacyVideo?nominal-(first?(c===1?3:c===2?5:10):(c===1?5:c===2?10:20))*60:nominal;
     const seen=new Set(),items=(activities||[]).map((item,activityIndex)=>({item,activityIndex})).filter(({item})=>{
       if(!spec.kinds.includes(item?.kind)||activitySession(item)!==Number(session))return false;
       if(legacy&&!readOnly&&spec.kinds.includes("video")&&(item.reviewExcluded||item.countingEligible===false))return false;
@@ -157,7 +161,7 @@
         const linkState=item.mediaStatus==="link_error"?"เปิดไม่ได้":item.linkStatus==="broken"?"ลิงก์เสีย":found>0?"พบเวลา":"ยังไม่ยืนยันการเข้าถึง";
         const mediaControl=isVideo&&itemized?mode==="manual"?`<div class="evidence-item-review compact-review" data-evidence-item data-criterion-key="${esc(criterionKey)}" data-required="${required}"><label>นำคลิปนี้มานับหรือไม่<select data-evidence-decision data-evidence-key="${esc(evidenceKey)}"><option value="">ยังไม่ตัดสิน</option><option value="use">นำมานับ</option><option value="not_use">ไม่นำมานับ</option></select></label><label>เวลาที่ตรวจพบ<input data-evidence-time data-video-time inputmode="numeric" autocomplete="off" type="text" value="${esc(durationInput(found))}" placeholder="1319 → 13:19"></label><span class="muted">พิมพ์ตัวเลขต่อเนื่อง เช่น 1319 → 13:19 หรือ 13000 → 1:30:00</span></div>`:`<div data-evidence-item data-criterion-key="${esc(criterionKey)}" data-required="${required}" data-locked-video="1"><select hidden disabled data-evidence-decision data-evidence-key="${esc(evidenceKey)}"><option value="${mode==="fixed"?"use":"not_use"}">${mode}</option></select><input type="hidden" data-evidence-time value="${mode==="fixed"?esc(durationInput(found)):""}"></div>`:"";
         const previewable=item.mediaStatus!=="link_error"&&(/\.(mp4|webm|ogg|mp3|m4a|wav)(?:[?#]|$)/i.test(href)||/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(href));
-        return `<li class="mock-evidence-card">${previewable?'<div class="evidence-preview"><button type="button" data-media-preview data-media-url="'+esc(href)+'" data-media-kind="'+(item.kind==="podcast"?"audio":"video")+'">▶ เปิดตัวอย่างสื่อ</button></div>':""}<div class="media-title"><strong>${esc(title)}</strong><span class="media-tag">${esc(isVideo?"หลักฐานวิดีโอ":item.kind==="podcast"?"หลักฐานเสียง":"หลักฐาน")}</span></div><p>ป้ายบนรายวิชา: ${esc(group)}</p><div class="media-meta"><div><small>ปลายทาง</small><b>${esc(item.provider|| (isVideo?"ลิงก์วิดีโอ":"หลักฐานรายวิชา"))}</b></div><div><small>สถานะลิงก์</small><b>${esc(linkState)}</b></div><div><small>${isVideo?"เกณฑ์":"ประเภท"}</small><b>${esc(isVideo?mediaTime(required):item.kind||"—")}</b></div></div>${isVideo?`<div class="media-note ${mode==="excluded"?"excluded":""}">${mode==="excluded"?(found>0?"รายการนี้ไม่ถูกนำมาคิดคะแนน":"ไม่พบเวลาที่นับได้ · ไม่นับคะแนน"):mode==="manual"?"พบเวลา "+mediaTime(found)+" · รอยืนยันประเภท":"เวลาที่ระบบนับ "+mediaTime(found)}</div>`:""}${compactNote?`<p class="media-note">${esc(compactNote)}</p>`:""}<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">เปิดหลักฐานในแท็บใหม่ ↗</a>${mediaControl}</li>`;
+        return `<li class="mock-evidence-card">${previewable?'<div class="evidence-preview"><button type="button" data-media-preview data-media-url="'+esc(href)+'" data-media-kind="'+(item.kind==="podcast"?"audio":"video")+'">▶ เปิดตัวอย่างสื่อ</button></div>':""}<div class="media-title"><strong>${esc(title)}</strong><span class="media-tag">${esc(isVideo?"หลักฐานวิดีโอ":item.kind==="podcast"?"หลักฐานเสียง":"หลักฐาน")}</span></div><p>ป้ายบนรายวิชา: ${esc(group)}</p><div class="media-meta"><div><small>ปลายทาง</small><b>${esc(item.provider|| (isVideo?"ลิงก์วิดีโอ":"หลักฐานรายวิชา"))}</b></div><div><small>สถานะลิงก์</small><b>${esc(linkState)}</b></div><div><small>${isVideo?(legacyVideo?"ขั้นต่ำหลังผ่อนปรน":"เกณฑ์"):"ประเภท"}</small><b>${esc(isVideo?mediaTime(required):item.kind||"—")}</b></div></div>${isVideo?`<div class="media-note ${mode==="excluded"?"excluded":""}">${mode==="excluded"?(found>0?"รายการนี้ไม่ถูกนำมาคิดคะแนน":"ไม่พบเวลาที่นับได้ · ไม่นับคะแนน"):mode==="manual"?"พบเวลา "+mediaTime(found)+" · รอยืนยันประเภท":"เวลาที่ระบบนับ "+mediaTime(found)}</div>`:""}${compactNote?`<p class="media-note">${esc(compactNote)}</p>`:""}<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">เปิดหลักฐานในแท็บใหม่ ↗</a>${mediaControl}</li>`;
       }
             return `<li><a href="${esc(href)}" target="_blank" rel="noopener">${esc(spec.openLabel)}: ${esc(title)} ↗</a><span>ป้าย: ${esc(group)} · ประเภท: ${esc(item.kind||"—")}${esc(time)}${esc(note)}</span>${control}</li>`;
     }).filter(Boolean).join("");
@@ -240,7 +244,7 @@
           const label=(item.label||`หัวข้อที่ ${criterion}`)+(excluded?" (ไม่นับคะแนน)":optional?" (ไม่บังคับ)":"");
           const key=`criterion:${session}:${criterion}`,pending=reviewKeys.has(key)&&canReviewResult;
           const priority=legacyAdmin&&!excluded&&pending;
-          const links=legacyAdmin?criterionEvidenceLinks(activities,session,label,item.originalDetail||item.detail,key,true,!pending):superAdmin&&index===0&&item.status==="needs_review"&&(!isLegacy(run)||reviewKeys.has(key))?criterionEvidenceLinks(activities,session,label,item.detail,key,isLegacy(run)):"";
+          const links=legacyAdmin?criterionEvidenceLinks(activities,session,label,item.originalDetail||item.detail,key,true,!pending,run.courseCredits):superAdmin&&index===0&&item.status==="needs_review"&&(!isLegacy(run)||reviewKeys.has(key))?criterionEvidenceLinks(activities,session,label,item.detail,key,isLegacy(run),false,run.courseCredits):"";
           const control=links.includes("data-evidence-item")?itemizedReviewChoice(key,label):reviewChoice(key,label);
           if(legacyAdmin){
             const dlgId=`review-${session}-${criterion}`;

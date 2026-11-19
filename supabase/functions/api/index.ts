@@ -324,6 +324,7 @@ function adminResultRecord(row) {
 
 function resolvedRunSource(row) {
   const source = row.source_payload ? JSON.parse(JSON.stringify(row.source_payload)) : {};
+  if(source.group==="GR"&&source.criteriaMode==="legacy_12569"&&source.semesterCode==="1/2569"&&row.courses?.course_credits)source.courseCredits=Number(row.courses.course_credits);
   const savedDecisions = source?.reviewConfirmation?.decisions;
   if (savedDecisions && typeof savedDecisions === "object") {
     applyReviewDecisionStatuses(source, savedDecisions, {
@@ -442,7 +443,7 @@ async function listAdminResults(request) {
   // ingested. Use that pointer instead of loading and sorting every historic
   // run (including its full evidence payload) on every dashboard refresh.
   const { data:catalog, error:catalogError } = await db.from("courses").select(
-    "course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id"
+    "course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id,course_credits"
   ).eq("active", true).in("course_group", ["GR", "GS"]).limit(5000);
   if (catalogError) throw catalogError;
   const courses = (catalog || []).filter(course => course.latest_internal_run_id);
@@ -579,7 +580,7 @@ async function adminHistory(request, courseId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return publicHistory(courseId);
   const { data: course, error: courseError } = await db.from("courses")
-    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id,published_run_id")
+    .select("course_id,course_code,course_title,course_group,faculty,instructor_names,course_url,latest_internal_run_id,published_run_id,course_credits")
     .eq("course_id", courseId).maybeSingle();
   if (courseError) throw courseError;
   if (!course) return null;
@@ -596,7 +597,7 @@ async function adminHistory(request, courseId) {
     group: course.course_group || "",
     faculty: course.faculty || "",
     instructors: course.instructor_names || [],
-    runs: prioritizeRun(runs || [], course.latest_internal_run_id).map(historyRunRecord)
+    runs: prioritizeRun(runs || [], course.latest_internal_run_id).map(row=>historyRunRecord({...row,courses:course}))
   };
 }
 
@@ -610,7 +611,11 @@ async function decideAdminResult(request, runId) {
   await assertGrCourse(currentRun.course_id);
   const legacy = currentRun.source_payload?.criteriaMode === "legacy_12569";
   const source = currentRun.source_payload || {};
-  if (legacy) prepareLegacyReview(source);
+  if (legacy) {
+    const context=await resolveLegacyCourseContext(await loadGrCourseForJob(currentRun.course_id));
+    source.courseCredits=context.credits;
+    prepareLegacyReview(source);
+  }
   const legacyKeys = legacy ? legacyReviewKeys(source) : [];
   if (!["needs_review", "has_content"].includes(currentRun.internal_status) || (legacy ? source.legacyReviewBlocked || (!legacyKeys.length && (currentRun.internal_status !== "needs_review" || source.criteriaScorecard?.status === "needs_review")) : Number(currentRun.reviewable_points || 0) <= 0)) {
     throw Object.assign(new Error("review_decision_not_available"), { status:409 });
@@ -755,7 +760,7 @@ function isSoloSpecialInstructorCourse(row) {
 
 function parseGrPublicCatalog(text) {
   const records = parseCsv(text);
-  const required = ["group","courseCode","courseProfile","courseName","faculty","instructors","teacherType","courseLink"];
+  const required = ["group","courseCode","credits","courseProfile","courseName","faculty","instructors","teacherType","courseLink"];
   if (!records.length || !required.every(key => Object.prototype.hasOwnProperty.call(records[0], key))) {
     throw Object.assign(new Error("invalid_GRGS_Public_headers"), {status:422});
   }
@@ -771,7 +776,9 @@ function parseGrPublicCatalog(text) {
     }
     if (seen.has(id)) throw Object.assign(new Error("conflicting_duplicate_course_id"), {status:422});
     seen.add(id);
-    return {group:"GR",courseCode:code,courseProfile:profile,courseName:row.courseName,
+    const credits=Number(String(row.credits||"").match(/^(\d+)\s*\(/)?.[1]);
+    if(!Number.isInteger(credits)||credits<1||credits>30)throw Object.assign(new Error("invalid_GRGS_Public_credits"),{status:422});
+    return {group:"GR",courseCode:code,credits,courseProfile:profile,courseName:row.courseName,
       faculty:row.faculty,instructors:row.instructors,courseLink:row.courseLink};
   });
 }
@@ -798,6 +805,7 @@ async function syncCatalog() {
       course_code: row.courseCode || null,
       course_title: row.courseName || row.courseProfile || row.courseCode || "ไม่ระบุชื่อรายวิชา",
       course_group: group,
+      course_credits:row.credits,
       faculty: row.faculty || null,
       instructor_names: String(row.instructors || "").split(",").map(value => value.trim()).filter(Boolean),
       course_url: row.courseLink || null,
@@ -944,7 +952,7 @@ async function adminEvidence(request, courseId, runId) {
   const user = await reviewer(request);
   if (!["owner", "super_admin"].includes(user.role)) return evidence(request, courseId, runId);
   const { data: run, error } = await db.from("audit_runs")
-    .select("evidence_object_path,source_payload,internal_status").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
+    .select("evidence_object_path,source_payload,internal_status,score,public_status,courses!audit_runs_course_id_fkey(course_credits)").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
   const resolvedSnapshot = run ? resolvedRunSource(run).evidenceSnapshot : null;
   if (resolvedSnapshot && typeof resolvedSnapshot === "object") return { snapshot:resolvedSnapshot };
@@ -1142,7 +1150,7 @@ async function grCourseIds(activeOnly = true) {
 
 async function loadGrCourseForJob(courseId) {
   const {data:course,error}=await db.from("courses")
-    .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names")
+    .select("course_id,course_code,course_title,course_group,course_url,faculty,instructor_names,course_credits")
     .eq("course_id",courseId).eq("course_group","GR").maybeSingle();
   if(error)throw error;
   if(!course)throw Object.assign(new Error("outside_gr_audit_scope"),{status:409});
@@ -1162,7 +1170,9 @@ async function resolveLegacyCourseContext(course) {
     meta=parseLegacyCourseProfile(rows[0].courseProfile);
   }
   if(!meta||!meta.profile.startsWith("691GR-"+String(course.course_code||"").trim().toUpperCase()+"("))throw Object.assign(new Error("legacy_course_type_not_verified"),{status:409});
-  return meta;
+  const credits=Number(course.course_credits);
+  if(!Number.isInteger(credits)||credits<1||credits>30)throw Object.assign(new Error("legacy_course_credits_not_verified"),{status:409});
+  return {...meta,credits};
 }
 
 async function claimGrJob(worker) {
@@ -1176,7 +1186,7 @@ async function claimGrJob(worker) {
     if (!candidate) return null;
     const course=await loadGrCourseForJob(candidate.course_id);
     const context=candidate.criteria_mode==="legacy_12569"?await resolveLegacyCourseContext(course):null;
-    const metadata=context?{courseProfile:context.profile,courseTrack:context.track,gnTrack:context.track}:{};
+    const metadata=context?{courseProfile:context.profile,courseTrack:context.track,gnTrack:context.track,credits:context.credits}:{};
     const {data,error} = await db.from("audit_jobs").update({
       status:"running",claimed_by:worker,claimed_at:now,lease_expires_at:new Date(Date.now()+45*60000).toISOString(),attempts:Number(candidate.attempts||0)+1,updated_at:now
     }).eq("job_id",candidate.job_id).eq("course_id",candidate.course_id).or(eligible).select("*").maybeSingle();

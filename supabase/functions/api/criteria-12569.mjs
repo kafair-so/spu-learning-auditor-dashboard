@@ -165,7 +165,7 @@ export function score12569Snapshot(payload = {}, decisions = {}) {
 }
 
 const videoKinds=new Set(["video","video_candidate"]);
-const sessionOf=i=>Number(i.auditSession)||Number(String(i.section||"").match(/\d+/)?.[0])||0;
+const sessionOf=i=>Object.prototype.hasOwnProperty.call(i,"auditSession")?Number(i.auditSession)||0:Number(String(i.section||"").match(/\d+/)?.[0])||0;
 const linkOf=i=>String(i.externalUrl||i.href||"").trim();
 const foundVideoSeconds=i=>Math.max(0,Math.min(43200,Math.round(Number(i.systemDurationSeconds||i.durationSeconds||0)||0)));
 const uncertain=i=>i.kind==="video_candidate"||i.mediaReviewRequired===true||i.mediaReviewDecision==="pending";
@@ -177,10 +177,28 @@ export function legacyVideoLinks(payload,session){
  const seen=new Set();
  return (payload.evidenceSnapshot?.activities||[]).filter(i=>videoKinds.has(i.kind)&&sessionOf(i)===Number(session)&&!i.reviewExcluded&&i.countingEligible!==false&&/^https?:\/\//i.test(linkOf(i))).filter(i=>{const k=linkOf(i);if(seen.has(k))return false;seen.add(k);return true;});
 }
-export function legacyVideoRequired(item,session){
- const m=[...String(item.originalDetail||item.detail||"").matchAll(/(\d{1,2}):(\d{2})(?::(\d{2}))?/g)].at(-1);
- return m?(m[3]===undefined?Number(m[1])*60+Number(m[2]):Number(m[1])*3600+Number(m[2])*60+Number(m[3])):(Number(session)===1?2700:5400);
+const clockSeconds=value=>String(value||"").split(":").reduce((sum,part)=>sum*60+Number(part),0);
+export function legacyVideoNominalFromDetail(item){
+ const m=String(item.originalDetail||item.detail||"").match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*\/\s*(\d{1,2}:\d{2}(?::\d{2})?)/);
+ return m?clockSeconds(m[2]):null;
 }
+export function legacyVideoThreshold(credits,session){
+ const c=Number(credits),first=Number(session)===1;
+ if(!Number.isInteger(c)||c<1||c>30)throw Error("legacy_course_credits_not_verified");
+ const nominal=c*(first?900:1800);
+ // Historical policy: 3+ credits has a capped 20-min normal-session
+ // allowance. First-session 3/5/10 min; larger courses retain the cap.
+ const tolerance=(first?(c===1?3:c===2?5:10):(c===1?5:c===2?10:20))*60;
+ return {nominal,required:nominal-tolerance,tolerance};
+}
+export function legacyVideoRequired(item,session,credits){
+ // Old non-current snapshots may lack catalog credits. Infer ONLY from
+ // explicit nominal duration, never fall back silently to 3 credits.
+ const nominal=legacyVideoNominalFromDetail(item);
+ const c=credits??(nominal==null?null:nominal/(Number(session)===1?900:1800));
+ return legacyVideoThreshold(c,session).required;
+}
+const durationText=sec=>Math.floor(sec/3600)+":"+String(Math.floor(sec%3600/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
 // Never use a blanket full-score potential for a structural anomaly. Only
 // downgrade a narrow, evidence-supported case to a warning. Recompute flags
 // server-side rather than trusting flags supplied by the Extension.
@@ -229,14 +247,22 @@ export function prepareLegacyReview(payload={}){
  coverage.legacyReviewScoped=true;coverage.legacyTopologyWarningOnly=false;coverage.legacyUnmappedWarningOnly=false;snap.coverage=coverage;
  for(const week of snap.weeks){
   const session=Number(week.session),item=(week.criteria||[]).find(i=>Number(i.criterion)===(session===1?4:3));
-  if(!item||!["fail","needs_review"].includes(item.status)||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
+  if(!item||!["pass","pass_tolerance","fail","needs_review"].includes(item.status)||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
+  const credits=Number(payload.courseCredits),actualCredits=Number.isInteger(credits)&&credits>0;
+  const nominal=legacyVideoNominalFromDetail(item);
+  const expectedNominal=actualCredits?legacyVideoThreshold(credits,session).nominal:nominal;
+  // Untouched automatic passes with matching nominal duration retain the
+  // Extension's original classification. Repair incorrect nominal targets
+  // and server-derived classifications using explicit mapped evidence.
+  const reconcilePass=actualCredits&&((nominal!==null&&nominal!==expectedNominal)||Boolean(item.legacyVideoReview));
+  if(PASS.has(item.status)&&!reconcilePass)continue;
   const links=legacyVideoLinks(payload,session),manual=links.filter(i=>legacyVideoMode(i)==="manual"),fixed=links.filter(i=>legacyVideoMode(i)==="fixed");
-  const observed=fixed.reduce((sum,i)=>sum+foundVideoSeconds(i),0),required=legacyVideoRequired(item,session);
+  const observed=fixed.reduce((sum,i)=>sum+foundVideoSeconds(i),0),required=legacyVideoRequired(item,session,payload.courseCredits);
   item.originalStatus=item.originalStatus||item.status;item.originalDetail=item.originalDetail||item.detail;
-  item.status=observed>=required?"pass":manual.length?"needs_review":"fail";
+  item.status=observed>0&&observed>=required?(expectedNominal!==null&&observed<expectedNominal?"pass_tolerance":"pass"):manual.length?"needs_review":"fail";
   if(item.status!==item.originalStatus)delete item.scoreValue;
-  item.detail=String(item.originalDetail||"").replace(/ · โปรดตรวจปลายทาง[\s\S]*$/,"")+(manual.length?" · รอยืนยันประเภทวิดีโอที่พบเวลา":" · ไม่นับคลิปที่ไม่พบเวลาหรือเปิดไม่ได้");
-  item.legacyVideoReview={required,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
+  item.detail="เวลาวิดีโอที่นับได้ "+durationText(observed)+" / ขั้นต่ำหลังผ่อนปรน "+durationText(required)+(manual.length?" · รอยืนยันประเภท "+manual.length+" คลิป":"");
+  item.legacyVideoReview={required,nominal:expectedNominal,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
  }
  for(const item of snap.activities){if(videoKinds.has(item.kind)){item.legacyVideoMode=legacyVideoMode(item);item.legacyFoundSeconds=foundVideoSeconds(item);}}
  const initial=score12569Snapshot(payload);
@@ -258,7 +284,7 @@ export function prepareLegacyReview(payload={}){
        hasVideo=true;
        const item=snap.weeks.find(w=>Number(w.session)===session)?.criteria.find(i=>Number(i.criterion)===criterion);
        const total=legacyVideoLinks(payload,session).filter(i=>legacyVideoMode(i)!=="excluded").reduce((sum,i)=>sum+foundVideoSeconds(i),0);
-       decisions[id]=Boolean(item)&&total>=legacyVideoRequired(item,session);
+       decisions[id]=Boolean(item)&&total>0&&total>=legacyVideoRequired(item,session,payload.courseCredits);
      }else decisions[id]=true;
    }
    if(hasVideo)payload.legacyObservedPotentialScore=score12569Snapshot(payload,decisions).total;
@@ -284,7 +310,7 @@ export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
    if(entry.decision==="use")total+=entry.seconds;
    seen.add(k+"\u0000"+entry.key);
   }
-  if(decisions.get(k)!==(total>=legacyVideoRequired(item,session)))throw Error("legacy_video_duration_mismatch");
+  if(decisions.get(k)!==(total>0&&total>=legacyVideoRequired(item,session,source.courseCredits)))throw Error("legacy_video_duration_mismatch");
  }
  if(submitted.some(i=>!seen.has(i.criterionKey+"\u0000"+i.key)))throw Error("legacy_unexpected_evidence");
 }
@@ -344,6 +370,8 @@ export function reconcileLegacyResult(payload,expected){
  if(!payload.hasContent&&(baseline.total!==0||snap.weeks.some(w=>(w.criteria||[]).some(i=>PASS.has(i.status)))||snap.activities.some(i=>!["forum","url","supplementary"].includes(i.kind))))throw legacyError("legacy_no_content_mismatch");
  if(payload.internalStatus==="no_content"&&payload.hasContent)throw legacyError("legacy_no_content_mismatch");
  payload.courseProfile=expected.profile;
+ if(!Number.isInteger(Number(expected.credits))||Number(expected.credits)<1)throw legacyError("legacy_course_credits_not_verified",409);
+ payload.courseCredits=Number(expected.credits);
  // An empty Moodle shell has section boxes but no auditable activities.
  // A completed empty scan is not an incomplete scan of populated sections.
  const cov=snap.coverage;
