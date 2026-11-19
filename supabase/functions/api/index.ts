@@ -283,7 +283,7 @@ async function setAccessUserStatus(request, emailPart) {
 }
 
 function adminResultRecord(row) {
-  const source = row.source_payload || {};
+  const source = row.internal_status==="needs_review"&&row.source_payload?.criteriaMode==="legacy_12569" ? resolvedRunSource(row) : row.source_payload || {};
   const snapshot = source.evidenceSnapshot || {};
   const course = row.courses || {};
   const score = row.score == null ? null : Number(row.score);
@@ -306,7 +306,8 @@ function adminResultRecord(row) {
     internalStatus: row.internal_status,
     publicStatus: row.public_status || "",
     confirmedScore: score,
-    possibleScore: score == null || scoreNeedsRefresh ? null : Math.min(maxScore, score + reviewable),
+    possibleScore: score == null || scoreNeedsRefresh ? null : (legacy&&row.internal_status==="needs_review"?Math.min(maxScore,Math.max(score,Number(source.possibleScore??score))):Math.min(maxScore, score + reviewable)),
+    ...(legacy ? {legacyReviewBlocked:source.legacyReviewBlocked===true,legacyRecommendedStatus:source.legacyRecommendedStatus||"",legacyStructureWarnings:source.legacyStructureWarnings||[],reviewCandidateCount:(source.reviewableCriteria||[]).length} : {}),
     maxScore,
     criteriaMode: source.criteriaMode || "current",
     scoreModel,
@@ -330,7 +331,12 @@ function resolvedRunSource(row) {
       internalStatus:row.internal_status, publicStatus:row.public_status || row.internal_status
     });
   }
-  if (row.internal_status === "needs_review" && source.group === "GR") prepareLegacyReview(source);
+  if (row.internal_status === "needs_review" && source.group === "GR") {
+    prepareLegacyReview(source);
+    if(source.criteriaMode==="legacy_12569"&&(!Number.isFinite(Number(source.confirmedScore))||Number(source.confirmedScore)!==Number(row.score))){
+      source.legacyReviewBlocked=true;source.legacyRecommendedStatus="audit_failed";source.reviewableCriteria=[];source.possibleScore=Number(row.score||0);
+    }
+  }
   return source;
 }
 
@@ -353,7 +359,7 @@ function historyRunRecord(row) {
   const scoreNeedsRefresh = row.internal_status === "needs_review" && !legacy && scoreModel !== "weekly_criterion_v2";
   return {
     ...source,
-    ...(legacy ? {reviewableCriteria:legacyReviewKeys(source)} : {}),
+    ...(legacy ? {reviewableCriteria:row.internal_status==="needs_review"&&!source.legacyReviewBlocked?legacyReviewKeys(source):[]} : {}),
     runId: row.run_id,
     auditedAt: row.audited_at,
     receivedAt: row.created_at,
@@ -666,6 +672,9 @@ async function decideAdminResult(request, runId) {
     resolvedSource.criteriaScorecard = weighted;
     resolvedSource.evidenceSnapshot.criteriaScorecard = weighted;
     resolvedSource.reviewableCriteria = [];
+    resolvedSource.legacyReviewBlocked=false;
+    resolvedSource.legacyRecommendedStatus=decision;
+    resolvedSource.reason=decision==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
     for(const week of resolvedSource.evidenceSnapshot.weeks||[]){
       for(const item of week.criteria||[]){
         const key=`criterion:${week.session}:${item.criterion}`;

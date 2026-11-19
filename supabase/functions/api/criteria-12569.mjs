@@ -32,8 +32,8 @@ export function criteria12569Weeks(weeks = []) {
 function structurePending(coverage = {}) {
   return coverage.reachedEnd === false
     || coverage.structurallyComplete === false
-    || coverage.topologyReviewRequired === true
-    || Number(coverage.unmappedNonForumActivityCount || 0) > 0
+    || (coverage.topologyReviewRequired === true && coverage.legacyTopologyWarningOnly !== true)
+    || (Number(coverage.unmappedNonForumActivityCount || 0) > 0 && coverage.legacyUnmappedWarningOnly !== true)
     || (coverage.legacyReviewScoped !== true && (Number(coverage.unresolvedClassificationCount || 0) > 0 || Number(coverage.unresolvedScoringEvidenceCount || 0) > 0));
 }
 
@@ -80,7 +80,7 @@ function theoryScore(weeks, coverage) {
     + activities.reduce((sum, status) => sum + possible(status), 0)
   );
   const pending = structurePending(coverage) || [first[0]?.status, first[1]?.status, ...plan, ...materials, ...pre, ...post, ...activities].includes("needs_review") || video.reviewSessions > 0;
-  return {...parts, total, totalMax:100, passScore:80, potentialTotal:structurePending(coverage) ? 100 : potential, pending};
+  return {...parts, total, totalMax:100, passScore:80, potentialTotal:Math.max(total,potential===79.5?80:potential), pending};
 }
 
 function practicalScore(weeks, coverage) {
@@ -134,7 +134,7 @@ export function criteria12569Scorecard(report = {}) {
 // The review UI uses original checklist positions, not weighted points.
 export function legacyReviewKeys(payload = {}) {
   const snap = payload.evidenceSnapshot || {};
-  if (payload.coverageComplete !== true || structurePending(snap.coverage || {})) return [];
+  if (payload.coverageComplete !== true || structurePending(snap.coverage || {}) || payload.criteriaScorecard?.status !== "needs_review") return [];
   const weeks = Array.isArray(snap.weeks) ? snap.weeks : [];
   return weeks.flatMap((week, index) => {
     const sessionNumber = Number(week.session || index + 1);
@@ -181,12 +181,52 @@ export function legacyVideoRequired(item,session){
  const m=[...String(item.originalDetail||item.detail||"").matchAll(/(\d{1,2}):(\d{2})(?::(\d{2}))?/g)].at(-1);
  return m?(m[3]===undefined?Number(m[1])*60+Number(m[2]):Number(m[1])*3600+Number(m[2])*60+Number(m[3])):(Number(session)===1?2700:5400);
 }
+// Never use a blanket full-score potential for a structural anomaly. Only
+// downgrade a narrow, evidence-supported case to a warning. Recompute flags
+// server-side rather than trusting flags supplied by the Extension.
+function assessLegacyStructure(payload, weighted){
+ const snap=payload.evidenceSnapshot||{},coverage=snap.coverage||{};
+ coverage.legacyTopologyWarningOnly=false;coverage.legacyUnmappedWarningOnly=false;
+ const warnings=[],rows=Array.isArray(coverage.topologyMappingRows)?coverage.topologyMappingRows:[],activities=snap.activities||[];
+ const allMapped=Array.from({length:15},(_,i)=>i+1).every(n=>rows.some(row=>!row.ignored&&!row.outOfRange&&Number(row.chosenSession)===n));
+ if(payload.coverageComplete!==true||coverage.reachedEnd!==true||coverage.structurallyComplete!==true||coverage.topologyConfidence!=="high"||!allMapped)return warnings;
+ const unmapped=Number(coverage.unmappedNonForumActivityCount||0);
+ if(unmapped>0){
+   const other=activities.filter(a=>!Number(a.auditSession)&&a.kind!=="forum"&&a.kind!=="supplementary"&&!rows.some(row=>row.section===a.section&&row.outOfRange));
+   const auxiliary=other.filter(a=>a.kind==="url"&&a.linkStatus==="skipped_unclassified"&&rows.some(row=>row.section===a.section&&row.ignored));
+   if(auxiliary.length===unmapped&&other.length===unmapped){
+     coverage.legacyUnmappedWarningOnly=true;
+     warnings.push("พบลิงก์ทั่วไปในกล่องที่ไม่นับคะแนน "+unmapped+" รายการ");
+   }
+ }
+ if(coverage.topologyReviewRequired===true&&(!unmapped||coverage.legacyUnmappedWarningOnly)){
+   const issues=Array.isArray(coverage.topologySafetyIssues)?coverage.topologySafetyIssues:[];
+   const first=rows.findIndex(row=>!row.ignored&&!row.outOfRange&&Number(row.declaredSession)===1&&Number(row.chosenSession)===1);
+   const affected=first>0?rows.slice(0,first).filter(row=>!row.ignored&&!row.outOfRange&&Number(row.chosenSession)>1):[];
+   const later=first>=0?rows.slice(first).filter(row=>!row.ignored&&!row.outOfRange):[];
+   const monotonic=later.every((row,i)=>!i||Number(row.chosenSession)>=Number(later[i-1].chosenSession));
+   const onlyIntro=first>0&&affected.length>0&&affected.every(row=>(row.declaredSession==null||Number(row.declaredSession)===0)&&Number(row.chosenSession)===2)
+     &&issues.length===1&&String(issues[0])==="ลำดับครั้งเรียนย้อนกลับที่ "+String(rows[first].section)&&monotonic;
+   if(onlyIntro){
+     const mapSections=new Set(affected.map(row=>row.section));
+     const affectedActivities=activities.filter(a=>mapSections.has(a.section));
+     const onlyUnscored=affectedActivities.length>0&&affectedActivities.every(a=>["url","forum","supplementary","ai_tutor","podcast"].includes(a.kind));
+     const removed={};for(const row of affected)for(let k=1;k<=7;k++)removed["criterion:"+row.chosenSession+":"+k]=false;
+     const conservative=score12569Snapshot(payload,removed);
+     if(onlyUnscored||(weighted.status==="pass"&&conservative.status==="pass")){
+       coverage.legacyTopologyWarningOnly=true;
+       warnings.push("พบลำดับกล่องแนะนำก่อน Week 1 ย้อนกลับ"+(onlyUnscored?" (ไม่พบองค์ประกอบที่คิดคะแนนในกล่องดังกล่าว)":" (แม้ไม่นับคะแนนครั้งที่คลาดเคลื่อน ผลยังผ่านเกณฑ์)"));
+     }
+   }
+ }
+ return warnings;
+}
 export function prepareLegacyReview(payload={}){
  if(payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569"||payload.reviewConfirmation?.confirmedAt||payload.internalStatus==="audit_failed")return payload;
  const snap=payload.evidenceSnapshot||{},coverage=snap.coverage||{};
  if(!Array.isArray(snap.weeks)||!Array.isArray(snap.activities)||!snap.weeks.length)return payload;
  // Legacy uses scored checklist statuses, not global counters that include omitted media.
- coverage.legacyReviewScoped=true;snap.coverage=coverage;
+ coverage.legacyReviewScoped=true;coverage.legacyTopologyWarningOnly=false;coverage.legacyUnmappedWarningOnly=false;snap.coverage=coverage;
  for(const week of snap.weeks){
   const session=Number(week.session),item=(week.criteria||[]).find(i=>Number(i.criterion)===(session===1?4:3));
   if(!item||!["fail","needs_review"].includes(item.status)||item.confirmedByReviewer||item.reviewerConfirmedMissing)continue;
@@ -199,11 +239,14 @@ export function prepareLegacyReview(payload={}){
   item.legacyVideoReview={required,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
  }
  for(const item of snap.activities){if(videoKinds.has(item.kind)){item.legacyVideoMode=legacyVideoMode(item);item.legacyFoundSeconds=foundVideoSeconds(item);}}
+ const initial=score12569Snapshot(payload);
+ payload.legacyStructureWarnings=assessLegacyStructure(payload,initial);
  const weighted=score12569Snapshot(payload);
  payload.criteriaScorecard=weighted;snap.criteriaScorecard=weighted;
  payload.confirmedScore=weighted.total;payload.possibleScore=Math.max(weighted.total,weighted.potentialTotal);
- payload.reviewableCriteria=legacyReviewKeys(payload);
  payload.legacyReviewBlocked=payload.coverageComplete!==true||structurePending(coverage);
+ payload.reviewableCriteria=payload.legacyReviewBlocked?[]:legacyReviewKeys(payload);
+ payload.legacyRecommendedStatus=payload.legacyReviewBlocked?"audit_failed":weighted.status==="pass"?"pass":weighted.status==="needs_review"&&payload.reviewableCriteria.length?"needs_review":weighted.status==="fail"?"has_content":"audit_failed";
  return payload;
 }
 export function validateLegacyVideoDecisions(source,keys,submitted,decisions){
@@ -279,6 +322,7 @@ export function reconcileLegacyResult(payload,expected){
  }
  if(typeof payload.hasContent!=="boolean"||typeof payload.confirmedScore!=="number"||!Number.isFinite(payload.confirmedScore)||payload.confirmedScore<0||payload.confirmedScore>(expected.track==="practical"?50:100)||!["pass","needs_review","has_content","no_content"].includes(payload.internalStatus))throw legacyError("legacy_result_invalid");
  const received={confirmedScore:payload.confirmedScore,possibleScore:payload.possibleScore,internalStatus:payload.internalStatus,threshold:payload.threshold,track:card.track};
+ snap.coverage.legacyTopologyWarningOnly=false;snap.coverage.legacyUnmappedWarningOnly=false;
  const baseline=score12569Snapshot(payload);
  if(baseline.passScore!==expected.threshold||!Number.isFinite(baseline.total))throw legacyError("legacy_score_snapshot_invalid");
  if(!payload.hasContent&&(baseline.total!==0||snap.weeks.some(w=>(w.criteria||[]).some(i=>PASS.has(i.status)))||snap.activities.some(i=>!["forum","url","supplementary"].includes(i.kind))))throw legacyError("legacy_no_content_mismatch");
@@ -311,10 +355,10 @@ export function reconcileLegacyResult(payload,expected){
  payload.confirmedScore=final.total;
  payload.possibleScore=Math.min(final.totalMax,Math.max(final.total,final.potentialTotal));
  payload.reviewablePoints=payload.possibleScore-final.total;
- payload.internalStatus=payload.legacyReviewBlocked||!payload.hasContent?"needs_review":final.status==="pass"?"pass":final.status==="needs_review"?"needs_review":"has_content";
- payload.publicStatus=payload.internalStatus==="needs_review"?null:payload.internalStatus;
+ payload.internalStatus=payload.legacyReviewBlocked||!payload.hasContent?"audit_failed":payload.legacyRecommendedStatus;
+ payload.publicStatus=["needs_review","audit_failed"].includes(payload.internalStatus)?null:payload.internalStatus;
  payload.publicResult={...(payload.publicResult||{}),status:payload.publicStatus,score:null};
- payload.reason=payload.legacyReviewBlocked||!payload.hasContent?"legacy_structure_review_required":payload.internalStatus==="needs_review"?"legacy_review_can_change_outcome":payload.internalStatus==="no_content"?"successful_scan_found_no_course_content":payload.internalStatus==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
+ payload.reason=payload.legacyReviewBlocked||!payload.hasContent||payload.internalStatus==="audit_failed"?"legacy_structure_review_required":payload.internalStatus==="needs_review"?"legacy_review_can_change_outcome":payload.internalStatus==="no_content"?"successful_scan_found_no_course_content":payload.internalStatus==="pass"?"legacy_12569_score_and_gates_passed":"legacy_12569_below_threshold_or_gate_failed";
  payload.legacyScoreReconciliation={received,baselineScore:baseline.total,baselineStatus:baseline.status,serverScore:final.total,serverStatus:payload.internalStatus,track:expected.track,changed:received.confirmedScore!==final.total||received.internalStatus!==payload.internalStatus};
  return payload;
 }
