@@ -1,0 +1,84 @@
+/* Shared complete dark palette for audit-review and audit-evidence only.
+   Light mode is unchanged. Explicit state colors, no inversion/filter. */
+html body.theme-dark{
+ color-scheme:dark;--bg:#0d1420;--ink:#e5edf6;--muted:#a8b9cc;--line:#34465b;--navy:#e5edf6;
+ --surface:#172332;--surface-soft:#1d2c3d;
+ --dark-bg:#0d1420;--dark-card:#172332;--dark-soft:#1d2c3d;--dark-raised:#23354a;--dark-border:#34495f;--dark-text:#e5edf6;--dark-muted:#a8b9cc;--dark-link:#9ec5ff;
+ --dark-green:#80d9b2;--dark-green-bg:#17392f;--dark-red:#ffadb5;--dark-red-bg:#3b232d;--dark-amber:#f7cd87;--dark-amber-bg:#382d1e;
+ background:var(--dark-bg)!important;color:var(--dark-text)!important;
+}
+html body.theme-dark.evidence-page{
+ --ev-navy:#deebfa;--ev-blue:#9ec5ff;--ev-line:#34495f;--ev-card:#172332;--ev-muted:#a8b9cc;
+ --ev-green:var(--dark-green);--ev-green-soft:var(--dark-green-bg);--ev-red:var(--dark-red);--ev-red-soft:var(--dark-red-bg);--ev-amber:var(--dark-amber);--ev-amber-soft:var(--dark-amber-bg);
+ background:var(--dark-bg)!important;color:var(--dark-text)!important
+}
+html body.theme-dark .topbar{background:#142338!important;color:#e5edf6!important}
+html body.theme-dark .topbar h1,html body.theme-dark .topbar p{color:#e5edf6!important}
+html body.theme-dark :is(.panel,.notice,.table-panel,.table-wrap,.admin-drawer,.auth-chip,.session-overview,.teacher-summary-grid article,.teacher-history-item,.week-evidence,.evidence-list li,.priority-panel,.priority-card,.review-drawer,.drawer-footer,.evidence-tab-panel,.fact,.review-decision,.manual-review,.fix-summary,.fix-session,.access-panel,.access-item,.error-log-item,.error-report,.import-box,.install-card,.edition-card,.update-note,.quality-note,.reviewer-summary,.admin-intro,.queue-orbit,.queue-stat,.queue-courses,.monitor-event,.worker-console,.worker-box,.worker-progress,.queue-feedback,.course-queue-picker,.scope-card,.course-scope,.preflight-card,.preflight-list li,.ooe-load-state,.component-tile,.mock-evidence-card,.media-meta>div,.evidence-details,.teacher-privacy-note,.criterion-evidence-links,.review-score,.review-edit,.review-choice,.fix-item){
+ background:var(--dark-card)!important;color:var(--dark-text)!important;border-color:var(--dark-border)!important;box-shadow:none!important;
+}
+html body.theme-dark :is(.gr-mock-run,.compact-review,.review-drawer .criterion-evidence-links){background:transparent!important;box-shadow:none!important}
+html body.theme-dark :is(.preflight-list li,.component-tile,.mock-evidence-card,.media-meta>div,.criterion,.fix-session,.fix-item,.teacher-history-item,.queue-now,.monitor-note,.worker-progress,.queue-feedback,.scope-segments,.file-drop,.queue-stat,.empty-note,.review-score,.review-hint,.review-edit,.review-choice,.teacher-privacy-note,.evidence-preview,.facts .fact,.priority-number,.media-note,.review-action-notice){
+ background:var(--dark-soft)!important;color:var(--dark-text)!important;border-color:var(--dark-border)!important
+}
+html body.theme-dark :is(h1,h2,h3,h4,h5,strong,b,label,.table-head h2,.command-title h2,.edition-card h3,.course-outcome strong,.evidence-course-hero strong,.report-course-code,.report-course-title,.priority-head h2,.extension-status strong){color:var(--dark-text)!important}
+html body.theme-dark :is(.muted,.small,.week-head p,.component-tile p,.mock-evidence-card p,.media-meta small,.preflight-card p,.queue-stat span,.queue-orbit-ring span,.queue-now small,.monitor-event small,.priority-card p,.teacher-summary-grid article>div>span,.teacher-history-item span,.teacher-privacy-note,.evidence-course-meta,.course-detail-line,.report-time,.report-score-note,.report-decision-note,.report-course-profile,.report-status-label,.review-hint,.queue-running-note,.evidence-tab,.access-head p,.edition-card p,.install-card p,.update-note p,.kpi span,.drawer-link small){color:var(--dark-muted)!important}
+html body.theme-dark a:not(.button):not(.active),html body.theme-dark .component-link,html body.theme-dark .course-open-link{color:var(--dark-link)!important}
+html body.theme-dark :is(input:not([type=checkbox]):not([type=radio]),select,textarea,option,.file-input){background:#101b29!important;color:var(--dark-text)!important;border-color:#4a6078!important}
+html body.theme-dark :is(input,textarea)::placeholder{color:#91a6bc!important}
+html body.theme-dark :is(input[type=checkbox],input[type=radio]){accent-color:#6ba9ee}
+html body.theme-dark :is(table,thead,tbody,tr,td){background:transparent!important;color:var(--dark-text)!important;border-color:var(--dark-border)!important}
+html body.theme-dark :is(th,.table-head){background:#23354a!important;color:var(--dark-text)!important;border-color:var(--dark-border)!important}
+html body.theme-dark tbody tr:hover{background:#25384b!important}
+html body.theme-dark :is(.component-summary tr.pass,.criterion.pass,.session-chip.pass,.teacher-status.pass,.result-summary.pass,.course-outcome.pass,.queue-stat-running,.message.ok,.review-action-notice.success,.extension-check.ok,.access-state.active){
+ background:var(--dark-green-bg)!important;border-color:#427a62!important;color:var(--dark-green)!important
+}
+html body.theme-dark :is(.component-summary tr.fail,.criterion.fail,.component-tile.fail,.session-chip.fail,.teacher-status.fail,.result-summary.fail,.course-outcome.fail,.course-outcome.no_content,.course-outcome.audit_failed,.priority-card.failed,.queue-stat-failed,.message.error,.ooe-load-state.is-error,.review-action-notice.error,.extension-check.error,.review-error){
+ background:var(--dark-red-bg)!important;border-color:#87515d!important;color:var(--dark-red)!important
+}
+html body.theme-dark :is(.component-summary tr.review,.criterion.needs_review,.component-tile.needs_review,.session-chip.review,.priority-card:not(.failed),.teacher-status.review,.result-summary.review,.course-outcome.needs_review,.course-outcome.has_content,.review-action-notice.loading){
+ background:var(--dark-amber-bg)!important;border-color:#866744!important;color:var(--dark-amber)!important
+}
+html body.theme-dark :is(.component-summary tr.pass,.component-summary tr.fail,.component-summary tr.review) td{background:transparent!important}
+html body.theme-dark :is(.component-icon,.teacher-summary-icon,.fact:before,.mock-facts .fact:before,.priority-number,.course-type-chip,.preflight-icon,.section-icon,.edition-icon,.menu-icon,.media-note,.media-tag){background:#243b55!important;color:var(--dark-link)!important;border-color:var(--dark-border)!important}
+html body.theme-dark :is(.media-tag.pass,.criterion.pass .criterion-badge,.status.green,.preflight-list input:checked+span .preflight-state,.queue-course-status.running,.worker-chip.running){background:var(--dark-green-bg)!important;color:var(--dark-green)!important;border-color:#427a62!important}
+html body.theme-dark :is(.media-tag.fail,.criterion.fail .criterion-badge,.priority-card.failed .priority-state,.priority-count,.status.red,.media-note.excluded,.teacher-status.fail .teacher-summary-icon){background:var(--dark-red-bg)!important;color:var(--dark-red)!important;border-color:#87515d!important}
+html body.theme-dark :is(.media-tag.review,.criterion.needs_review .criterion-badge,.priority-state,.status.orange,.status.yellow,.preflight-state){background:var(--dark-amber-bg)!important;color:var(--dark-amber)!important;border-color:#866744!important}
+html body.theme-dark :is(.status.gray,.component-tile.not_applicable,.criterion.not_applicable){background:#293544!important;color:#c7d3df!important;border-color:#526176!important}
+html body.theme-dark :is(.session-chip.pass strong,.teacher-status.pass strong,.course-outcome.pass strong){color:var(--dark-green)!important}
+html body.theme-dark :is(.session-chip.fail strong,.teacher-status.fail strong,.course-outcome.fail strong,.course-outcome.no_content strong){color:var(--dark-red)!important}
+html body.theme-dark :is(.session-chip.review strong,.teacher-status.review strong,.course-outcome.needs_review strong){color:var(--dark-amber)!important}
+html body.theme-dark :is(.session-chip,.evidence-tab,.drawer-head>button,.nav a,.button:not(.primary),button:not(.primary):not(.action-button):not(.review-pass):not(.review-fail):not(.scope-segment):not([data-lang])){background:var(--dark-raised)!important;color:var(--dark-text)!important;border-color:#49637e!important}
+html body.theme-dark .session-chip.pass{background:var(--dark-green-bg)!important;border-color:#427a62!important}
+html body.theme-dark .session-chip.review{background:var(--dark-amber-bg)!important;border-color:#866744!important}
+html body.theme-dark .session-chip.fail{background:var(--dark-red-bg)!important;border-color:#87515d!important}
+html body.theme-dark .evidence-tab{background:transparent!important;border-color:transparent!important;color:var(--dark-muted)!important}
+html body.theme-dark .evidence-tab.active{color:var(--dark-link)!important;border-bottom-color:var(--dark-link)!important}
+html body.theme-dark .session-chip[aria-pressed=true]{outline:2px solid var(--dark-link);outline-offset:-2px}
+html body.theme-dark :is(.review-pass,.review-choice .review-pass){background:var(--dark-green-bg)!important;color:var(--dark-green)!important;border-color:#579e7e!important}
+html body.theme-dark :is(.review-fail,.danger,.queue-clear-all,.queue-remove-one){background:var(--dark-red-bg)!important;color:var(--dark-red)!important;border-color:#87515d!important}
+html body.theme-dark :is(.review-pass.selected,.review-pass.is-selected,.review-pass[aria-pressed=true]){outline:2px solid var(--dark-green);outline-offset:1px}
+html body.theme-dark :is(.review-fail.selected,.review-fail.is-selected,.review-fail[aria-pressed=true]){outline:2px solid var(--dark-red);outline-offset:1px}
+html body.theme-dark :is(.primary,.action-button,.extension-download,.report-refresh){background:#245d9f!important;color:#f0f6ff!important;border-color:#6194cf!important}
+html body.theme-dark .extension-hero .extension-downloads .extension-download{background:#245d9f!important;color:#f0f6ff!important;border-color:#6194cf!important}
+html body.theme-dark :is(.scope-segment.active,.scope-segment[aria-pressed=true]){background:#245d9f!important;color:white!important;border-color:#6194cf!important}
+html body.theme-dark .language-switch button.active{background:#3a5878!important;color:#f0f6ff!important}
+html body.theme-dark .language-switch:before{display:none!important}
+html body.theme-dark .language-switch button:not(.active){color:#bdcde0!important}
+html body.theme-dark .theme-track:after{background:#aac0d8!important}
+html body.theme-dark .scope-segments .scope-segment:not(.active){color:var(--dark-muted)!important;background:transparent!important}
+html body.theme-dark :is(.extension-hero,.audit-command-center){background:linear-gradient(135deg,#172b43,#223d5e)!important;color:var(--dark-text)!important}
+html body.theme-dark :is(.extension-hero small,.extension-hero p,.extension-hero .small){color:#c5d5e7!important}
+html body.theme-dark :is(.progress-track,.coverage-bar>span){background:#31445a!important}
+html body.theme-dark :is(.coverage-bar i,.progress-fill){background:#6b9fe9!important}
+html body.theme-dark .queue-orbit-ring{border-color:#34495f;border-top-color:#6b9fe9;border-right-color:#4479be;box-shadow:none}
+html body.theme-dark :is(.ooe-skeleton,.ooe-report-skeleton span){background:linear-gradient(95deg,#203043,#30455b,#203043)!important;background-size:220% 100%!important;color:transparent!important}
+html body.theme-dark .review-drawer::backdrop,html body.theme-dark dialog::backdrop{background:#080d16b8!important}
+html body.theme-dark dialog{background:var(--dark-card)!important;color:var(--dark-text)!important;border-color:var(--dark-border)!important}
+html body.theme-dark :is(.drawer-footer,.evidence-tab-panel,.run-head,.evidence-tabs,.session-overview,.access-head,.queue-courses-head){border-color:var(--dark-border)!important}
+html body.theme-dark .review-missing{outline-color:var(--dark-red)!important}
+html body.theme-dark :is(.edition-card,.install-card,.panel)::after{background-color:#24364b!important}
+html body.theme-dark :is(.extension-check.ok,.extension-check.error){background:var(--dark-soft)!important}
+html body.theme-dark .extension-check.ok{color:var(--dark-green)!important}
+html body.theme-dark .extension-check.error{color:var(--dark-red)!important}
+html body.theme-dark :is(button,a,input,select,textarea):focus-visible{outline:2px solid #9ec5ff!important;outline-offset:2px}

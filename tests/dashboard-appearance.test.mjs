@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+const mem=new Map(), nodes=[];
+const noop=()=>{};
+const makeNode=v=>({nodeType:3,nodeValue:v,parentElement:{closest:()=>null}});
+const root={nodeType:9,querySelector:()=>null,querySelectorAll:()=>[],documentElement:{lang:'th',style:{}},head:{appendChild:noop},body:{classList:{toggle:noop,contains:()=>false}},createElement:()=>({}),readyState:'loading',addEventListener:noop,createTreeWalker:()=>{let i=-1;return{nextNode(){i++;this.currentNode=nodes[i];return i<nodes.length}}}};
+const win={addEventListener:noop,dispatchEvent:noop};
+const ctx={window:win,document:root,location:{search:'?lang=en',href:'https://example.test/audit-evidence.html?lang=en',pathname:'/audit-evidence.html'},history:{replaceState:noop},localStorage:{getItem:k=>mem.get(k)||null,setItem:(k,v)=>mem.set(k,v)},URLSearchParams,URL,Intl,Date,NodeFilter:{SHOW_TEXT:4},CustomEvent:class{},queueMicrotask};
+vm.runInNewContext(fs.readFileSync('ui-i18n.js','utf8'),ctx);
+const api=win.OOEI18n;
+assert.equal(api.current(),'en');
+assert.equal(api.english('ภาพรวมองค์ประกอบ'),'Component overview');
+assert.equal(api.english('รายละเอียดรายครั้ง'),'Session details');
+assert.equal(api.english('⇩ ดาวน์โหลด Dashboard 0.13.38'),'⇩ Download Dashboard 0.13.38');
+assert.equal(api.english('19 พฤศจิกายน 2569 เวลา 04:14'),'November 19, 2026 at 04:14');
+assert.equal(api.english('พบลิงก์วิดีโอภายนอก 2 รายการ · เวลาที่อ่านและนับได้ 1:37:03 / 1:30:00'),'External video links found 2 items · Read and counted duration 1:37:03 / 1:30:00');
+const n=makeNode('ภาพรวมองค์ประกอบ');nodes.push(n);
+api.translate();assert.equal(n.nodeValue,'Component overview');api.translate();assert.equal(n.nodeValue,'Component overview');
+n.nodeValue='รายละเอียดรายครั้ง';api.translate();assert.equal(n.nodeValue,'Session details');
+api.setLanguage('th');assert.equal(api.current(),'th');assert.equal(n.nodeValue,'รายละเอียดรายครั้ง');
+api.setLanguage('en');assert.equal(n.nodeValue,'Session details');
+n.nodeValue='ผ่านเกณฑ์';api.translate();assert.equal(n.nodeValue,'Meets criteria');api.setLanguage('th');assert.equal(n.nodeValue,'ผ่านเกณฑ์');
+const skip=makeNode('ชื่อวิชา หลักฐาน');skip.parentElement.closest=()=>true;nodes.push(skip);api.setLanguage('en');assert.equal(skip.nodeValue,'ชื่อวิชา หลักฐาน');
+for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261119langtheme2'));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme2'))}
+const css=fs.readFileSync('audit-dark-complete.css','utf8');for(const k of ['--ev-card:#172332','preflight-list li','teacher-summary-grid article','component-tile.fail','review-drawer','media-tag.pass','component-summary tr.fail'])assert.ok(css.includes(k));
+console.log('Language source, reversible updates, URL preference, dates, evidence labels and dark stylesheet coverage OK');

@@ -1,0 +1,25 @@
+name: Verify dashboard appearance
+on:
+  push:
+    branches: [main]
+    paths:
+      - ui-i18n.js
+      - audit-dark-complete.css
+      - audit-review.html
+      - audit-evidence.html
+      - audit-review.js
+      - audit-evidence.js
+      - tests/dashboard-appearance.test.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          node --check ui-i18n.js
+          node --check audit-review.js
+          node --check audit-evidence.js
+          node tests/dashboard-appearance.test.mjs
