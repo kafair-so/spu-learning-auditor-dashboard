@@ -147,3 +147,12 @@
   .evidence-course-meta,.course-detail-line{font-size:13px}
   .evidence-course-hero #course{margin-top:8px}
 }
+
+/* Published teacher report: same evidence layout, without admin controls. */
+.teacher-components .session-overview{margin:0 0 12px;background:var(--ev-card)}
+.teacher-components .evidence-tab-panel[hidden]{display:none!important}
+.teacher-components .component-tile{align-items:start}
+.teacher-components .component-tile .media-tag{align-self:center}
+.teacher-components .component-summary th,.teacher-components .component-summary td{font-size:14px}
+.teacher-components .session-chip:focus-visible{outline:2px solid var(--ev-blue)}
+@media(max-width:600px){.teacher-components .component-tile .media-tag{grid-column:2;justify-self:start}.teacher-components .component-summary td{min-width:95px}}
