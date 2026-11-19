@@ -240,6 +240,30 @@ function assessLegacyStructure(payload, weighted){
  }
  return warnings;
 }
+// Ordinary Moodle quizzes are valid end-of-session activities in GR 1/2569.
+// Preserve pre/post assessments in their own rows and explicit reviewer choices.
+export function applyLegacyMoodleQuizActivities(payload={}){
+ if(payload.group!=="GR"||payload.criteriaMode!==CRITERIA_12569_MODE||payload.semesterCode!==CRITERIA_12569_SEMESTER||payload.coverageComplete!==true||payload.internalStatus==="audit_failed")return [];
+ const snap=payload.evidenceSnapshot||{},items=snap.activities||[],changes=[];
+ const moodleId=a=>String(a.href||a.externalUrl||"").match(/^https:\/\/(?:dlearning|ilearning)\.spu\.ac\.th\/mod\/quiz\/view\.php\?(?:[^#]*&)?id=(\d+)(?:[&#]|$)/i)?.[1]||"";
+ const prePost=a=>["pre_quiz","post_quiz"].includes(a.kind)||["pre","post","pre_test","post_test"].includes(String(a.currentSemesterQuiz?.role||"").toLowerCase())||/(?:\b(?:pre|post)[\s_-]*(?:test|quiz)\b|แบบทดสอบ(?:ก่อน|หลัง)เรียน|ทดสอบ(?:ก่อน|หลัง)เรียน)/i.test(String(a.title||"")+" "+String(a.groupContext||""));
+ const classified=new Set(items.filter(prePost).map(moodleId).filter(Boolean));
+ for(const w of snap.weeks||[]){
+   const n=Number(w.session),k=n===1?6:7,criterion=(w.criteria||[]).find(i=>Number(i.criterion)===k),key="criterion:"+n+":"+k;
+   if(!Number.isInteger(n)||n<1||n>15||!criterion||PASS.has(criterion.status)||criterion.confirmedByReviewer||criterion.reviewerConfirmedMissing||Object.prototype.hasOwnProperty.call(payload.reviewConfirmation?.decisions||{},key))continue;
+   const matches=items.filter(a=>a.kind==="quiz"&&Object.prototype.hasOwnProperty.call(a,"auditSession")&&Number(a.auditSession)===n&&a.countingEligible!==false&&!a.reviewExcluded&&!a.misplacedDocumentAssignment&&!prePost(a)&&moodleId(a)&&!classified.has(moodleId(a)));
+   const unique=[...new Map(matches.map(a=>[moodleId(a),a])).values()];
+   if(!unique.length)continue;
+   const old={...criterion};
+   criterion.originalStatus=criterion.originalStatus||criterion.status;
+   criterion.originalDetail=criterion.originalDetail||criterion.detail;
+   criterion.status="pass";delete criterion.scoreValue;
+   criterion.detail="พบกิจกรรมท้ายบท "+unique.length+" รายการ: "+unique.map(a=>String(a.title||"Quiz").replace(/\s+Quiz$/i,"")+" (Moodle Quiz)").join(", ");
+   changes.push({session:n,criterion:k,old,newItem:{...criterion}});
+ }
+ return changes;
+}
+
 export function prepareLegacyReview(payload={}){
  if(payload.group!=="GR"||payload.criteriaMode!=="legacy_12569"||payload.semesterCode!=="1/2569"||payload.reviewConfirmation?.confirmedAt||payload.internalStatus==="audit_failed")return payload;
  const snap=payload.evidenceSnapshot||{},coverage=snap.coverage||{};
@@ -265,6 +289,7 @@ export function prepareLegacyReview(payload={}){
   item.detail="เวลาวิดีโอที่นับได้ "+durationText(observed)+" / ขั้นต่ำหลังผ่อนปรน "+durationText(required)+(manual.length?" · รอยืนยันประเภท "+manual.length+" คลิป":"");
   item.legacyVideoReview={required,nominal:expectedNominal,observed,manualCount:manual.length,excludedCount:links.filter(i=>legacyVideoMode(i)==="excluded").length};
  }
+ applyLegacyMoodleQuizActivities(payload);
  for(const item of snap.activities){if(videoKinds.has(item.kind)){item.legacyVideoMode=legacyVideoMode(item);item.legacyFoundSeconds=foundVideoSeconds(item);}}
  const initial=score12569Snapshot(payload);
  payload.legacyStructureWarnings=assessLegacyStructure(payload,initial);

@@ -905,7 +905,22 @@ async function publicHistory(courseId) {
   return { ...safePublicRow, runs: prioritizeRun(runs || [], publicRow.published_run_id).map(publicHistoryRunRecord) };
 }
 
-function publicEvidenceSnapshot(snapshot) {
+function visibleLegacyDetail(item,session,credits){
+ const detail=String(item?.detail||""),original=String(item?.originalDetail||"");
+ const clean=value=>String(value||"").replace(/\s*·\s*ผ่อนปรน[^·]*/gi,"").replace(/ผ่านตามค่าผ่อนปรน/g,"ผ่าน").trim();
+ if(Number(item?.criterion)!==(Number(session)===1?4:3))return clean(detail);
+ const clock=seconds=>{const n=Math.max(0,Math.round(Number(seconds)||0));return Math.floor(n/3600)+":"+String(Math.floor(n%3600/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");};
+ const c=Number(credits),meta=Number(item?.legacyVideoReview?.nominal||0),nominal=Number.isInteger(c)&&c>0?c*(Number(session)===1?900:1800):meta;
+ const pair=detail.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*\/\s*(?:ขั้นต่ำหลังผ่อนปรน\s*)?(\d{1,2}:\d{2}(?::\d{2})?)/);
+ const originalPair=original.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*\/\s*(\d{1,2}:\d{2}(?::\d{2})?)/);
+ const manual=detail.match(/เวลารวม\s*(\d{1,2}:\d{2}(?::\d{2})?)/);
+ const observed=manual?.[1]||pair?.[1]||(item?.legacyVideoReview?.observed!=null?clock(item.legacyVideoReview.observed):null);
+ const target=nominal>0?clock(nominal):originalPair?.[2]||(!/ผ่อนปรน/.test(detail)?pair?.[2]:"");
+ if(observed){const tail=clean(detail).split("·").slice(1).filter(t=>!/ผ่อนปรน|ขั้นต่ำ|^ *ผ่าน *$|^ *ไม่ผ่าน *$/.test(t)).map(t=>t.trim()).filter(Boolean);return "เวลาวิดีโอที่นับได้ "+observed+(target?" / "+target:"")+(tail.length?" · "+tail.join(" · "):"");}
+ return clean(detail).replace(/\/\s*ขั้นต่ำหลังผ่อนปรน\s*\d{1,2}:\d{2}(?::\d{2})?/g,"").replace(/ขั้นต่ำหลังผ่อนปรน[^·]*/g,"").trim();
+}
+
+function publicEvidenceSnapshot(snapshot, legacy=false, credits=null) {
   const source = snapshot && typeof snapshot === "object" ? snapshot : {};
   const weeks = Array.isArray(source.weeks) ? source.weeks.map(week => ({
     session: week.session,
@@ -913,8 +928,8 @@ function publicEvidenceSnapshot(snapshot) {
     criteria: Array.isArray(week.criteria) ? week.criteria.map(item => ({
       criterion: item.criterion,
       label: item.label || "",
-      detail: item.detail || "",
-      status: item.status === "needs_review" ? "fail" : item.status
+      detail: legacy?visibleLegacyDetail(item,week.session,credits):(item.detail || ""),
+      status: item.status === "needs_review" ? "fail" : item.status === "pass_tolerance"&&legacy?"pass":item.status
     })) : []
   })) : [];
   const activities = Array.isArray(source.activities) ? source.activities.map(item => ({
@@ -937,15 +952,17 @@ async function downloadEvidenceSnapshot(path) {
 
 async function evidence(request, courseId, runId) {
   const { data: run, error } = await db.from("audit_runs")
-    .select("evidence_object_path,public_status,source_payload").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
+    .select("evidence_object_path,public_status,source_payload,criteria_mode,semester_code,courses!audit_runs_course_id_fkey(course_credits)").eq("course_id", courseId).eq("run_id", runId).maybeSingle();
   if (error) throw error;
   if (!run || !run.public_status) return null;
+  const legacy=run.criteria_mode==="legacy_12569"&&run.semester_code==="1/2569";
+  const credits=run.source_payload?.courseCredits||run.courses?.course_credits;
   const resolvedSnapshot = resolvedRunSource(run).evidenceSnapshot;
   if (resolvedSnapshot && typeof resolvedSnapshot === "object") {
-    return { snapshot:publicEvidenceSnapshot(resolvedSnapshot) };
+    return { snapshot:publicEvidenceSnapshot(resolvedSnapshot,legacy,credits) };
   }
   if (!run.evidence_object_path) return null;
-  return { snapshot:publicEvidenceSnapshot(await downloadEvidenceSnapshot(run.evidence_object_path)) };
+  return { snapshot:publicEvidenceSnapshot(await downloadEvidenceSnapshot(run.evidence_object_path),legacy,credits) };
 }
 
 async function adminEvidence(request, courseId, runId) {
