@@ -50,16 +50,16 @@ function documentEvidenceEnglish(raw){
  if(verb==="ไม่พบเอกสาร" ? Boolean(count) : !count)return null;
  const type=category==="แผนการสอน"?"lesson plan":"teaching material";
  const start=verb==="ไม่พบเอกสาร"
-   ?\`No \${category==="แผนการสอน"?"lesson plan documents":"teaching materials"} found\`
-   :\`Found \${count} \${verb==="พบ File PDF"?"PDF ":""}\${type} document\${count==="1"?"":"s"}: \`;
+   ?`No ${category==="แผนการสอน"?"lesson plan documents":"teaching materials"} found`
+   :`Found ${count} ${verb==="พบ File PDF"?"PDF ":""}${type} document${count==="1"?"":"s"}: `;
  const rest=raw.slice(match[0].length)
   .replace(/\(ไฟล์ปลายทาง:\s*/g,"(destination file: ")
   .replace(/\(ไฟล์ใหญ่เกินกว่าจะเปิดดูตัวอย่าง — ไม่ใช่ PDF\)/g,"(file too large to preview — not a PDF)")
   .replace(/\(Google Docs\/Slides\/Sheets — ไม่ใช่ PDF\)/g,"(Google Docs/Slides/Sheets — not a PDF)")
   .replace(/\(เอกสารออนไลน์ Gamma — ไม่ใช่ PDF\)/g,"(Gamma online document — not a PDF)")
   .replace(/\(ไฟล์รูปภาพ\b([^)]*) — ไม่ใช่ PDF\)/g,"(image file$1 — not a PDF)")
-  .replace(/ · ยืนยันว่าไม่ใช่ PDF (\d+) รายการ:\s*/g,(_all,n)=>\` · Confirmed non-PDF for \${n} item\${n==="1"?"":"s"}: \`)
-  .replace(/ · เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ (\d+) รายการ:\s*/g,(_all,n)=>\` · Destination opened, but PDF format could not be verified for \${n} item\${n==="1"?"":"s"}: \`);
+  .replace(/ · ยืนยันว่าไม่ใช่ PDF (\d+) รายการ:\s*/g,(_all,n)=>` · Confirmed non-PDF for ${n} item${n==="1"?"":"s"}: `)
+  .replace(/ · เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ (\d+) รายการ:\s*/g,(_all,n)=>` · Destination opened, but PDF format could not be verified for ${n} item${n==="1"?"":"s"}: `);
  return leading+start+rest;
 }
 
