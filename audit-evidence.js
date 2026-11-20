@@ -107,7 +107,7 @@
       const inaccessible=videoLinks.some(media=>["link_error","link_unavailable","access_denied","login_required"].includes(String(media.mediaStatus||""))||["broken","link_error"].includes(String(media.linkStatus||"")));
       if(inaccessible)add("video-access","ลิงก์วิดีโอเปิดปลายทางไม่ได้","ตรวจสอบลิงก์วิดีโอและสิทธิ์เข้าถึงจากบัญชีที่ใช้ตรวจจริง เพื่อให้ผู้ตรวจเปิดปลายทางได้");
       // Independently report insufficient recorded duration (not a link error).
-      if(/เวลา|นาที|ชั่วโมง|\\d+\\s*:\\s*\\d+/.test(text)||!inaccessible)
+      if(duration||!inaccessible)
         add("video-duration","เวลารวมของวิดีโอไม่ครบตามเกณฑ์","เพิ่มลิงก์คลิปการสอน หรือเพิ่ม/ปรับวิดีโอที่เปิดได้ให้มีเวลารวมครบตามเกณฑ์ของสัปดาห์นั้น");
       return issues;
     }
