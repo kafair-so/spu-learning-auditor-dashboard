@@ -39,11 +39,36 @@ const phraseRe=new RegExp([...entries.keys()].filter(Boolean).sort((a,b)=>b.leng
 const monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const monthShort=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 const thaiDate=new RegExp("(\\d{1,2})\\s+("+[...monthNames,...monthShort].map(reEscape).join("|")+")\\s+(\\d{4})(?:\\s+(?:เวลา\\s*)?(\\d{1,2}:\\d{2})(?:\\s*น\\.)?)?","g");
+
+/* Evidence details are structured scanner messages, not free-form text.
+   Translate their scanner-produced grammar while preserving lecturer-authored
+   filenames/activity titles verbatim, including Thai text in those titles. */
+function documentEvidenceEnglish(raw){
+ const match=/^(\s*)(พบ File PDF|พบเอกสาร|ไม่พบเอกสาร)\s+(แผนการสอน|เอกสารประกอบ)(?:\s+(\d+)\s+รายการ:\s*)?/.exec(raw);
+ if(!match)return null;
+ const [,leading,verb,category,count]=match;
+ if(verb==="ไม่พบเอกสาร" ? Boolean(count) : !count)return null;
+ const type=category==="แผนการสอน"?"lesson plan":"teaching material";
+ const start=verb==="ไม่พบเอกสาร"
+   ?\`No \${category==="แผนการสอน"?"lesson plan documents":"teaching materials"} found\`
+   :\`Found \${count} \${verb==="พบ File PDF"?"PDF ":""}\${type} document\${count==="1"?"":"s"}: \`;
+ const rest=raw.slice(match[0].length)
+  .replace(/\(ไฟล์ปลายทาง:\s*/g,"(destination file: ")
+  .replace(/\(ไฟล์ใหญ่เกินกว่าจะเปิดดูตัวอย่าง — ไม่ใช่ PDF\)/g,"(file too large to preview — not a PDF)")
+  .replace(/\(Google Docs\/Slides\/Sheets — ไม่ใช่ PDF\)/g,"(Google Docs/Slides/Sheets — not a PDF)")
+  .replace(/\(เอกสารออนไลน์ Gamma — ไม่ใช่ PDF\)/g,"(Gamma online document — not a PDF)")
+  .replace(/\(ไฟล์รูปภาพ\b([^)]*) — ไม่ใช่ PDF\)/g,"(image file$1 — not a PDF)")
+  .replace(/ · ยืนยันว่าไม่ใช่ PDF (\d+) รายการ:\s*/g,(_all,n)=>\` · Confirmed non-PDF for \${n} item\${n==="1"?"":"s"}: \`)
+  .replace(/ · เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ (\d+) รายการ:\s*/g,(_all,n)=>\` · Destination opened, but PDF format could not be verified for \${n} item\${n==="1"?"":"s"}: \`);
+ return leading+start+rest;
+}
+
 function english(raw){
  const trim=raw.trim();if(!trim)return raw;
  const release=trim.match(/^(⇩\s*)?ดาวน์โหลด Dashboard (\d+\.\d+\.\d+)$/);
  if(release)return raw.replace(trim, (release[1]||"")+"Download Dashboard "+release[2]);
  if(exact[trim])return raw.replace(trim,exact[trim]);
+ const structuredDocument=documentEvidenceEnglish(raw);if(structuredDocument!==null)return structuredDocument;
  const remove=trim.match(/^ลบ (.*?) ออกจากคิวตรวจใช่หรือไม่\?\nผลตรวจเดิมของรายวิชาจะไม่ถูกลบ$/);if(remove)return `Remove ${remove[1]} from the audit queue?\nPrevious course results will not be deleted.`;
  const clear=trim.match(/^ลบรายวิชาที่รอเริ่มตรวจทั้งหมด (.*?) วิชาออกจากคิวใช่หรือไม่\?\nผลตรวจเดิมและวิชาที่กำลังตรวจจะไม่ถูกลบ$/);if(clear)return `Remove all ${clear[1]} queued courses?\nPrevious results and courses currently being audited will not be deleted.`;
  const owner=trim.match(/^ยืนยันโอนสิทธิ์ Owner ให้ (.*?)\nบัญชีของคุณจะเปลี่ยนเป็น Super Admin$/);if(owner)return `Transfer ownership to ${owner[1]}?\nYour account will become Super Admin.`;

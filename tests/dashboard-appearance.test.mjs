@@ -22,6 +22,24 @@ n.nodeValue='รายละเอียดรายครั้ง';api.transla
 api.setLanguage('th');assert.equal(api.current(),'th');assert.equal(n.nodeValue,'รายละเอียดรายครั้ง');
 api.setLanguage('en');assert.equal(n.nodeValue,'Session details');
 n.nodeValue='ผ่านเกณฑ์';api.translate();assert.equal(n.nodeValue,'Meets criteria');api.setLanguage('th');assert.equal(n.nodeValue,'ผ่านเกณฑ์');
+
+const planThai='พบเอกสาร แผนการสอน 1 รายการ: Lesson Plan URL (ไฟล์ปลายทาง: es001) · เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ 1 รายการ: Lesson Plan URL (ไฟล์ปลายทาง: es001)';
+const planEn='Found 1 lesson plan document: Lesson Plan URL (destination file: es001) · Destination opened, but PDF format could not be verified for 1 item: Lesson Plan URL (destination file: es001)';
+assert.equal(api.english(planThai),planEn);
+assert.equal(api.english('ไม่พบเอกสาร เอกสารประกอบ'),'No teaching materials found');
+assert.equal(api.english('ไม่พบเอกสาร แผนการสอน'),'No lesson plan documents found');
+assert.equal(api.english('พบ File PDF เอกสารประกอบ 2 รายการ: Course Guide, Business Ethics'),'Found 2 PDF teaching material documents: Course Guide, Business Ethics');
+assert.equal(api.english('พบเอกสาร เอกสารประกอบ 1 รายการ: แผนการสอนสัปดาห์ที่ 9 (ไฟล์ปลายทาง: chapter_09.pptx) · ยืนยันว่าไม่ใช่ PDF 1 รายการ: แผนการสอนสัปดาห์ที่ 9'),'Found 1 teaching material document: แผนการสอนสัปดาห์ที่ 9 (destination file: chapter_09.pptx) · Confirmed non-PDF for 1 item: แผนการสอนสัปดาห์ที่ 9');
+assert.equal(api.english('ไม่พบเอกสาร แผนการสอน · เอกสารวางผิดส่วน'),'No lesson plan documents found · เอกสารวางผิดส่วน');
+const docNode=makeNode(planThai);nodes.push(docNode);
+api.translate();assert.equal(docNode.nodeValue,planEn);
+api.setLanguage('th');assert.equal(docNode.nodeValue,planThai);
+api.setLanguage('en');assert.equal(docNode.nodeValue,planEn);
+docNode.nodeValue='ไม่พบเอกสาร เอกสารประกอบ';
+api.translate();assert.equal(docNode.nodeValue,'No teaching materials found');
+api.setLanguage('th');assert.equal(docNode.nodeValue,'ไม่พบเอกสาร เอกสารประกอบ');
+api.setLanguage('en');assert.equal(docNode.nodeValue,'No teaching materials found');
+
 const skip=makeNode('ชื่อวิชา หลักฐาน');skip.parentElement.closest=()=>true;nodes.push(skip);api.setLanguage('en');assert.equal(skip.nodeValue,'ชื่อวิชา หลักฐาน');
 for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v='));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme3'))}
 const css=fs.readFileSync('audit-dark-complete.css','utf8');for(const k of ['--ev-card:#172332','preflight-list li','teacher-summary-grid article','component-tile.fail','review-drawer','media-tag.pass','component-summary tr.fail'])assert.ok(css.includes(k));
