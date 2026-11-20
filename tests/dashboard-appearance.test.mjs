@@ -40,7 +40,30 @@ api.translate();assert.equal(docNode.nodeValue,'No teaching materials found');
 api.setLanguage('th');assert.equal(docNode.nodeValue,'ไม่พบเอกสาร เอกสารประกอบ');
 api.setLanguage('en');assert.equal(docNode.nodeValue,'No teaching materials found');
 
+
+const failedSummaryThai='ผลตรวจล่าสุดไม่ผ่านเกณฑ์ โปรดแก้ไขตามรายการสรุปด้านล่างก่อนตรวจครั้งถัดไป';
+const failedSummaryEn='The latest audit does not meet the criteria. Please address the items below before the next audit.';
+assert.equal(api.english(failedSummaryThai),failedSummaryEn);
+assert.equal(api.english('ผลตรวจล่าสุดไม่ผ่านเกณฑ์'),'The latest audit does not meet the criteria.');
+assert.equal(api.english('รายวิชาผ่านเกณฑ์การประเมินแล้ว'),'This course meets the evaluation criteria.');
+assert.equal(api.english('ยังพบองค์ประกอบที่ไม่ครบหรือยังยืนยันไม่ได้'),'Some required components are missing or remain unverified.');
+assert.equal(api.english('แก้ไขหรือเพิ่มเฉพาะหัวข้อที่แสดงว่า “ไม่ผ่าน” ด้านล่าง แล้วตรวจใหม่'),'Address only the criteria marked as failed below, then re-audit.');
+assert.equal(api.english('ครั้งที่ 1'),'Session 1');
+assert.equal(api.english('ครั้งที่ 1–7, 9–15'),'Sessions 1–7, 9–15');
+assert.equal(api.english('ครั้งที่ 2–9, 11–15'),'Sessions 2–9, 11–15');
+const summaryNode=makeNode(failedSummaryThai),sessionNode=makeNode('ครั้งที่ 1–7, 9–15');
+nodes.push(summaryNode,sessionNode);
+api.setLanguage('en');
+assert.equal(summaryNode.nodeValue,failedSummaryEn);
+assert.equal(sessionNode.nodeValue,'Sessions 1–7, 9–15');
+api.setLanguage('th');
+assert.equal(summaryNode.nodeValue,failedSummaryThai);
+assert.equal(sessionNode.nodeValue,'ครั้งที่ 1–7, 9–15');
+api.setLanguage('en');
+assert.equal(summaryNode.nodeValue,failedSummaryEn);
+assert.equal(sessionNode.nodeValue,'Sessions 1–7, 9–15');
+
 const skip=makeNode('ชื่อวิชา หลักฐาน');skip.parentElement.closest=()=>true;nodes.push(skip);api.setLanguage('en');assert.equal(skip.nodeValue,'ชื่อวิชา หลักฐาน');
-for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v='));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme3'))}
+for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261120statuscopy1'));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme3'))}
 const css=fs.readFileSync('audit-dark-complete.css','utf8');for(const k of ['--ev-card:#172332','preflight-list li','teacher-summary-grid article','component-tile.fail','review-drawer','media-tag.pass','component-summary tr.fail'])assert.ok(css.includes(k));
 console.log('Language source, reversible updates, URL preference, dates, evidence labels and dark stylesheet coverage OK');
