@@ -10,6 +10,7 @@ on:
       - audit-review.js
       - audit-evidence.js
       - tests/dashboard-appearance.test.mjs
+      - tests/audit-evidence-issues.test.mjs
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,3 +24,4 @@ jobs:
           node --check audit-review.js
           node --check audit-evidence.js
           node tests/dashboard-appearance.test.mjs
+          node tests/audit-evidence-issues.test.mjs
