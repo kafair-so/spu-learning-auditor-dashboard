@@ -32,7 +32,7 @@ assert.equal(api.english('พบ File PDF เอกสารประกอบ 2
 assert.equal(api.english('พบเอกสาร เอกสารประกอบ 1 รายการ: แผนการสอนสัปดาห์ที่ 9 (ไฟล์ปลายทาง: chapter_09.pptx) · ยืนยันว่าไม่ใช่ PDF 1 รายการ: แผนการสอนสัปดาห์ที่ 9'),'Found 1 teaching material document: แผนการสอนสัปดาห์ที่ 9 (destination file: chapter_09.pptx) · Confirmed non-PDF for 1 item: แผนการสอนสัปดาห์ที่ 9');
 assert.equal(api.english('ไม่พบเอกสาร แผนการสอน · เอกสารวางผิดส่วน'),'No lesson plan documents found · เอกสารวางผิดส่วน');
 const docNode=makeNode(planThai);nodes.push(docNode);
-api.translate();assert.equal(docNode.nodeValue,planEn);
+api.setLanguage('en');assert.equal(docNode.nodeValue,planEn);
 api.setLanguage('th');assert.equal(docNode.nodeValue,planThai);
 api.setLanguage('en');assert.equal(docNode.nodeValue,planEn);
 docNode.nodeValue='ไม่พบเอกสาร เอกสารประกอบ';
