@@ -1,0 +1,1810 @@
+Warning: truncated output (original token count: 72531)
+Total output lines: 1971
+
+# SPU Learning Auditor Dashboard — Handoff & Knowledge Base
+
+> Living handoff / บันทึกส่งต่องาน อัปเดต 26 ตุลาคม 2569 (2026-10-26)
+> Repo: https://github.com/kafair-so/spu-learning-auditor-dashboard
+> Branch: `main` | Frontend: https://kafair-so.github.io/spu-learning-auditor-dashboard/
+
+## กติกาการทำงานต่อเนื่อง (Working Protocol) — ข้อบังคับสำหรับงานในโครงการนี้
+
+**ก่อนเริ่มคำสั่งใหม่ทุกครั้ง**
+1. อ่านไฟล์ Handoff ฉบับล่าสุดจาก `main` และตรวจ commit SHA ล่าสุดของ Repository (ไฟล์อาจถูกแก้โดยคนอื่น/แชทอื่นแล้ว)
+2. เทียบกับคำสั่งใหม่และสถานะโค้ดจริง: สิ่งที่เสร็จแล้ว, ค้างอยู่, ยังไม่ตรวจยืนยัน, ปัญหา/ความเสี่ยง, และ deployment ที่ใช้งานจริง
+3. อย่าเชื่อสถานะจาก Handoff เพียงอย่างเดียวเมื่อมีหลักฐานใหม่: เช็ก code, GitHub Actions, Supabase API และข้อมูลต้นทางตามความจำเป็น; บันทึกความขัดแย้งให้ชัดเจน
+4. ไม่ทำซ้ำหรือย้อนการแก้ไขเก่าโดยไม่จำเป็น; ระบุขอบเขตงานก่อนแก้; ระวังไม่แตะข้อมูล production หรือ deploy backend โดยไม่จำเป็น
+
+**หลังทำงาน/ได้ข้อสรุปใหม่ทุกครั้ง**
+1. อัปเดต Handoff ใน `main` ให้สอดคล้องกับสิ่งที่เกิดขึ้นจริง (รวมทั้งกรณีแก้ไม่สำเร็จ หรือติดสิทธิ์)
+2. บันทึกวันเวลา, คำขอ/ข้อสรุป, ไฟล์ที่เปลี่ยน, commit SHA, สถานะ test/deploy (สำเร็จ/ล้มเหลว/ยังไม่ตรวจ), ปัญหาคงค้างและ next steps
+3. แยกสถานะ **ยืนยันแล้ว / รายงานจากผู้ใช้ / ข้อสันนิษฐาน / ยังไม่ตรวจ** เพื่อไม่ให้ข้อมูลคลาดเคลื่อน
+4. หลีกเลี่ยงอ้างว่า deploy สำเร็จถ้าไม่มีหลักฐานจริง และรักษาประวัติของการตัดสินใจสำคัญไว้
+5. **บริหารโควต้าเป็นข้อจำกัดสำคัญ:** รวมการอ่าน/ตรวจ/แก้/ทดสอบเป็นรอบ ลด tool call และงานซ้ำที่ไม่จำเป็น ใช้ผลเดิมที่ยืนยันแล้ว และสำรองโควต้าให้ผู้ใช้สนทนา ตรวจผล และแก้ไขงานต่อ ห้ามใช้โควต้าส่วนใหญ่กับคำสั่งย่อย 1–2 งานโดยไม่จำเป็น
+
+กติกานี้เป็นแนวทางประจำโครงการ; เมื่อเริ่มแชทใหม่ ให้ผู้ใช้ส่งลิงก์ Repository หรือบอกให้เปิด Handoff ก่อนเริ่มงาน
+
+## 1. เป้าหมาย
+- เชื่อม OOE Dashboard, หลังบ้านผลตรวจ และ Supabase เป็นชุดข้อมูลรายวิชา GS/GR ปัจจุบันเดียวกัน
+- ยึด **160 รายวิชาปัจจุบัน** ตามบัญชีรายวิชาเป้าหมาย (ต้องยืนยันจากแหล่งข้อมูลจริงทุกครั้งที่เปลี่ยนภาคเรียน)
+- หน้าหลังบ้านและ Dashboard ต้องไม่แสดงผลตรวจของรายวิชานอกชุด active; แสดงผลล่าสุดหนึ่งชุดต่อรายวิชา; ประวัติย้อนหลังเก็บตามนโยบายระบบ
+- ข้อมูลผลตรวจและหลักฐานต้องไม่ถูกลบเพื่อแก้เพียงปัญหาการแสดงผล
+
+## 2. สถานะที่ยืนยันได้ / สิ่งที่ยังต้องตรวจ
+- 2026-10-09 ผู้ใช้ยืนยันด้วยภาพว่าหน้าหลังบ้านมีผลตรวจแล้ว แต่แสดง **163 ผลตรวจ จาก 160 รายวิชา**; KPI ตามภาพ: ผ่าน 12, รอตรวจ 5, มีเนื้อหา 120, ไม่มีเนื้อหา 16, ตรวจไม่สำเร็จ 10 (รวม 163).
+- ตัวเลข 163 ไม่ควรถูกตีความว่าเป็น 163 รายวิชา active โดยอัตโนมัติ; ต้องเปรียบเทียบ Course ID จริง
+- Frontend commit `5d708694b031869f2d1e40884c0c1f70a812e720` ทำให้ `currentCatalogRecords()` ใน `audit-review.js` คืน `records` จาก API โดยตรง เพื่อลบ client-side identity filtering ที่เคยซ่อนข้อมูลทั้งหมด
+- ผู้ใช้รายงานว่า Supabase Edge Function ถูก deploy แล้วและควรกรอง 160 active courses แต่ **โค้ดใน repo ณ เวลาตรวจยังไม่แสดงการกรอง active ใน `listAdminResults()`**; ห้ามสรุปว่าโค้ดที่ deploy จริงตรงกับ repo โดยไม่ตรวจ runtime
+- สถานะ deploy ของ Supabase runtime, GitHub Pages และชุด Course IDs จริงต้องตรวจยืนยัน; ยังไม่มีหลักฐานว่ารายการส่วนเกิน 3 ตัวเป็นตัวใด
+
+## 3. จุดโค้ดสำคัญ
+- `audit-review.js` : `loadResults()` เรียก `AuditApi.adminResults()`; `render()` เรียก `currentCatalogRecords()` และแสดง KPI/table; `loadCourseCatalog()` โหลด CSV จาก Google Sheets
+- `audit-api.js` : `adminResults() => GET /v1/admin/results`
+- `supabase/functions/api/index.ts` : `listAdminResults(request)` query `audit_runs`, sort ล่าสุด, limit 5000, de-duplicate ด้วย Map keyed by `row.course_id`, **ยังไม่ join/filter `courses.active=true`** ใน source ที่ตรวจ
+- `audit-bridge.js` : `identityKeys()` รองรับ Moodle Course ID, Course Profile, และ group+course code; ต้องระวังการจับคู่คลาดเคลื่อนและกรณีรหัสซ้ำข้ามกลุ่ม
+
+### ข้อค้นพบเพิ่ม: catalog sync ไม่ de-activate รายวิชาที่ถูกถอดออก
+- ใน `supabase/functions/api/index.ts` → `syncCatalog()` ทุกแถวที่อัปเดตจาก Sheet ถูกตั้ง `active: true` และ upsert แต่ไม่มีขั้นตอนตั้ง `active: false` สำหรับแถว `courses` ที่ไม่มีใน Sheet ล่าสุด
+- ผลคือแม้แก้ `listAdminResults()` ให้กรอง `courses.active=true` ก็ **อาจยังได้เกิน 160** ถ้ายังมีรายวิชาเก่าที่ active ค้างอยู่
+- แนวทางแก้ต้องทำทั้งสองฝั่งอย่างปลอดภัย: validate catalog (จำนวนไม่เป็นศูนย์, dedup course_id, group GS/GR), upsert สำเร็จครบ แล้ว deactivate แถวที่ไม่ได้อยู่ใน snapshot ที่ตรวจสอบแล้ว; จำกัด listAdminResults ตาม active courses; ตรวจ ID ที่หาย/เกินก่อน deploy
+- ข้อควรระวัง: อย่า deactivate หลักสูตรทั้งระบบหาก CSV โหลดไม่สมบูรณ์หรือผิดกลุ่ม และอย่าลบ `audit_runs`
+
+## 4. การแก้ปัญหา 163 vs 160 — ข้อควรทำตามลำดับ
+1. ตรวจ Supabase ที่ deploy จริงว่า `/v1/admin/results` ส่ง 163 รายการหรือไม่ และแต่ละรายการมี `courseId` ใดบ้าง (requires authorized reviewer credentials; อย่าเผย token ลง chat/commit)
+2. อ่านตาราง `courses` และบัญชีรายวิชาที่เป็นแหล่ง active จริง; เปรียบเทียบรายการที่ส่งกลับจาก API กับ course_id ของ 160 รายวิชา
+3. หา Course IDs ของรายการนอกขอบเขต 3 รายการ (ถ้ามีจริง) รวมถึงตรวจ duplicate IDs, course profiles, course_group และ active flag
+4. แก้ **backend query** ให้ใช้ active course scope เดียวกับคิวตรวจ/แดชบอร์ด (ไม่ลบ `audit_runs`); ดีที่สุดให้คืนผลล่าสุดหนึ่งผลต่อ active `course_id` เท่านั้น
+5. แก้ frontend เฉพาะส่วนที่จำเป็นเพื่อแสดงจำนวนผลที่มีจาก 160 รายวิชาปัจจุบันโดยไม่ประดิษฐ์ผลตรวจที่ยังไม่มี; แยกชัดเจนระหว่าง “จำนวนรายวิชา” กับ “จำนวนผลตรวจ”
+6. Test: จำนวน distinct courseId ในผล <=160, ทุก ID เป็น active, KPI sum=จำนวนผลที่แสดง, table/count/filter/export สอดคล้องกัน, ไม่มีการซ่อนข้อมูลผิดเงื่อนไข และผลรายวิชาที่ไม่มีผลตรวจยังคงเป็น no result
+7. Commit/deploy frontend ผ่าน GitHub Pages; **backend Edge Function ต้อง deploy แยกอย่างชัดเจน** หากมีการแก้ `supabase/functions/api/index.ts`. ตรวจหลัง deploy จริงก่อนปิดงาน
+
+## 5. ข้อควรระวัง
+- ห้ามแก้ตัวเลข UI จาก 163 เป็น 160 แบบ hard-code, ตัด 3 รายการแรก/ท้าย, หรือสุ่มซ่อนผล
+- ห้ามลบข้อมูล audit history หรือเปลี่ยนฐานข้อมูลเพื่อแก้แค่การแสดงผล
+- ห้ามใช้ “160” เป็นจำนวนผลตรวจที่เกิดขึ้นจริง หาก 160 รายวิชายังตรวจไม่ครบ
+- การกรองฝั่ง browser ไม่ใช่ security boundary; ขอบเขต active ควรบังคับจาก API และใช้ร่วมกันทุกหน้าจอ
+- หาก CSV source โหลดไม่สำเร็จ ต้องแสดงข้อผิดพลาดและไม่รายงานจำนวน active ที่ยืนยันไม่ได้
+- GitHub connector เคยเขียนไม่ได้ด้วย HTTP 403; หลัง reconnect แก้ `audit-review.js` และ commit ได้สำเร็จ
+- ผู้ใช้ไม่มีโควต้า ChatGPT Work เหลือ; ใช้ GitHub Connector และขั้นตอน Deploy เท่าที่สิทธิ์อนุญาต
+
+## 6. Repo และเอกสารอ้างอิง
+- `README.md`, `AUDITOR-INTEGRATION.md`, `PRODUCTION-ARCHITECTURE.md`
+- `audit-review.js`, `audit-api.js`, `audit-bridge.js`
+- `supabase/functions/api/index.ts`
+- Screenshot ล่าสุด: KPI 12+5+120+16+10=163, table text “163 ผลตรวจ จาก 160 รายวิชา”
+- แหล่งข้อมูลใหม่ทุกครั้ง: git main ล่าสุด, API runtime, current catalog CSV, active course rows ใน Supabase
+
+## 7. Prompt สำหรับเริ่มแชทใหม่
+> อ่าน `SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md` ใน GitHub repo `kafair-so/spu-learning-auditor-dashboard` ก่อนเริ่มงาน ตรวจ main ล่าสุด และช่วยแก้ 163 ผลตรวจ vs 160 รายวิชาปัจจุบัน โดยเทียบ Course IDs จริงและแก้ active filter ที่ Supabase API อย่างปลอดภัย ไม่ hard-code ตัวเลข ไม่ลบ audit history ตรวจ Deploy จริง และอัปเดต Handoff ทุกครั้งที่แก้ระบบ
+
+## 8. Change log
+- 2026-10-09: ตรวจพบหลังบ้านแสดง 163 ผลตรวจ จาก 160 รายวิชา, source listAdminResults ยังไม่มี filter active, จัดทำ handoff และแผนพิสูจน์ความต่างก่อนแก้ไข
+
+## 9. อัปเดต 2026-10-09 — จำกัดการตรวจและรายงานตาม 160 รายวิชาจากเอกสาร
+**สถานะ: แก้ไข source + commit แล้ว / ยังไม่ได้ deploy Supabase / ยังไม่ได้ยืนยัน Course IDs บน Production**
+- คำขอผู้ใช้: รายวิชาที่ไม่อยู่ในเอกสาร 160 วิชาต้องไม่ถูกนำเข้าคิวตรวจและไม่แสดงในรายงานผล ทั้งหลังบ้านและ Dashboard
+- Commit Backend: `cfd2bc4743618abe2a17387d571dd9cb0c8d4944`; แก้ `supabase/functions/api/index.ts`
+- `activeCatalogIds()` ดึง `courses.active=true` และ `course_group IN (GR,GS)` เพื่อกรองทั้ง `listAdminResults()` และ `publicResults()`
+- `syncCatalog()` กรอง GS/GR, ตรวจ URL Course ID, ลดความเสี่ยง CSV ว่าง/ข้อมูลหายเกิน 20%, dedup ID และ upsert; หลัง upsert สำเร็จ จะปิด active สำหรับวิชาที่ไม่อยู่ใน catalog_version ล่าสุดและยกเลิกคิวที่ยัง queued สำหรับรายวิชาเหล่านั้น (ไม่ลบผลย้อนหลัง)
+- ตอน worker claim มีด่านยืนยันว่า course ยัง active และอยู่ใน GR/GS; งานที่ไม่เข้าเกณฑ์จะถูกยกเลิกโดยไม่ส่งให้ Extension ตรวจ
+- **ข้อจำกัด/งานค้าง:** GitHub commit ไม่ได้ deploy Supabase Edge Function อัตโนมัติ; ต้อง deploy function `api` ใน Supabase project ที่ใช้งานจริง และให้เกิดการ syncCatalog จากเอกสารล่าสุดอย่างปลอดภัยก่อนคาดหวังให้ active เหลือ 160
+- ต้องเช็ก 160 unique Moodle Course IDs จาก CSV จริง, เปรียบเทียบ 3 ส่วนเกิน, ตรวจ jobs ที่กำลัง running ขณะ deploy (ไม่หยุดงาน running อัตโนมัติ), และตรวจผลจาก admin/public APIs หลัง deploy
+- สำคัญ: หากบัญชีรายวิชาเปลี่ยนมากกว่า 20% ระหว่างเทอม การ sync จะหยุดพร้อม error และต้องทบทวน source ก่อนปรับ guard; อย่าปิด guard อย่างไม่ตรวจสอบ
+- ตรวจ static source checks ของส่วนกรองและ worker guard ผ่าน แต่ยังไม่ได้ execute runtime tests หรือทดสอบฐานข้อมูลจริง
+- งานต่อไป: ทดสอบ end-to-end กับ catalog + Supabase staging; deployment ด้วย Supabase Dashboard/CLI ในสิทธิ์ผู้ดูแล; verify active count=160, report count<=160, queued/running out-of-scope=0; อัปเดตผลจริงใน Handoff
+
+## 10. อัปเดต 2026-10-09 — Supabase Production Deploy สำเร็จ (API v22)
+**ยืนยันจาก Supabase Connector**
+- Project: `SPU OOE Learning Auditor` (`nwupjnkotdkodyxnraie`), Edge Function `api` version **22**, status `ACTIVE`.
+- Deploy ใช้ GitHub source `supabase/functions/api/index.ts` ณ commit `cfd2bc4743618abe2a17387d571dd9cb0c8d4944` และ dependency จาก function production เดิม `file3.ts` (แปลง import จาก `./audit-quality.mjs` ไป `./file3.ts`); คง `verify_jwt=false` เช่นเดิม เพราะ function มี custom auth logic. ไม่ได้ deploy GitHub Pages รอบนี้
+- ก่อน deploy พบ `courses.active = true` สำหรับ GS/GR = **160**, `audit_runs` มี 163 distinct course IDs; รายวิชานอกชุด 3 ตัวซึ่ง active=false คือ `20194 / ICT24167`, `20248 / ICT12267`, `21148 / ICT308`; เก็บ audit history ไว้
+- หลัง deploy SQL ตรวจ: `active_courses=160`, `visible_audited_courses=160`, `excluded_audited_courses=3`, `out_of_scope_pending=0`; Edge Function status ACTIVE version 22
+- **ยังไม่ยืนยันด้วยการเรียก HTTP endpoint ผ่าน session ผู้ดูแลจริง** ว่าหน้าเว็บแสดง 160 และ KPI นับถูกต้อง; ให้ผู้ใช้รีเฟรช `audit-review.html` แล้วตรวจ Dashboard พร้อมกัน
+- ตรวจพบ security advisories ของ Supabase เดิมที่ไม่เกี่ยวกับ scope นี้ (โดยเฉพาะ SECURITY DEFINER grants); ยังไม่ได้แก้ในรอบนี้ เพื่อไม่กระทบงาน production
+- สิ่งที่ต้องติดตาม: ปุ่ม syncCatalog จะ sync จาก CSV และ deactivate รายวิชาหลุดชุด; ห้ามเริ่มคิวหาก CSV ไม่ถูกต้อง, เกณฑ์ shrink 20% จะบล็อกการลดจำนวนครั้งใหญ่; ตรวจผลหลัง sync และแจ้งปัญหา
+
+## 11. อัปเดต 2026-10-09 — UI Loading State & Micro-interactions
+**สถานะ: GitHub commit แล้ว; ยังต้องตรวจ GitHub Pages และหน้าเว็บด้วยบัญชีจริง**
+- ผู้ใช้แจ้งว่าการ์ด KPI แสดง 0 ระหว่างโหลดผลตรวจ ทำให้เข้าใจผิดว่าไม่มีข้อมูลหรือระบบขัดข้อง และต้องการหน้าเว็บดูมี Movement มากขึ้น
+- Commit `ce3660ff7b6f220d8e4d4762814d3c714792bc56` แก้เฉพาะ `audit-review.js` (ไม่มีการเปลี่ยน Supabase หรือหลักเกณฑ์คะแนน)
+- เพิ่ม `resultsState` และ `hasLoadedResults`; ก่อนโหลดครั้งแรก แสดง skeleton บน KPI/ตารางพร้อมข้อความโหลด แทนเลข 0; เมื่อสำเร็จจึง render ผลจริง
+- หากโหลดครั้งแรกล้มเหลว แสดงขีด — และข้อความ error; หากอัปเดตข้อมูลล้มเหลวหลังเคยโหลดสำเร็จ คงค่าเดิมพร้อมข้อความแจ้ง ไม่ล้าง KPI เป็น 0
+- เพิ่ม animation fade/slide, hover card lift, button feedback และ `prefers-reduced-motion` เพื่อลดการเคลื่อนไหวสำหรับผู้ที่ตั้งค่าไว้
+- การตรวจแบบ static หลัง commit: ตรวจพบ loading/error/ready/skeleton/reduced-motion/render guard ใน source ทุกจุด; ยังไม่ได้ทดสอบจริงใน Browser หรือยืนยัน GitHub Pages deploy
+- งานต่อ: ทดสอบเวลาโหลดช้าหรือ network offline, refresh/retry, dark mode, mobile view, และทบทวน UX สำหรับหน้า Dashboard สาธารณะ/หน้าคิวอื่นหากผู้ใช้ต้องการให้สอดคล้องกัน
+
+
+## 12. อัปเดต 2026-10-19 — บังคับบันทึกงานทุกครั้งเพื่อส่งต่อข้ามเครื่อง
+**สถานะ: ผู้ใช้กำหนดเป็นข้อตกลงถาวรของโครงการ / บันทึกใน GitHub แล้ว**
+
+ผู้ใช้กำหนดให้ตั้งแต่งานนี้เป็นต้นไป ทุกคำสั่งที่เกี่ยวกับการทำงาน แก้ไข ตรวจสอบ ตัดสินใจ ทดสอบ หรือเผยแพร่ของ **SPU Learning Auditor Dashboard / Extension / Supabase / Google Sheets และระบบที่เชื่อมโยง** ต้องอัปเดตไฟล์ Knowledge Base นี้บน GitHub ด้วย เพื่อให้รับช่วงงานได้จากทุกเครื่องและทุกแชท
+
+### ขั้นตอนบังคับ
+1. ก่อนเริ่มงาน ให้อ่านไฟล์นี้จาก branch `main` และตรวจ source/commit ล่าสุดก่อนเสมอ
+2. ระหว่างทำงาน ให้เก็บคำขอของผู้ใช้ เหตุผลในการตัดสินใจ ขอบเขตที่แตะ และสิ่งที่ตั้งใจไม่แตะ
+3. หลังแต่ละงานที่มีสาระสำคัญ ให้อัปเดตไฟล์นี้ใน commit เดียวกับงาน หรือ commit ติดตามทันที ห้ามรอรวมหลายงานจนบริบทสูญหาย
+4. รายการบันทึกขั้นต่ำต้องมี:
+   - วันเวลาและคำขอของผู้ใช้
+   - สิ่งที่ทำจริงและสิ่งที่ไม่ได้ทำ
+   - ไฟล์/ระบบ/ฐานข้อมูลที่เปลี่ยน
+   - รุ่น Extension/Dashboard และ commit SHA
+   - ผลการทดสอบ พร้อมจำนวนชุดทดสอบ
+   - สถานะ deploy แยก Frontend, Supabase และไฟล์ดาวน์โหลด
+   - ผลกระทบต่อคิว ข้อมูล production และความเข้ากันได้ของ Local/Dashboard
+   - ปัญหาคงค้าง ความเสี่ยง และ next steps
+5. แยกสถานะให้ชัดว่า **ยืนยันแล้ว / ผู้ใช้รายงาน / อนุมาน / ยังไม่ตรวจ / ทำไม่สำเร็จ**
+6. ห้ามบันทึก token, cookie, รหัสผ่าน, secret หรือข้อมูลส่วนบุคคลที่ไม่จำเป็นลง repository
+7. หาก GitHub เขียนไม่ได้ ให้แจ้งผู้ใช้ตรงไปตรงมาและจัดทำข้อความอัปเดตพร้อม commit ที่ยังค้าง ห้ามกล่าวว่าอัปเดต Knowledge Base แล้ว
+8. เมื่อย้ายเครื่องหรือเริ่มแชทใหม่ ให้ถือไฟล์นี้เป็นจุดเริ่มต้นหลัก แต่ยังต้องเทียบกับ source และ production จริงก่อนลงมือ
+
+### บริบท ณ วันที่กำหนดข้อตกลง
+- Shared chat ที่ใช้อ้างอิง: `https://chatgpt.com/s/cx_6ad0b12348f08191a48d8fedfa38fb15`
+- จาก shared chat มีรายงานว่า Dashboard และ Local อยู่ที่รุ่น `0.13.15`; ต้องตรวจ source, release และ production จริงก่อนแก้ครั้งถัดไป
+- Workspace ของเครื่องที่อ่านข้อตกลงครั้งแรกอาจเป็น source รุ่นเก่ากว่า จึงห้ามนำไฟล์เก่าทับ GitHub โดยไม่ sync/compare ก่อน
+
+
+## 13. อัปเดต 2026-10-19 — Backfill ความคืบหน้าจาก Shared Chat (25 ก.ย.–15 ต.ค. 2026)
+**แหล่งข้อมูล:** shared chat `https://chatgpt.com/s/cx_6ad0b12348f08191a48d8fedfa38fb15`, ประวัติ commit ใน GitHub และ source บน branch `main`  
+**วัตถุประสงค์:** เติมประวัติงานช่วงที่ยังไม่ได้บันทึกลง Handoff เพื่อให้ย้ายเครื่องหรือเปลี่ยนแชทแล้วรับช่วงได้ โดยแยกสิ่งที่มีหลักฐานใน GitHub ออกจากคำรายงานและงานที่ยังต้องตรวจ production
+
+### 13.1 ภาพรวมระบบและนโยบายที่ตกลงกัน
+- ระบบประกอบด้วย Dashboard/Back Office, Extension (Dashboard และ Local), Supabase API/Database/Storage และบัญชีรายวิชา Google Sheets
+- ใช้บัญชี Google Workspace `@spu.ac.th`; มีบทบาท Admin, Super Admin และ Owner สำหรับงานจัดการสิทธิ์ โดยไม่บันทึกข้อมูลส่วนบุคคลของผู้ถือสิทธิ์ลง Handoff
+- ผลตรวจสาธารณะต้องเป็นแบบอ่านอย่างเดียวและแสดงผลล่าสุดของรายวิชา; เก็บผลย้อนหลังตามนโยบาย **ผลล่าสุด + ก่อนหน้า 2 ครั้ง (รวมไม่เกิน 3 รอบต่อรายวิชา)** โดยต้องไม่ลบหลักฐานที่เผยแพร่แล้วเพราะการตรวจใหม่ล้มเหลวหรือยังไม่สมบูรณ์
+- คะแนนเต็ม 110 และผ่านที่ 80; คะแนนวิดีโอให้นับสูงสุดหนึ่งคะแนนต่อครั้งเรียน ไม่ใช่ต่อจำนวนคลิป
+- ผลจาก Extension รุ่นเก่า, schema/สูตรเก่า หรือ scan ไม่ครบ ต้องเข้าสถานะรอตรวจและห้ามแทนผลเผยแพร่โดยอัตโนมัติ
+- งานล้างหลักฐานที่ไม่ใช้งานควรเข้าคิว retry; ห้ามลบหลักฐานที่ยังถูกอ้างอิงโดยผลเผยแพร่
+
+### 13.2 รายการที่ยืนยันได้จาก GitHub commits
+#### ขอบเขตรายวิชาและคิวตรวจ
+- `c2edc3200905fd3cd9fbc93e439b201c3891dad8` — ใช้เกณฑ์ GR/GS และตัดเฉพาะรายวิชาที่มี “อาจารย์พิเศษ” เป็นผู้สอนเพียงคนเดียว
+- `fb514f66215c1668eeb89013f4e11cca3452effa` — ทำเกณฑ์ eligibility ของ Back Office ให้ตรงกัน
+- `6db2837ca4be7a84a2a532e0ea53764ee33f0f3f` — ทำเกณฑ์ eligibility ของ Dashboard ให้ตรงกัน
+- `0ff8885f42e0a3c5895b45ba94ea792f63a7267d` — รองรับแทนรายการ queued ด้วยขอบเขตที่ผู้ใช้เลือก โดยไม่ยกเลิกงานที่กำลัง running
+- `c90a251018a558c202691c97fc2f806507bc407c` — จำกัด RPC สำหรับเปลี่ยนคิวให้เรียกผ่าน backend
+- หลักการล่าสุดคือ **ห้าม hard-code จำนวน GR/GS**: เพิ่มรายวิชาใหม่ได้; หากจำนวนลดลงผิดปกติให้รอการยืนยันแทนการ deactivate อัตโนมัติ
+
+#### รายงานสาธารณะและสถานะใน Google Sheet
+- `4c2495d...`, `6f064ace...` — เพิ่มลิงก์รายงานรายวิชาแบบอ่านอย่างเดียว
+- `40321b4...` — เปิด API/ข้อมูลรายงานที่เผยแพร่แล้วแบบ read-only
+- `87c35cd...` และ `7beec264...` — แก้และ refresh client สำหรับ anonymous public report
+- `23aa129...`, `393510d...`, `9d2398b...` — แสดงผลตรวจล่าสุดสำหรับรายวิชา active; รายวิชายังไม่มีผลต้องแสดง “ยังไม่มีผลตรวจ”
+- `e776d8b3179f08573d1e8de9420f4518a1ad9f03` — sync สถานะผลตรวจกลับ Sheet ฝั่ง GR และเพิ่มการ reset สำหรับผู้ตรวจ
+- จาก shared chat ระบุว่า tab `69/1-GR` ใช้คอลัมน์ R “ผลการตรวจรายวิชา” และสร้างลิงก์จาก course link สำหรับรายวิชาปัจจุบันและแถวใหม่; ต้องตรวจสูตร/automation จริงเมื่อเปลี่ยน Sheet
+
+#### UX/UI, ภาษา และสิทธิ์
+- `79e736163cc0f8996b2086e3b56d823f7251a8e8` — ปรับ Dashboard UI และเพิ่มภาษาไทย/อังกฤษ
+- `f38884f86febe84e4c2481269daa33ff0bead980` — ปรับ controls และการมองเห็นสถานะ
+- `6053f7f14234eae953c4059fd92d8ebb1eb793ce`, `f1ef8a35d76a3e1f015a21c3d6e9c6332bdae0bf`, `6df1e5559650ac292008c5c365c78e0a9a3ccc0d` — แก้ slider ภาษา/ธีมและการมองเห็นใน dark mode
+- `878337921f7c97a593eacc29bc0e9fa9886667a6` — ปรับ dark controls, แปลข้อความเพิ่ม และรองรับ Owner access
+- `68385811696b53b608de285523afb433a9c5a988` — รวมข้อแก้ไขที่ผู้สอนต้องทำเป็นรายการสั้นและชัดเจน
+- `ddf3525b1d7489040f590d22d2b12bdb668241a4` — จำกัดรายละเอียด audit review สำหรับ Super Admin
+- `0ac2dce360a3fb946caded9a0015d0669d366637` — ปรับสรุปคำแนะนำผู้สอนของ Dashboard 0.13.15
+- แนว UX ที่ตกลง: Light/Dark, ไทย/อังกฤษ, สีสถานะอ่านง่าย, แยก “สิ่งที่ผู้สอนต้องแก้” ออกจาก “สิ่งที่ผู้ตรวจต้องยืนยัน”, แสดงสรุปก่อนรายละเอียด และไม่แสดงข้อมูลภายในทีมตรวจแก่ผู้ใช้ทั่วไป
+
+#### รุ่นดาวน์โหลดและการแก้ผลตรวจ
+- `4048c8cd02b3426bffaff01b6d5e37359db5d9f3` — แก้ลิงก์ดาวน์โหลด Extension
+- `90e365a6375a4dd641c751ed144821f4530113b6` — เปลี่ยนไฟล์ดาวน์โหลด Dashboard เป็นรุ่น 0.13.15
+- Repo root มีไฟล์ `SPU-Learning-Auditor-Dashboard-0.13.12.zip` และ `SPU-Learning-Auditor-Dashboard-0.13.15.zip`
+- `40236e97af050c941df0dcdd521c0d5a1d856e39` — แก้ missing evidence state และการตรวจซ้ำรายวิชา
+
+### 13.3 ความคืบหน้าที่รายงานใน Shared Chat แต่ต้องตรวจ runtime/source ล่าสุดอีกครั้ง
+- มีรายงานว่า Dashboard และ Local อยู่ที่รุ่น `0.13.15` และชุดทดสอบผ่าน 33 tests ทั้งสองชุด; ขณะรับช่วงต้องหา source/package ของ Local และรัน tests ใหม่ก่อนอ้างเป็นสถานะปัจจุบัน
+- มีรายงานว่า GitHub Pages ถูก deploy หลายรอบ แต่ backend Supabase ต้อง deploy แยกเสมอ; commit ของ frontend ไม่ได้ยืนยันว่า Edge Function production ใช้ source เดียวกัน
+- OCR ถูกปรับแนวทางให้ตรวจโครงสร้างก่อน แล้วใช้ OCR เฉพาะ label รูปภาพที่กำกวม; OCR ล้มเหลวควรทำให้เฉพาะรายการนั้น “รอตรวจ” ไม่ใช่ทำให้ทั้งรายวิชาล้มเหลว
+- Google Photos ถูกเพิ่มเป็นแหล่งวิดีโอ โดยพยายามอ่าน metadata/player/iframe duration หลังบ้านและ retry แบบ foreground ชั่วคราวเมื่อจำเป็น; album ว่างต้องไม่นับเป็นเนื้อหา
+- Token/session หมดอายุควรหยุดอย่างปลอดภัย แจ้งให้ login ใหม่ และ resume คิวเดิมโดยไม่สร้างคิวซ้ำ; ยังต้องทดสอบงานยาวบน production
+- Owner สามารถจัดการชื่อ/บทบาท, โอน Owner และจัดการ Super Admin ได้ตามรายงาน; ต้องตรวจ policy จริงก่อนแก้สิทธิ์ production
+
+### 13.4 ข้อค้นพบเกี่ยวกับ catalog และจำนวนรายวิชา
+- ช่วงหนึ่ง source ส่ง 140 active courses (GR 100 + GS 40) และระบบเคย deactivate GR 20 รายวิชาเพราะ shrink guard ยอมรับ 160 → 140
+- ผู้ใช้ยืนยันเกณฑ์ที่ถูกต้องภายหลังว่าให้ตรวจ GR/GS ทุกวิชา ยกเว้นกรณีมี “อาจารย์พิเศษ” เป็นผู้สอนเพียงคนเดียว ดังนั้นเลข 120/40 หรือ 160 เป็น snapshot ไม่ใช่ค่าถาวร
+- เมื่อ sync รอบใหม่: ต้องรายงานจำนวนเพิ่ม/ลด, รายการ Course IDs ที่เปลี่ยน, เหตุผล eligibility และหยุดรอยืนยันหากจำนวนลดลงผิดปกติ; ห้ามลบ audit history
+- ตัวอย่างจาก shared chat เคยมีคิว GS 40 และอีกช่วงมี 43 งานคงเหลือ (queued 42 + running 1); ตัวเลขเหล่านี้เป็น snapshot ในอดีต ไม่ใช่สถานะคิวปัจจุบัน
+
+### 13.5 งานที่ยังไม่ยืนยันหรือยังค้างจากท้าย Shared Chat
+1. **แสดงรายชื่อวิชาจริงในคิว:** ท้ายแชทมีการแก้ `audit-review.js` และ `supabase/functions/api/index.ts` แต่ไม่พบข้อความยืนยัน test/deploy ขั้นสุดท้ายใน shared snapshot; ต้องเทียบ source ล่าสุดและตรวจ API production
+2. **Google Drive folder ว่าง:** ต้องสรุป “ไม่มีเนื้อหา — พบลิงก์โฟลเดอร์ แต่ภายในไม่มีไฟล์วิดีโอ” เป็นสถานะสีแดงและไม่นับ; มีคำสั่งให้แก้แต่ยังไม่มีหลักฐานปิดงาน
+3. **OCR background flow:** ต้องทดสอบกับรายวิชาจริงทั้ง Dashboard และ Local ว่าไม่ค้าง 90 วินาทีและไม่ทำให้ทั้งรายวิชาล้มเหลว
+4. **Session refresh/resume:** ต้องจำลอง token หมดอายุระหว่างคิวจำนวนมากและยืนยันว่า login ใหม่แล้วทำต่อจากคิวเดิม
+5. **Catalog หลังเหตุ 140 วิชา:** ต้องยืนยัน active GR/GS ปัจจุบันตามเกณฑ์ “อาจารย์พิเศษผู้เดียว” และตรวจว่า 20 วิชาที่เคยถูก deactivate ถูกคืนอย่างถูกต้องหากเข้าเกณฑ์
+6. **Local 0.13.15 portability:** shared chat ระบุว่า Local ไม่ได้เผยแพร่บนหน้าเว็บ; ต้องระบุตำแหน่ง source/package ที่เชื่อถือได้หรือจัดเก็บในพื้นที่ควบคุม เพื่อส่งต่อข้ามเครื่องโดยไม่ใช้ไฟล์เก่าทับงานใหม่
+7. **Supabase deployment:** การแก้ `supabase/functions/api/index.ts` หลัง API v22 ต้องตรวจ version/source บน production แยกจาก GitHub
+8. **Google Photos diagnostics:** ต้องยืนยันว่าข้อความวินิจฉัยแยก “เปิดไม่ได้/ไม่มีสิทธิ์/album ว่าง/อ่านเวลาไม่ได้” ได้จริง ไม่ใช้ข้อความรวมที่ทำให้ผู้สอนแก้ไม่ถูกจุด
+
+### 13.6 ขั้นตอนรับช่วงงานครั้งถัดไป
+1. อ่าน Handoff นี้และ fetch `main` ล่าสุด; เปรียบเทียบ commit หลัง `40236e97...` และหลัง commit ของ Handoff นี้
+2. ตรวจ version จาก source, manifest และไฟล์ ZIP ทั้ง Dashboard/Local; ห้ามเชื่อเลขรุ่นจากชื่อไฟล์เพียงอย่างเดียว
+3. รันชุดทดสอบที่มีอยู่และบันทึกจำนวน test จริง แยก Dashboard/Local/backend
+4. ตรวจ GitHub Pages deployment และ Supabase Edge Function production แยกกัน
+5. ตรวจ catalog/queue ด้วย Course IDs จริงและเกณฑ์ eligibility ล่าสุดก่อนสั่ง sync หรือ replace queue
+6. ปิดงานค้างในข้อ 13.5 ทีละรายการ พร้อม commit, tests, deploy evidence และอัปเดต Handoff ทันที
+
+### 13.7 บันทึกการอัปเดตรอบนี้
+- คำขอผู้ใช้: ให้อัปเดต GitHub Handoff ตามความคืบหน้าจาก shared chat ก่อนเริ่มงานอื่น
+- สิ่งที่ทำ: อ่านและสรุปประวัติจาก shared chat, เทียบกับ Handoff และ GitHub commits, เพิ่ม section 13 พร้อมแยกหลักฐาน/คำรายงาน/งานค้าง
+- สิ่งที่ไม่ได้ทำ: ไม่แก้ source code, ไม่ deploy GitHub Pages/Supabase, ไม่แก้คิวหรือข้อมูล production และไม่อ้างว่างานที่ไม่มีหลักฐาน deploy สำเร็จแล้ว
+
+
+## 14. อัปเดต 2026-10-19 — ปิดงานแสดงรายชื่อวิชาจริงในคิวตรวจ
+**สถานะ: Source + GitHub Pages + Supabase production สำเร็จ / ยังไม่ได้ทดสอบ endpoint ด้วย reviewer session จริง**
+
+### คำขอและการรับช่วง
+- ผู้ใช้สั่งให้อ่านงานล่าสุดจาก Handoff และทำงานค้างต่อ โดยให้ใช้แท็บภายในในการตรวจสอบ
+- ตรวจจาก GitHub ผ่าน in-app browser และเทียบ source บน `main` พบว่างานข้อ 13.5(1) ยังไม่ปิดจริง: `queueOverview()` ส่งเพียงจำนวน, current job และ recent 8 รายการ; หน้า Audit Control Center ไม่มีรายชื่อวิชาทั้งหมดที่ queued/running
+
+### สิ่งที่แก้
+- `supabase/functions/api/index.ts`
+  - เพิ่ม `pending` ในผล `GET /v1/admin/jobs/overview` โดยคืนเฉพาะงาน queued/running ของรายวิชา active
+  - payload มี Course ID, รหัส/ชื่อ/กลุ่มวิชา, สถานะ, kind, priority และเวลา; ไม่เพิ่มข้อมูลผู้สอนหรือข้อมูลรับรอง
+  - เรียงงานที่กำลังตรวจขึ้นก่อน แล้วเรียง queued ตาม priority และเวลาสร้างเพื่อให้รายการคงที่
+  - Commit `05061060017f214c42fc195638037328239a7ea4`
+- `audit-review.js`
+  - เพิ่มส่วน “รายวิชาในคิวปัจจุบัน” แสดงทุกวิชาที่ API ส่งมา พร้อมรหัส ชื่อ กลุ่ม สถานะ และเวลาสร้าง/เริ่มตรวจ
+  - รายการมีพื้นที่ scroll, responsive mobile และสีที่อ่านได้ใน dark mode
+  - Commit `a961e2a8cf06249d8fbead982779de8c99ea3756`
+- `ui-i18n.js`
+  - เพิ่มคำแปลอังกฤษสำหรับหัวข้อ สถานะโหลด ชื่อวิชาไม่ทราบ และ empty state
+  - Commit `93fe21f96d3d914af1ec456ce3c8e0b4a71a8610`
+- `audit-review.html`
+  - bump cache key เป็น `ui-i18n.js?v=20261019a` และ `audit-review.js?v=20261019a`
+  - Commit `768a1940969df3ab37019b5588317f365b9d88f0`
+- เพิ่ม `tests/queue-overview.test.mjs` ครอบคลุม API payload, UI list, dark/mobile, English และ cache keys
+  - Commit `a866c1255d618d898bcf352c360b1c6bcd9fc3f4`
+
+### การตรวจสอบและ Deploy
+- Static regression checks กับ source ล่าสุดผ่าน **6/6** และ JavaScript parse check ของ `audit-review.js` / `ui-i18n.js` ผ่าน
+- GitHub Actions/Pages ตรวจจาก in-app browser: run `#85` (`39223344223`) **completed successfully**
+- Supabase Edge Function `api` deploy production จาก GitHub source ล่าสุดพร้อม `audit-quality.mjs`: version **32**, status **ACTIVE**, `verify_jwt=false` คงค่าเดิมเพราะ function ใช้ custom reviewer authentication
+- ตรวจ source ของ function v32 หลัง deploy พบ `pending` แล้ว
+- Query production แบบ read-only หลัง deploy: `queued_jobs=160`, `running_jobs=0`, `active_courses_in_queue=160`, `out_of_scope_jobs=0`
+- ไม่ได้แก้ schema, RLS, ข้อมูลคิว หรือผลตรวจ; deployment เปลี่ยนเฉพาะ response ของ queue overview
+
+### ข้อจำกัดและงานถัดไป
+- ยังไม่ได้เรียก `/v1/admin/jobs/overview` ด้วย reviewer session จริงใน browser เพราะ in-app tab ไม่มี session ผู้ดูแล; ให้ผู้ใช้ login แล้วเปิดหน้า “ระบบตรวจ” เพื่อตรวจว่าเห็นรายชื่อ 160 วิชาและเลื่อนดูได้ครบ
+- หากหน้าที่ยังเปิดอยู่ไม่เห็นส่วนใหม่ ให้ hard refresh หนึ่งครั้งเพื่อรับ cache key `20261019a`
+- งานค้างลำดับถัดไปจากข้อ 13.5: Google Drive folder ว่างต้องไม่นับเป็นเนื้อหา, OCR background flow, session refresh/resume, catalog หลังเหตุ 140 วิชา, Local 0.13.15 portability และ Google Photos diagnostics
+
+
+## 15. อัปเดต 2026-10-19 — สร้าง SPU Learning Auditor Local Legacy 0.1.0 จาก Local 0.13.16
+**สถานะ: ยืนยัน source และ automated tests ในเครื่อง / สร้าง ZIP ใน workspace แล้ว / ยังไม่ได้อัปโหลด ZIP หรือ source รุ่น Legacy ขึ้น GitHub / ไม่ได้ deploy ระบบปัจจุบัน**
+
+### คำขอและขอบเขต
+- ผู้ใช้ต้องการรุ่น Local แยกสำหรับตรวจรายวิชาเก่า ไม่รวมกับ Extension เกณฑ์ปัจจุบัน
+- ใช้ไฟล์ต้นทางที่ผู้ใช้ระบุใน `C:\Users\Administrator\Downloads\SPU-Learning-Auditor-Local-0.13.16.zip` (9,330,043 bytes) เป็นฐาน; เก็บต้นฉบับไว้ ไม่แก้ทับ
+- รองรับเฉพาะ GR/GS, 15 ครั้ง; AI Tutor และ Podcast ไม่เป็นองค์ประกอบบังคับ; Moodle Quiz นับได้; ไม่มีคะแนน; ต้องผ่านองค์ประกอบบังคับครบทั้งหมดจึงผ่าน
+- ผู้ใช้สั่งเพิ่มการผ่อนปรนเวลาวิดีโอ GR/GS เป็น **20 นาที** (แทนเกณฑ์เดิมประมาณ 10 นาที)
+- ผู้ใช้กำชับให้บริหารโควต้าเป็นข้อจำกัดสำคัญ จึงเพิ่มเป็น Working Protocol ด้านบน: รวมงานเป็นรอบ ลดคำสั่งซ้ำ และสำรองโควต้าสำหรับการสนทนา/ทดสอบ/แก้ไขต่อ
+
+### สิ่งที่ยืนยันแล้วใน source Local Legacy
+- ชื่อ Extension: `SPU Learning Auditor — Local Legacy`; version `0.1.0`; rubric `GR/GS-LEGACY-COMPLETENESS-1.0`
+- แยกโฟลเดอร์จากรุ่นปัจจุบัน: `spu-learning-auditor-local-legacy-0.1.0-from-0.13.16`
+- หน้า Queue ให้เลือกเฉพาะ GR/GS; catalog import กรองเฉพาะ GR/GS
+- ตัด Podcast และ AI Tutor ออกจาก checklist, งานรอยืนยัน, unresolved blockers และรายการที่เปิดตรวจปลายทางเบื้องหลัง
+- Checklist ครั้งที่ 1 มี: ข้อมูลรายวิชา, ข้อมูลผู้สอน, เอกสารประกอบ, วิดีโอ, กิจกรรมท้ายบท
+- Checklist ครั้งที่ 2–15 มี: แผนการสอน, เอกสารประกอบ, วิดีโอ, Pre-test, Post-test และกิจกรรมท้ายบท (ถ้ามี)
+- Moodle Quiz ที่ถูกจัดประเภท Pre/Post นับในแถวนั้น; ordinary Moodle Quiz นับเป็นกิจกรรมท้ายบทได้ โดยไม่ให้นับซ้ำ Pre/Post
+- ผลรวมเป็น `complete / required / missing / pending`; `not_applicable` ไม่นับเป็นองค์ประกอบบังคับ; มี pending จะเป็น “ต้องตรวจทาน”; มี fail จะ “ไม่ผ่าน”; ผ่านเมื่อ required ทั้งหมดผ่าน
+- ลบ UI ส่งออก Dashboard จากรุ่น Legacy เพื่อไม่ปะปนกับ Dashboard/Supabase เกณฑ์ปัจจุบัน
+- ปรับ `RULES.GR.toleranceMinutes` และ `RULES.GS.toleranceMinutes` เป็น `20`; มากกว่า 20 นาทีที่ขาดยังไม่ผ่าน
+- เพิ่ม/แก้เอกสาร `README.md`, `RELEASE-NOTES.md` และเพิ่ม `legacy-policy.js`
+
+### การทดสอบและ Artifact
+- คำสั่ง: `node --test tests/*.test.mjs`
+- ผลล่าสุด: **37/37 test files ผ่าน, 0 fail** รวม stress test 900 วิชา / 162,000 activities
+- เพิ่ม `tests/legacy-policy.test.mjs` และปรับ regression tests ให้ตรงนโยบาย Legacy/Moodle Quiz/ไม่มีคะแนน/ผ่อนปรน 20 นาที
+- ZIP ที่สร้างในเครื่อง:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.0.zip`
+- ขนาดล่าสุด: 9,319,808 bytes
+- SHA-256: `904DE57D2A88D4E462F6838DBBAE58079FDEE0AD88259E5AA8DCF93D89AFD3BF`
+
+### สิ่งที่ยังไม่ยืนยัน / งานถัดไป
+- ยังไม่ได้ Load unpacked และทดสอบกับรายวิชาเก่าจริงใน Chrome; automated tests ไม่แทน live acceptance test
+- ยังไม่ได้อัปโหลด ZIP หรือ source Local Legacy ขึ้น GitHub เพราะรอบนี้สร้าง artifact ใน workspace; การย้ายเครื่องต้องนำ ZIP ไปเก็บใน GitHub Releases/download storage ก่อน
+- ไม่ได้แก้/deploy Dashboard, GitHub Pages, Supabase Edge Function, schema, catalog หรือคิว production
+- รุ่นเกณฑ์ปัจจุบัน 0.13.16 ไม่ถูกแก้; การผ่อนปรน 20 นาทีรอบนี้ใช้กับ Local Legacy เท่านั้น
+
+
+## 16. อัปเดต 2026-10-20 — Local Legacy 0.1.1: เกณฑ์วิดีโอและ Podcast ตามลักษณะวิชา
+**สถานะ: แก้ source / ทดสอบอัตโนมัติ / สร้าง ZIP ใน workspace แล้ว / ยังไม่ได้อัปโหลด ZIP หรือ source ขึ้น GitHub / ยังไม่ได้ทดสอบกับรายวิชาจริงใน Chrome**
+
+### ข้อกำหนดล่าสุด (ใช้แทนข้อความเรื่อง Podcast ในข้อ 15)
+- ผู้ใช้กำหนดให้เกณฑ์นี้ใช้กับรายวิชา **ทุกประเภทที่ Local Legacy รองรับ** คือ GR และ GS
+- ผู้ใช้ต้องเลือกลักษณะวิชาเป็น **ทฤษฎี** หรือ **ปฏิบัติ** ก่อนเข้าคิวตรวจ
+- วิดีโอและ Podcast ต้องผ่าน **ครบคู่กันในครั้งเรียนเดียวกัน**
+- วิชาทฤษฎีต้องมีคู่สื่อผ่านครบ **15 ครั้ง**
+- วิชาปฏิบัติต้องมีคู่สื่อผ่านอย่างน้อย **7 ครั้ง**
+- ยังคงประเมินแบบองค์ประกอบครบ/ไม่ครบ ไม่ใช้คะแนน 80/110; AI Tutor ยังไม่อยู่ในเกณฑ์ Legacy
+- การผ่อนปรนเวลาวิดีโอ GR/GS **20 นาที** จากข้อ 15 ยังคงเดิม
+
+### สิ่งที่แก้ใน Local Legacy 0.1.1
+- เพิ่ม Podcast กลับเข้า checklist ครั้งที่ 1 และครั้งที่ 2–15 และเปิดการตรวจปลายทาง/การยืนยันเวลาของ Podcast
+- เพิ่มตัวเลือกลักษณะวิชาในหน้าคิวสำหรับ GR/GS ทุกวิชา; import catalog อ่านค่า `gnTrack`, `track` หรือคอลัมน์ `ลักษณะวิชา` และใช้ทฤษฎีเป็นค่าเริ่มต้น
+- เพิ่ม aggregate media coverage: นับเฉพาะครั้งที่วิดีโอและ Podcast ผ่านพร้อมกัน; ทฤษฎี 15/15 และปฏิบัติอย่างน้อย 7/15
+- แยกเกณฑ์สื่อออกจากการนับองค์ประกอบรายแถว เพื่อไม่ให้วิชาปฏิบัติที่ผ่านครบ 7 ครั้งถูกบังคับให้ผ่านสื่ออีก 8 ครั้ง
+- เมื่อวิชาปฏิบัติครบขั้นต่ำแล้ว สื่อที่ยังรอตรวจในครั้งส่วนเกินไม่ขวางการยืนยันผล
+- รายงานแสดงตารางความครอบคลุมวิดีโอ/Podcast, ลักษณะวิชา, จำนวนครั้งที่ผ่าน และผลรวม พร้อมคำแนะนำอาจารย์แบบ aggregate
+- เพิ่ม Podcast ในตัวกรองหลักฐาน และ final-review blockers เฉพาะกรณีที่ยังมีผลต่อเกณฑ์
+- อัปเดต README, Release Notes, manifest description และ version เป็น `0.1.1`
+
+### การทดสอบและ Artifact
+- Automated test files ผ่าน **34/34**, 0 fail
+- ตรวจ syntax JavaScript ระดับไฟล์ด้วย `node --check` ผ่าน
+- ZIP:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.1.zip`
+- ขนาด: **9,321,434 bytes**
+- SHA-256: `D1F8C0070C72DDFF006374276A1CDB5CDA2B02307A767803EB97ECF5C49A07FF`
+
+### สิ่งที่ยังไม่ยืนยัน / งานถัดไป
+- ยังไม่ได้ Load unpacked และทดสอบ acceptance กับรายวิชาเก่าจริงใน Chrome โดยเฉพาะ GR/GS ทฤษฎีและปฏิบัติ
+- ยังไม่ได้อัปโหลด ZIP/source Local Legacy 0.1.1 ขึ้น GitHub หรือ Releases
+- ไม่ได้แก้รุ่นเกณฑ์ปัจจุบัน 0.13.16, Dashboard, Supabase, catalog production หรือคิว production
+
+
+## 17. แก้ไขข้อ 16 — Local Legacy 0.1.2 นับเฉพาะวิดีโอ (2026-10-20)
+**สถานะ: ใช้ข้อนี้แทนข้อ 16 ทั้งหมดสำหรับ Local Legacy / source แก้แล้ว / tests ผ่าน / สร้าง ZIP ใน workspace / ยังไม่ได้ live test หรืออัปโหลด GitHub**
+
+### การแก้ความเข้าใจ
+- ผู้ใช้ชี้แจงว่าข้อกำหนดวิดีโอและ Podcast ที่กล่าวก่อนหน้าเป็นแนวทางสำหรับ **Extension เกณฑ์ปัจจุบันในงานภายหลัง** ไม่ใช่ Local Legacy
+- งานปัจจุบันต้องทำตัวตรวจ **เกณฑ์เก่า** ให้เสร็จก่อน
+- ดังนั้น Local Legacy ต้อง **ไม่นับ Podcast** และ **ไม่นับ AI Tutor**
+- Artifact 0.1.1 ในข้อ 16 เป็นฉบับชั่วคราวที่ตีความผิดและ **ห้ามนำไปใช้งาน/ส่งต่อ**
+
+### เกณฑ์ที่ถูกต้องของ Local Legacy 0.1.2
+- รองรับ GR และ GS
+- ผู้ตรวจเลือก `ทฤษฎี` หรือ `ปฏิบัติ` ในหน้าคิว
+- เกณฑ์จำนวนครั้งใช้กับ **วิดีโอเท่านั้น**
+  - ทฤษฎี: วิดีโอต้องผ่านครบ 15 ครั้ง
+  - ปฏิบัติ: วิดีโอต้องผ่านอย่างน้อย 7 ครั้ง
+- Podcast และ AI Tutor ถูกตัดออกจาก checklist, unresolved blockers, งานรอตรวจ และรายการที่ระบบเปิดปลายทางเบื้องหลัง
+- Moodle Quiz ยังนับเป็น Pre-test, Post-test หรือกิจกรรมท้ายบทตามประเภท
+- ยังไม่คิดคะแนน; ต้องผ่านองค์ประกอบบังคับและเกณฑ์จำนวนครั้งของวิดีโอ
+- ผ่อนปรนเวลาวิดีโอ GR/GS ได้ไม่เกิน 20 นาทีตามข้อกำหนดก่อนหน้า
+- วิชาปฏิบัติที่วิดีโอผ่านครบ 7 ครั้งแล้วไม่ถูกบังคับให้ผ่านวิดีโออีก 8 ครั้ง
+
+### การทดสอบและ Artifact
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript `node --check` ผ่าน
+- ZIP:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.2.zip`
+- ขนาด: **9,321,245 bytes**
+- SHA-256: `D26B277921BE1ED82D3D850EB08EA7B11B5C0A2D555C8EA0482CFFD7BCF8EEF3`
+
+### งานถัดไป
+- Load unpacked และทดสอบกับรายวิชาเก่าจริงอย่างน้อย GR/GS ทฤษฎีและปฏิบัติ
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.2 ขึ้น GitHub หรือ Releases
+- ยังไม่ได้แก้เกณฑ์วิดีโอ+Podcast ใน Extension รุ่นปัจจุบัน; เก็บเป็นงานแยกหลัง Local Legacy ผ่าน acceptance test
+
+
+## 18. Known issue — Post-test ใน Moodle Chat ไม่ถูกจัดประเภทเมื่อคำถามภาษาไทยเขียนติดคำ (2026-10-20)
+**สถานะ: วินิจฉัยสาเหตุแล้ว / ยังไม่แก้ source**
+
+- ตัวอย่างที่พบในครั้งที่ 4 เป็น Moodle Chat ชื่อขึ้นต้น `Post-test` และมีข้อความ `...นโยบายอย่างไรเพื่อส่งเสริม...`
+- scanner เก็บ Moodle activity ชนิด Chat ได้อยู่แล้ว และ classifier รองรับ Pre/Post ใน Chat/Page
+- สาเหตุอยู่ที่ `questionInTitle` ใน `classifier.js`: คำบอกคำถามภาษาไทย เช่น `อย่างไร` ต้องตามด้วยช่องว่าง, จบข้อความ หรือเครื่องหมายคำถาม
+- ในรายการนี้คำว่า `อย่างไรเพื่อ` เขียนติดกัน จึงไม่ผ่านเงื่อนไข question title; generic Moodle Chat จบเป็น `other` แทน `post_quiz`
+- ยืนยันด้วยการทดสอบตรงจากชื่อในภาพ: Pre-test ได้ `pre_quiz`; Post-test ได้ `other`; `POST_PATTERN` จับคำว่า Post-test ได้ แต่ `questionInTitle` เป็น false
+- แนวทางแก้ที่เสนอ: เมื่อชื่อมี Pre-test/Post-test ชัดเจน ให้คำถามภาษาไทย (`อย่างไร/อะไร/เพราะเหตุใด/ทำไม/ข้อใด/เท่าไร`) จับได้แม้คำถัดไปเขียนติดกัน และเพิ่ม regression test ของข้อความจริงนี้
+- ยังไม่ได้แก้หรือแพ็ก Local Legacy รุ่นใหม่ในรายการนี้ เพราะผู้ใช้ถามหาสาเหตุเท่านั้น
+
+
+## 19. แก้ Post-test ใน Moodle Chat/Page — Local Legacy 0.1.3 (2026-10-20)
+**สถานะ: แก้ source / regression test / full automated tests / สร้าง ZIP แล้ว / ยังไม่ได้ live acceptance test**
+
+### การแก้ไข
+- ปรับ `questionInTitle` ใน `classifier.js` ให้คำบอกคำถามภาษาไทย `อย่างไร/อะไร/เพราะเหตุใด/ทำไม/ข้อใด/เท่าไร` ใช้ได้แม้เขียนติดคำถัดไป
+- เงื่อนไขนี้ใช้ร่วมกับชื่อ Pre-test/Post-test ที่ชัดเจน จึงไม่เปลี่ยนข้อความทั่วไปให้เป็นแบบทดสอบโดยไม่มีป้ายประเภท
+- กรณีจริง `Post-test ... นโยบายอย่างไรเพื่อส่งเสริม...` ใน Moodle Chat เปลี่ยนจาก `other` เป็น `post_quiz`
+- เพิ่ม regression test ด้วยชื่อเต็มจากรายการจริงในครั้งที่ 4
+- เกณฑ์ Local Legacy 0.1.2 เดิมยังคงเดิม: นับเฉพาะวิดีโอ 15/7 ครั้ง; Podcast และ AI Tutor ไม่นับ
+
+### การทดสอบและ Artifact
+- `tests/classifier.test.mjs` ผ่าน
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript `node --check` ผ่าน
+- ZIP:
+  `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.3.zip`
+- ขนาด: **9,321,717 bytes**
+- SHA-256: `7A2D8A4A24CE04FBFBFEA57999C5DCC980CE99396AEADDD2B42614501ECF7A42`
+
+### งานถัดไป
+- Load unpacked 0.1.3 แล้วตรวจรายวิชาเดิมอีกครั้งเพื่อยืนยันว่า Post-test ครั้งที่ 4 แสดงเป็นผ่าน
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.3 ขึ้น GitHub หรือ Releases
+
+
+## 20. Pre/Post จากชื่อ ป้าย และคำสะกดผิด — Local Legacy 0.1.4 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / ยังไม่ได้ live acceptance test**
+
+### กฎจำแนกที่ใช้
+- ไม่มีป้าย: ใช้ชื่อรายการที่ระบุ Pre/Post หรือแบบทดสอบก่อน/หลังเรียน
+- มีป้าย: คำถามทั่วไปนับเป็น Pre/Post ได้เมื่อป้ายเป็น local/adjacent/visual label ของรายการใน Section เดียวกัน
+- ป้ายที่เป็น inherited label จากรายการก่อนหน้าไม่สามารถเปลี่ยนคำถามทั่วไปให้เป็น Pre/Post
+- หากชื่อและป้ายเฉพาะรายการขัดกัน ให้ป้ายเฉพาะรายการเป็นตัวแก้ประเภท (รักษาพฤติกรรมเดิม)
+- คำถามที่ไม่มีชื่อหรือป้าย Pre/Post ไม่ถูกเดาเป็นแบบทดสอบ เพื่อป้องกันกิจกรรมท้ายบทถูกนับผิด
+
+### การป้องกันคำสะกดผิด
+- เพิ่ม `assessmentTitleKind()` ใน `rules.js`
+- รองรับคำอังกฤษบริเวณต้นชื่อที่คลาดเคลื่อนหนึ่ง edit (รวม transposition) เช่น `Pre-tset`, `Postest`
+- รองรับชื่อไทย `แบบทดสอบก่อนเรียน/หลังเรียน` ที่คลาดเคลื่อนหนึ่ง edit เช่น `แบบทดสอบกอนเรียน`
+- จำกัด fuzzy matching ไว้ที่ต้นชื่อและเป้าหมายเฉพาะ เพื่อลด false positive
+
+### Regression tests
+- Post-test จริงที่มี `อย่างไรเพื่อ...` ยังผ่าน
+- `Pre-tset Week 4` -> `pre_quiz`
+- `Postest Week 4` -> `post_quiz`
+- `แบบทดสอบกอนเรียน ครั้งที่ 4` -> `pre_quiz`
+- คำถามทั่วไปใต้ local Post-test label -> `post_quiz`
+- คำถามทั่วไปใต้ inherited Post-test label -> `other`
+- คำถามทั่วไปไม่มีชื่อ/ป้าย -> `other`
+- Automated test files ผ่าน **34/34**, 0 fail; JavaScript `node --check` ผ่าน
+
+### Artifact
+- `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.4.zip`
+- ขนาด: **9,322,472 bytes**
+- SHA-256: `8988EA89430054AE47446DCB522EC1D86213E9AA95CF2640990C950F083DA087`
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.4 ขึ้น GitHub หรือ Releases
+
+
+## 21. แก้ Pre/Post ภายใน Moodle ถูกพบแต่ไม่ผ่าน — Local Legacy 0.1.5 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### สาเหตุ
+- 0.1.4 จำแนก Post-test ใน Moodle Chat เป็น `post_quiz` ได้แล้ว
+- แต่ `presentQuiz()` ยังให้ผ่านเฉพาะ `/mod/quiz/`, Resource/Assignment, question title บางรูปแบบ, assessment text หรือ external link
+- ข้อความ `อย่างไรเพื่อ...` ยังติด boundary เดิมในขั้นสรุปผล จึงตกไปที่ `presentExternal()` และกิจกรรม Chat ภายใน Moodle ถูกตัดเป็น fail
+
+### การแก้ไข
+- ปรับ question detector ใน `presentQuiz()` ให้รองรับคำไทยเขียนติดกันเช่น `อย่างไรเพื่อ...`
+- เมื่อ classifier ยืนยัน `pre_quiz/post_quiz` จากชื่อหรือ local label แล้ว ให้ Moodle module ภายใน เช่น Chat/Page นับผ่านได้ ไม่จำกัดเฉพาะ Quiz module
+- ยังคงไม่เดาคำถามทั่วไปเป็น Pre/Post: การเข้าถึงเส้นทางนี้ต้องถูก classifier จัดเป็น `pre_quiz/post_quiz` ก่อน
+- เพิ่ม regression test: Moodle Chat ชื่อ `Post-test ... อย่างไรเพื่อ...` ต้องทำให้แถว Post-test ผ่าน
+
+### การทดสอบและ Artifact
+- `tests/review-recalculation.test.mjs` ผ่าน
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript `node --check` ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.5.zip`
+- ขนาด: **9,322,906 bytes**
+- SHA-256: `022C3AF4979D58482C86F6BC35F45C24ECD37CBDAE578667C80200B0E8AE251A`
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.5 ขึ้น GitHub หรือ Releases
+
+
+## 22. Known issue — ป้าย Post-test รูปภาพตามด้วยไฟล์ DOCX ไม่ถูกนับ (2026-10-20)
+**สถานะ: วินิจฉัยสาเหตุแล้ว / ยังไม่แก้ source**
+
+- โครงสร้างที่พบ: ป้ายรูปภาพ `Post-test` ตามด้วย Moodle Resource/File ชื่อ `แบบทดสอบ ครั้งที่ 2: ...` ปลายทาง `Quiz 2.docx` และลิงก์ Google Drive สำหรับ Assignment
+- ชื่อไฟล์ไม่มีคำ `Post-test` หรือ `หลังเรียน` จึงไม่ผ่านเส้นทางจำแนกจากชื่อเพียงอย่างเดียว
+- `collectAssessmentPillEvidence()` ใน `content.js` จับป้ายภาพ Pre/Post ไปยังเฉพาะโมดูล `/mod/quiz/` หรือ `/mod/assign/`; Moodle Resource/File ถูกกรองออก
+- resource classifier จึงคงรายการเป็นเอกสาร และรายงานนำ DOCX ไปผ่านหัวข้อเอกสารประกอบการสอนแทน ขณะที่ Post-test แสดงว่าไม่พบ
+- Google Drive รายการถัดไปมีคำ Assignment จึงถูกนับเป็นกิจกรรมท้ายบท ไม่ใช่ Post-test
+- แนวทางแก้ที่ปลอดภัย: ขยายการจับคู่ป้าย Pre/Post เฉพาะรายการถัดไปใน Section เดียวกันให้รองรับ Resource/File/Page/Chat/URL เมื่อชื่อมีสัญญาณแบบทดสอบ/คำถาม และหยุดที่ป้ายหมวดถัดไป; ห้ามเหมารวมไฟล์ทุกชนิดใต้ป้าย
+
+
+## 23. ป้ายภาพ Pre/Post ครอบคลุมไฟล์และกิจกรรม Moodle — Local Legacy 0.1.6 (2026-10-20)
+**สถานะ: แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### สาเหตุเดิม
+- ตัวจับคู่ป้ายภาพ Pre-test/Post-test รับเฉพาะ Moodle Quiz และ Assignment
+- กรณีป้าย `Post-test` ตามด้วย Moodle Resource/File ชื่อ `แบบทดสอบ ครั้งที่ 2...` ปลายทาง `Quiz 2.docx` จึงไม่รับประเภทจากป้าย
+- ชื่อไฟล์ไม่มีคำ Post-test/หลังเรียน ทำให้ถูกจำแนกเป็นเอกสารประกอบการสอนแทน
+
+### การแก้ไข
+- ให้ป้ายภาพ Pre-test/Post-test เป็นหมวดของกิจกรรม Moodle รายการแรกที่อยู่ถัดลงมาใน Section เดียวกัน
+- รองรับ Resource/File, Page, Chat, URL, Quiz, Assignment และกิจกรรม Moodle อื่นที่มีหน้า `/mod/.../view.php`
+- จำกัดการจับคู่ภายในระยะเดิม 720px และไม่ข้ามป้ายภาพถัดไป
+- ตัด Forum และ Label ออกจากเป้าหมาย เพื่อไม่ให้ป้ายหรือกระดานประกาศถูกนับเป็นแบบทดสอบ
+- บันทึก provenance เป็น `groupContextSource: local_image_label` เพื่อให้ตรวจสอบย้อนกลับได้
+- ผลที่ต้องการ: ป้าย Post-test + ไฟล์ `Quiz 2.docx` ถัดลงมา ถูกนับเป็น Post-test แม้ผู้สอนไม่ใส่คำ Post-test ในชื่อไฟล์
+
+### การทดสอบและ Artifact
+- เพิ่ม regression assertions ตรวจว่าตัวจับคู่รองรับกิจกรรม Moodle ทั่วไป หยุดที่ป้ายถัดไป และเก็บ local-label provenance
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript syntax check ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.6.zip`
+- ขนาด: **9,323,447 bytes**
+- SHA-256: `5B410E16BB1F89A152F3F4A395D9F22DEBC3C714255272DCB38C116282C9C412`
+- ZIP verification: `manifest.json` ภายในเป็น Local Legacy version `0.1.6`
+
+### งานถัดไป
+- Load unpacked หรือแตก ZIP 0.1.6 แล้วตรวจรายวิชาในภาพซ้ำ เพื่อยืนยันแถวแบบทดสอบหลังเรียนแสดงผ่าน
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.6 ขึ้น GitHub หรือ Releases
+
+
+## 24. รองรับ Moodle Forum ใต้ป้าย Pre/Post — Local Legacy 0.1.7 (2026-10-20)
+**สถานะ: ผู้ใช้อธิบายขอบเขต / สรุปแผนก่อนแก้ / ผู้ใช้อนุมัติ / แก้ source / tests ผ่าน / สร้าง ZIP แล้ว / รอ live acceptance test**
+
+### ข้อตกลงกระบวนการ
+- ก่อนแก้ไขรอบต่อไป ต้องสรุปสิ่งที่จะทำ ขอบเขต ผลกระทบ และวิธีป้องกัน false positive ให้ผู้ใช้อนุมัติก่อน
+- รอบนี้ผู้ใช้อนุมัติให้รองรับ Forum หลังได้รับสรุปขอบเขตแล้ว
+
+### การแก้ไข
+- Local Legacy ยอมรับ Moodle Forum เป็น Pre/Post เมื่อเป็นกิจกรรมแรกที่อยู่ใต้ป้ายภาพ Pre-test/Post-test ใน Section เดียวกัน
+- ใช้ข้อจำกัดเดิม: อยู่ภายในระยะใกล้ 720px และห้ามข้ามป้ายภาพถัดไป
+- Forum ที่ไม่มีป้าย Pre/Post ซึ่งสัมพันธ์กับรายการโดยตรงไม่ถูกเดาเป็นแบบทดสอบ
+- เพิ่มตัวกรองไม่รับ Forum ที่มีชื่อ/ข้อความระบุ `Announcements`, `News Forum`, `กระดานข่าว`, `กระดานประกาศ`, `ข่าวสาร` หรือ `ประกาศ`
+- Moodle Label ยังคงไม่เป็นเป้าหมายของการจับคู่
+- การจำแนกที่ได้ยังเก็บ `groupContextSource: local_image_label` เพื่อ audit ย้อนกลับ
+
+### การทดสอบและ Artifact
+- เพิ่ม regression assertions ยืนยันว่า Forum อยู่ในกลุ่ม Moodle activity ที่ป้าย Pre/Post จับคู่ได้
+- เพิ่ม regression assertion ยืนยันว่ามี Announcements/news exclusion
+- ยังคงตรวจว่าการจับคู่หยุดก่อนป้ายภาพถัดไปและเก็บ local-label provenance
+- Automated test files ผ่าน **34/34**, 0 fail
+- JavaScript syntax check ผ่าน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.1.7.zip`
+- ขนาด: **9,323,776 bytes**
+- SHA-256: `F378D4ED4B01F8D8B4F661243F39DD0B4C6AF6848C5C85B50907B49771A9E4BF`
+- ตรวจ ZIP แล้ว: `manifest.json` เป็น Local Legacy version `0.1.7`
+
+### งานถัดไป
+- แตก ZIP/Load unpacked 0.1.7 แล้วทดสอบวิชาที่ใช้ Forum ใต้ป้าย Pre/Post จริง
+- ตรวจยืนยันว่า Announcements หรือกระดานประกาศไม่ถูกนับ
+- ยังไม่ได้อัปโหลด ZIP/source 0.1.7 ขึ้น GitHub หรือ Releases
+
+
+## 25. ระบบตรวจ 683 GR/GS หลายรายวิชา + PDF หลักฐานข้ามบัญชี — Local Legacy 0.2.0 (2026-10-20)
+**สถานะ: ออกแบบหลังผู้ใช้ยืนยัน / แก้ source / tests ผ่าน / สร้าง ZIP / ปรับ Google Sheet และสร้างโฟลเดอร์แล้ว / ยังต้อง Deploy Apps Script และทำ live acceptance test**
+
+### ขอบเขตที่ผู้ใช้อนุมัติ
+- สร้าง “ระบบ” สำหรับนำเข้ารายวิชาและรันคิวตรวจทั้งหมด ไม่ใช่ให้ Codex ตรวจ 152 วิชาแทนผู้ใช้ในรอบนี้
+- แหล่งรายการคือ Google Sheet ID `1ueWMS36W2Ah6METy5z-rsAHpbhP4LcaApsAWB9AtCNM`, tab `เหตุผลรายวิชา`, gid `532693621`
+- อ่านหน่วยกิตจากคอลัมน์ C, Course Profile จากคอลัมน์ D และลิงก์รายวิชาจากคอลัมน์เดิม Q ซึ่งเลื่อนไป R หลังเพิ่มคอลัมน์ผลใหม่
+- รับเฉพาะภาค 683 ประเภท GR/GS ที่มีลิงก์ d-Learning หรือ i-Learning; `(T)` และ `(TT)` เป็นทฤษฎี, `(L)` เป็นปฏิบัติ
+- เครื่องตรวจเป็นเครื่องแยกและใช้บัญชี Google คนละบัญชีกับเจ้าของ Sheet/Drive
+
+### สถาปัตยกรรมข้ามบัญชี
+- Apps Script ต้องสร้างและ Deploy โดยบัญชีเจ้าของ Sheet โดยตั้ง **Execute as: Me** และ access แบบ Anyone
+- เครื่องตรวจเก็บเพียง Web app URL กับ shared secret และต้องล็อกอินเฉพาะ d-Learning/i-Learning; ไม่ต้องล็อกอินบัญชี Google ของเจ้าของเอกสาร
+- Apps Script อ่าน catalog, สร้าง PDF ใน Drive ของเจ้าของ และเขียนผลกลับ Sheet ด้วยสิทธิ์เจ้าของ
+- shared secret ป้องกันบุคคลทั่วไปส่งข้อมูลเข้าบริการ; ห้ามบันทึก secret ลง GitHub/Handoff
+- PDF และโฟลเดอร์หลักฐานตั้งเป้า **ทุกคนที่มีลิงก์ดูได้เท่านั้น**
+- ความล้มเหลวตอนส่ง Drive/Sheet ไม่ทำลายผลตรวจและไม่หยุดคิว; หน้า Queue มีปุ่มส่ง PDF ใหม่
+
+### Google Sheet ที่แก้แล้ว
+- คงคอลัมน์ G และเปลี่ยนชื่อเป็น `ผลสุดท้าย (เดิม)`
+- เพิ่ม H: `ผลตรวจใหม่ (Local Legacy)`
+- เพิ่ม S:W: `สถานะการตรวจใหม่`, `ผู้ตรวจต้องดำเนินการ`, `แจ้งผู้สอนแก้ไข`, `วันที่ตรวจล่าสุด`, `หลักฐานผลตรวจ (PDF)`
+- รักษา dropdown/conditional formatting ของผลเดิมและเพิ่มรูปแบบให้ผลใหม่; ไม่ได้เขียนผลตรวจรายวิชาใดในรอบนี้
+- ชุดข้อมูลที่อ่านก่อนพัฒนา: 152 แถว 683GR (120 `(T)`, 32 `(TT)`), 144 d-Learning และ 8 i-Learning; ระบบเตรียมรองรับ 683GS ที่เพิ่มภายหลัง
+
+### Google Drive
+- สร้างโฟลเดอร์ `SPU Learning Auditor Evidence — 683`
+- Folder ID: `1ccIYrepKL1QO-UZ_XpaGBIwYALsv-Be_`
+- URL: https://drive.google.com/drive/folders/1ccIYrepKL1QO-UZ_XpaGBIwYALsv-Be_
+- การตั้ง Anyone-with-link จะทำผ่าน `setupEvidenceService()` ตอน Deploy เพื่อยืนยันด้วยบัญชีเจ้าของ; ยังไม่ได้ยืนยันการแชร์จริง
+
+### Source ที่เพิ่ม/แก้
+- `sheet-catalog.js`: อ่าน CSV fallback, parse Course Profile, GR/GS, T/TT/L
+- `evidence-package.js`: สร้างรายงาน HTML สำหรับ PDF และแยก “ผู้ตรวจต้องดำเนินการ” ออกจาก “แจ้งผู้สอนแก้ไข”
+- `evidence-sync.js`: อ่าน catalog และส่งหลักฐานผ่าน Apps Script
+- `apps-script/Code.gs`, `apps-script/README.md`: owner-executed web app, secret, PDF, Sheet update
+- `queue.html/css/js`: นำเข้าจากบริการเจ้าของ Sheet, ตั้ง endpoint/secret, แสดง PDF/sync state และ retry
+- `background.js`: ส่งหลักฐานหลัง done/empty; หน้าโล่งสร้าง PDF ผล “ไม่ผ่าน — ไม่พบเนื้อหารายวิชา”
+- `manifest.json`: Local Legacy version `0.2.0` และ optional permission สำหรับ `script.google.com`
+- `tests/sheet-catalog.test.mjs`, `tests/evidence-package.test.mjs`: regression tests ใหม่
+
+### การทดสอบและ Artifact
+- JavaScript syntax checks ผ่าน รวม Apps Script parse check
+- Automated test files ผ่าน **36/36**, 0 fail
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\outputs\SPU-Learning-Auditor-Local-Legacy-0.2.0.zip`
+- ขนาด: **9,338,542 bytes**
+- SHA-256: `88A8FF3C8515EA938B636883271C0868B19C98EAAF631F268F8AA10BF6C2CAA0`
+- ZIP verification: 124 entries และมี `manifest.json`
+- ยังไม่ได้อัปโหลด ZIP/source 0.2.0 ขึ้น GitHub หรือ Releases
+
+### งานที่ต้องทำต่อก่อนเริ่มตรวจจริง
+1. บัญชีเจ้าของเอกสารสร้าง/เปิด Apps Script, วาง `apps-script/Code.gs`, รัน `setupEvidenceService()` หนึ่งครั้ง และ Deploy web app (Execute as Me)
+2. นำ Web app URL และ Secret ไปตั้งค่าใน Extension บนเครื่องตรวจ
+3. ทดสอบนำเข้าและตรวจ 1 วิชาทดสอบก่อน; ยืนยัน PDF เปิดได้แบบไม่ล็อกอิน, Sheet เขียนถูกแถว และข้อความผู้ตรวจ/ผู้สอนแยกถูกต้อง
+4. หลัง acceptance test จึงนำเข้าทั้ง 683 และกดเริ่มคิวครั้งเดียว
+5. ห้ามอ้างว่าระบบ production พร้อมหรือ Apps Script deploy สำเร็จจนกว่าจะมีหลักฐาน live test จริง
+
+### สถานะการเปิดหน้า Deploy
+- เปิด `script.google.com/home` ในแท็บภายในแล้ว แต่ Google แสดง `Verify it’s you` สำหรับ `siraprah.so@spu.ac.th`; หยุดตามข้อกำหนดความปลอดภัยและเก็บแท็บไว้ให้เจ้าของบัญชีกดยืนยันตัวตนเอง
+- หลังผู้ใช้ยืนยันบัญชีแล้ว ให้ทำต่อจากแท็บเดิม: สร้าง project, วาง Code.gs, รัน setup และ Deploy; ยังไม่มี Web app URL/Secret ในขณะบันทึกนี้
+
+
+## 26. Apps Script Evidence Service Deploy สำเร็จ — Local Legacy 0.2.0 (2026-10-20)
+**สถานะ: Deploy สำเร็จ / setup สิทธิ์สำเร็จ / GET endpoint ผ่าน / ยังไม่ได้ live test POST catalog และยังไม่ได้ตรวจรายวิชาทดสอบ**
+
+### Deployment ที่ยืนยันแล้ว
+- Project: `SPU Learning Auditor Evidence — 683`
+- Script project ID: `1y45LoTMAhyVOG8PnGANu83vR8T1qKPHnNiSseQHYb68mQKbeXGEf8_W-`
+- Deployment ID: `AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA`
+- Web app URL: https://script.google.com/macros/s/AKfycbxJoSKj-YU9hmnSFqrk8OEYAbgvTUs37-6wrEJWci6fNdpci63VlZbfCMkrmJU63HittA/exec
+- Version 1 deployed 20 ตุลาคม 2569 เวลา 14:55 น. (Asia/Bangkok)
+- Execute as: เจ้าของเอกสาร `siraprah.so@spu.ac.th`
+- Access: `Anyone`; ทุกคำสั่ง POST ที่ใช้งานจริงยังตรวจ shared secret
+- `setupEvidenceService()` execution completed: สร้าง shared secret และตั้งโฟลเดอร์หลักฐานเป็น Anyone with link / Viewer สำเร็จ
+- GET endpoint ยืนยันผลจริง: `{"ok":true,"service":"SPU Learning Auditor Evidence","version":"1"}`
+- **ห้ามบันทึก shared secret ลง GitHub/Handoff**; ค่าอยู่ในไฟล์ local ส่วนตัว `outputs/SPU-Auditor-683-Connection-PRIVATE.txt` เท่านั้น
+
+### Source/Artifact ที่ปรับให้ตรงกับ Deployment
+- เปลี่ยน URL validation ใน `apps-script/Code.gs` จาก regex เป็น URL parser เพื่อให้ข้อความที่วางผ่าน Apps Script Editor ไม่เสีย escape characters
+- Automated test files ผ่าน **36/36**, 0 fail
+- Apps Script syntax check ผ่าน
+- ZIP เดิมถูก rebuild โดยยังใช้ชื่อ `SPU-Learning-Auditor-Local-Legacy-0.2.0.zip`
+- ขนาดใหม่: **9,338,611 bytes**
+- SHA-256 ใหม่: `207209BA7A6B80195C8F5F744A2BABE17F9833CD1D72A175C79DAC246AE31B37`
+- 124 entries และมี `manifest.json`
+
+### งานถัดไป
+1. ย้าย ZIP และไฟล์ connection แบบ PRIVATE ไปเครื่องตรวจ โดยห้ามเผย Secret
+2. Load unpacked 0.2.0, ตั้ง Web app URL + Secret และเปิด automatic evidence sync
+3. ทดสอบนำเข้า catalog 683; ต้องยืนยันจำนวน/ประเภทที่อ่านได้ก่อนเริ่มคิว
+4. ตรวจ 1 วิชาทดสอบและยืนยัน end-to-end: PDF ถูกสร้าง, ลิงก์เปิดแบบไม่ล็อกอิน, Sheet เขียนถูกแถว และข้อความผู้ตรวจ/ผู้สอนถูกคอลัมน์
+5. เมื่อ acceptance test ผ่าน จึงเริ่มคิวทั้งหมด; ณ จุดนี้ยังไม่มีการตรวจ 152 วิชาจริง
+
+## 27. แก้ Apps Script Catalog URL Parser และเตรียมโหมดเลือกชุดตรวจ (2026-10-20)
+
+**สถานะ: จัดทำโค้ดแก้ไขสำหรับวางใน Apps Script แล้ว / ยังไม่ได้ยืนยันว่า Save, Deploy หรือทดสอบบน production สำเร็จ**
+
+### คำขอ
+- ผู้ใช้อนุมัติให้แก้ปัญหา Apps Script ที่ดึง catalog แล้วได้ 0 รายการ ทั้งที่ Sheet มีรายวิชา 683GR/GS ที่เข้าเกณฑ์ 152 รายการ
+- ผู้ใช้ขอเพิ่มรูปแบบการเลือกชุดตรวจ 4 แบบ:
+  1. เลือกวิชาเอง
+  2. สุ่ม 10 วิชาที่ยังไม่มีผลตรวจ
+  3. ตรวจทั้งหมดที่ยังไม่มีผลตรวจ
+  4. เลือกตรวจซ้ำในรายวิชาที่มีผลตรวจแล้ว
+
+### การวินิจฉัย
+- โค้ดเดิมใช้ `new URL()` และ `URLSearchParams` ใน Apps Script
+- Runtime ของ Apps Script ในโปรเจกต์นี้ไม่รองรับ browser Web API ดังกล่าวอย่างเชื่อถือได้
+- การตรวจ URL ล้มเหลวและถูกดักเป็น error/fallback ส่งผลให้ URL รายวิชาที่ถูกต้องอาจถูกปฏิเสธ ทำให้ catalog ว่าง
+- ตรวจพบว่าต้องแก้ทั้งจุดอ่าน catalog และจุดจับคู่ URL ก่อนเขียนผล/PDF กลับลง Sheet ไม่ใช่เฉพาะ `getCatalog_()`
+
+### สิ่งที่จัดทำแล้ว
+- จัดทำ `Code.gs` ฉบับเต็มสำหรับคัดลอกวาง
+- เพิ่ม `parseSupportedCourseUrl_()` ที่ใช้ string operations แทน `new URL()`
+- จำกัด URL ที่รับเฉพาะ:
+  - `https://dlearning.spu.ac.th/course/view.php?id=ตัวเลข`
+  - `https://ilearning.spu.ac.th/course/view.php?id=ตัวเลข`
+- URL ที่มี query parameter อื่นหรือ fragment ยังรับได้ หากมี `id` เป็นตัวเลข
+- เพิ่ม canonical URL รูปแบบ `host/course/view.php?id=ตัวเลข` เพื่อให้จับคู่ URL ระหว่าง Extension กับ Sheet ได้สม่ำเสมอ
+- `getCatalog_()` คืน diagnostics:
+  - `rowsRead`
+  - `profileRejected`
+  - `urlRejected`
+  - `accepted`
+  - `withResult`
+  - `withoutResult`
+- catalog ระบุ `hasAuditResult` จากคอลัมน์ผลตรวจใหม่, สถานะการตรวจใหม่ หรือหลักฐาน PDF
+- ไม่เปลี่ยนข้อมูลใน Google Sheet, ไม่เริ่มคิว 152 วิชา, ไม่สร้าง PDF และไม่หมุน shared secret
+
+### สิ่งที่ยังไม่ได้ทำ / ยังไม่ยืนยัน
+- ยังไม่ได้ยืนยันว่าโค้ดถูกวางและ Save ใน Apps Script project จริง
+- ยังไม่ได้ Deploy Apps Script version ใหม่
+- ยังไม่ได้ทดสอบ POST `getCatalog` ด้วย shared secret จริง
+- ยังไม่ได้ยืนยันว่า endpoint ส่งกลับ `accepted = 152`
+- ยังไม่ได้ทดสอบ `publishEvidence` แบบ end-to-end
+- ยังไม่ได้ยืนยัน source/commit ล่าสุดของ GitHub main หรืออัปเดต ZIP Extension
+- โหมดเลือกชุดตรวจ 4 แบบมีรายงานว่าเริ่มแก้ source และกำลังทดสอบ แต่ยังไม่มีหลักฐาน source, test result, commit หรือ deploy ที่ยืนยันได้ในบันทึกนี้
+
+### ข้อกำหนดก่อนเริ่มตรวจจริง
+1. วางและ Save `Code.gs` ฉบับแก้ไข
+2. Deploy เป็น New version บน Web App deployment เดิม เพื่อรักษา Web app URL และ shared secret เดิม
+3. ห้ามรัน `setupEvidenceService()` ซ้ำ เว้นแต่ต้องการหมุน Secret โดยตั้งใจ
+4. ทดสอบ `getCatalog` และยืนยันว่าได้ 152 รายการ พร้อมตรวจ diagnostics
+5. ทดสอบ 1 รายวิชาแบบ end-to-end: import → สร้างคิว → ตรวจ → PDF → เขียน Sheet → เปิด PDF โดยไม่ต้องล็อกอิน
+6. ทดสอบโหมดเลือกวิชา, สุ่ม 10, ตรวจทั้งหมดที่ไม่มีผล และเลือกตรวจซ้ำ โดยต้องกันวิชาที่ queued/running ไม่ให้สร้างงานซ้ำ
+7. การตรวจซ้ำต้องเก็บผล, PDF และประวัติเดิมไว้จนกว่าผลรอบใหม่จะสำเร็จ…22531 tokens truncated…oject `nwupjnkotdkodyxnraie`; ไฟล์ migration คือ `supabase/migrations/202611090001_dashboard_release_hardening.sql`
+- เปลี่ยน `is_spu_user` และ `is_audit_reviewer` เป็น security invoker; anon เรียกไม่ได้ และ authenticated เรียกได้เฉพาะฟังก์ชันที่ต้องใช้
+- จำกัด `enqueue_missing_audits`/`enqueue_refresh_audits` ให้ service role; ปิด public/authenticated execute ของ trigger/event-trigger helpers
+- เพิ่ม foreign-key indexes 5 จุด และแก้ RLS policy ให้ใช้ `(select auth.uid())` เพื่อลดการประเมินซ้ำ
+- หลัง deploy: security advisor เหลือเพียง INFO สองตาราง service-only ที่เปิด RLS แต่จงใจไม่มี policy, performance advisor เหลือเพียง INFO ว่าดัชนีใหม่ยังไม่ถูกใช้ทันที, health advisor ไม่มีข้อเตือน
+- Public API smoke test: `/v1/public/results` และ course history ยังตอบ 200 และไม่มี score/threshold/internal fields รั่วไป public payload
+
+### ข้อควรจำ
+- อย่าเผยแพร่ ZIP โดยอัปโหลดก้อนใหญ่จากเครื่องตรง ๆ เมื่อช่องทาง git ใช้ไม่ได้; workflow ปัจจุบัน reconstruct จาก `release-b64/dashboard-0.13.28/part-*.b64`, ตรวจ SHA-256, รัน tests, ตรวจ ZIP แล้วจึง commit artifact
+- หากแก้ Extension รุ่นถัดไป ให้สร้าง payload ใหม่และเปลี่ยน hash/version ใน workflow ห้าม reuse payload 0.13.28
+
+## 49. Local Legacy 0.3.10 — ความถูกต้องของคอมเมนต์สรุปผู้สอน (2026-11-05)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ปัญหาที่แก้
+- คอมเมนต์สรุปเคยอ่านคำว่า “ลิงก์เปิดไม่ได้” จากลิงก์สำรอง/รายการซ้ำ แม้แถวนั้นมี PDF ที่ใช้ได้และผลสุดท้ายผ่านแล้ว ทำให้ข้อความขัดกับตารางรายละเอียด
+- Pre-test กับ Post-test เคยถูกรวมเป็นคำแนะนำเดียว จึงบอกครั้งที่ขาดผิดประเภทและทำให้ Week 8 ของ PHY212 ดูเหมือนไม่มี Post-test
+- สรุปวิดีโอเคยบอกเพียงจำนวนที่ผ่านและติดป้าย “ส่วนแนะนำรายวิชา” โดยไม่ระบุครั้งที่เวลายังไม่ครบจริง
+- ป้ายภาพ Post-test อาจแพ้ข้อความ Label ทั่วไปที่อยู่ใกล้กิจกรรม ทำให้ Quiz ถูกจัดหมวดผิด
+
+### หลักการใหม่
+- สถานะสุดท้ายของแถวเป็นฐานสำหรับคอมเมนต์: ถ้าแถวเอกสาร `pass/pass_tolerance` จะไม่สร้างคำสั่งแก้จากลิงก์ส่วนเกินที่เสียหาย
+- แยก action เป็น `pre_test` และ `post_test` พร้อม session ของแต่ละประเภท
+- `legacyVideoCoverage` ส่งคืน `failedSessions` และ summary แสดงครั้งที่ไม่ผ่าน/รอยืนยันจริง; ไม่ใช้ “ภาพรวมรายวิชา” หรือ “ส่วนแนะนำรายวิชา” แทนตำแหน่ง
+- ป้ายภาพ Pre/Post ที่ระบุชัดและอยู่กับกิจกรรมมีลำดับสูงกว่า adjacent text label ทั่วไป
+- คงกฎเดิมว่าการอัปโหลดวิดีโอภายใน Moodle ต้องแจ้งย้ายไปลิงก์ภายนอก แม้คลิปภายนอกอื่นทำให้เวลารวมของแถวนั้นผ่านแล้ว
+
+### การทดสอบและ Artifact
+- Automated tests: **40/40**, fail 0
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.10.zip`
+- Size: **9,520,807 bytes**, 134 entries
+- SHA-256: `3F625631319BEA7317EE3EB7C7E7721252417D2BDEE1E8F14330ECC1D3849CC2`
+- เปิด ZIP และตรวจ `manifest.json` แล้วเป็น version `0.3.10`
+- รายงานเก่าจะไม่เปลี่ยนย้อนหลัง ต้อง Reload รุ่น 0.3.10 และตรวจรายวิชานั้นใหม่เพื่อสร้างคอมเมนต์ชุดใหม่
+- Backport กฎลำดับป้าย Pre/Post ไป Dashboard **0.13.23** และ Local **0.13.20** แล้ว; ทั้งสองรุ่นผ่าน tests **36/36** และตรวจ manifest ใน ZIP แล้ว
+- Dashboard ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.23.zip` — 9,351,274 bytes, 120 entries, SHA-256 `F673D93631191459F68DCF328F755189A4F98D5F44CDE4449C5B514A43CA93EC`
+- Local ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.20.zip` — 9,343,248 bytes, 120 entries, SHA-256 `C4DEDB26CD712215B54093159A471B237C8E465289D1E85F050F1D00C4E8C19D`
+- ส่วน teacher summary เป็นหน้ารายงานเฉพาะ Legacy จึงไม่คัดลอก UI ไปอีกสองรุ่นโดยตรง
+
+## 50. PHY212 — Pre-test แบบคำสั่งข้อความและ Post-test แบบไฟล์ (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ข้อตัดสิน
+- ข้อความครั้งที่ 13 ที่ระบุ `Pre-test` และสั่งให้นักศึกษาทำกิจกรรมโดยตอบคำถาม นับเป็น Pre-test ได้ เพราะมีทั้งประเภทและการตอบสนองที่ผู้เรียนต้องทำ ไม่ใช่มีเพียงหัวข้อเปล่า
+- ไฟล์ `แบบทดสอบอัตนัย...` ที่อยู่ใต้ป้าย Post-test โดยตรง นับเป็น Post-test แม้เป็น Moodle Resource/PDF เพราะ MIME เป็นเพียงรูปแบบส่งมอบ ส่วนป้ายท้องถิ่นที่ชัดเจนกำหนดหมวดการประเมิน
+- เอกสาร PDF ทั่วไปใต้ป้ายที่คลุมเครือยังคงเป็นเอกสารประกอบ ไม่ถูกยกเป็น Pre/Post โดยอัตโนมัติ
+
+### Regression และ Artifact
+- Local Legacy **0.3.11**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.11.zip`; 9,521,322 bytes; SHA-256 `9B6D3550F75DAD486A9870CB2FF2D8F12A2E62A6B3490115B44FEAC7F1629659`
+- Dashboard **0.13.24**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.24.zip`; 9,351,534 bytes; SHA-256 `38B473F8BD1137ADD97A4CD44E91F323F9E856D32EC25DD9791EB96826207D6B`
+- Local **0.13.21**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.21.zip`; 9,343,497 bytes; SHA-256 `01456A42A45F2C1CF97FC1736058E85616EEDF0F8F7FD2CCB17E3A8FACBC5458`
+- เปิด ZIP ทั้งสามและตรวจ `manifest.json` แล้วตรงกับเลขรุ่น
+- ต้อง Reload รุ่นใหม่และตรวจ PHY212 ใหม่ รายงานเดิมไม่แก้ย้อนหลัง
+
+## 51. Guard ป้องกันข้อความทั่วไปถูกนับเป็น Pre/Post (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / regression ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### เงื่อนไขที่ต้องครบ
+- มีป้ายหรือหัวข้อ Pre-test/Post-test ที่อยู่ในบริบทเดียวกับหลักฐาน
+- มีประโยคสั่งให้ผู้เรียนลงมือทำจริง
+- มีอย่างน้อยหนึ่งสัญญาณยืนยันงาน: โจทย์เฉพาะ/การคำนวณ/คำถามเชิงรูปธรรม, คะแนน, URL หรือข้อความลิงก์/ช่องทางตอบและส่งงาน
+- คำทั่วไป เช่น `Pre-test`, `ตอบคำถาม`, `กิจกรรม`, ข้อความอธิบาย หรือข้อความเตรียมตัว เพียงอย่างเดียวไม่นับ
+- ตัวอย่าง PHY212 ครั้งที่ 13 ยังนับ เพราะมี `Pretest` + คำสั่งตอบคำถาม + `Link ที่วางไว้`
+
+### Regression และ Artifact
+- เพิ่ม negative regression สำหรับข้อความบรรยายทั่วไปและข้อความกิจกรรมกำกวมที่ไม่มีโจทย์ คะแนน หรือลิงก์
+- Local Legacy **0.3.12**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.12.zip`; 9,521,942 bytes; SHA-256 `C00B606F9FF4DD62BFCD14E81663743E61FDE0648B06C107C1346C69617093B0`
+- Dashboard **0.13.25**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.25.zip`; 9,351,630 bytes; SHA-256 `9D4E437B800C139FBD9C89DF5FA767A4D667A3EA470C49382B3DAE7772418566`
+- Local **0.13.22**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.22.zip`; 9,343,595 bytes; SHA-256 `32CE07A301E69544BE7BEEC203BBA161B3AF01682EFF5238806A247C8492791B`
+- เปิด ZIP ทั้งสามและตรวจ manifest/version แล้ว
+
+## 52. แก้ความเข้าใจ Guard Pre/Post: เป็นหลายเส้นทางทางเลือก ไม่ใช่ข้อบังคับ 3 ชั้น (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### กติกาที่ถูกต้อง
+- ไม่บังคับให้ผู้สอนต้องมี `ป้าย + คำสั่ง + ลิงก์/คะแนน/ไฟล์` ครบพร้อมกัน
+- เส้นทางที่นับได้เป็นทางเลือก ได้แก่ (1) ชื่อกิจกรรมระบุ Pre/Post ชัดเจน (2) กิจกรรม/ไฟล์อยู่ใต้ป้าย Pre/Post ที่ยืนยันตำแหน่งได้ หรือ (3) ข้อความระบุ Pre/Post และเป็นประโยคคำสั่ง/กิจกรรมที่ให้ผู้เรียนลงมือทำจริง
+- เส้นทางข้อความไม่บังคับลิงก์ คะแนน หรือไฟล์โจทย์ หากภาษาระบุชัดว่าผู้เรียนต้องทำกิจกรรม/แบบทดสอบ/ตอบคำถาม
+- Guard มีหน้าที่ตัดเฉพาะข้อความบรรยายทั่วไป การกล่าวถึงคำว่า Pre/Post หรือการตอบคำถามแบบไม่มีลักษณะเป็นคำสั่ง/กิจกรรม ไม่ใช่กำหนดรูปแบบการสร้างรายวิชา
+
+### Regression และ Artifact
+- ทดสอบ title-only, local-label, text instruction แบบไม่มีลิงก์ และข้อความบรรยายที่ต้องไม่ถูกนับ
+- Local Legacy **0.3.13**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.13.zip`; 9,522,170 bytes; SHA-256 `832B6595647E829C4EE1FE495A48071DE0D55B7095FEA63589CE30CA19B7924B`
+- Dashboard **0.13.26**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.26.zip`; 9,351,712 bytes; SHA-256 `C945009F597F609AB0AB5C2409F830842B84BF84CECD98057EC22BAB35C0E3D5`
+- Local **0.13.23**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.23.zip`; 9,343,674 bytes; SHA-256 `A028C032912CA42ED281E61BD6D4F492FD8DC516EF5E7A174F572D7A904A7629`
+
+## 53. ป้าย Pre/Post ห้ามทับเอกสารประกอบและไฟล์เฉลย (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### กติกา
+- ชื่อรายการที่ชัดว่าเป็น `เอกสารประกอบ`, แผน, `เฉลย`, `แนวทางตอบ`, `Answer Key` หรือ `Solution` ต้องคงเป็นไฟล์เอกสาร แม้อยู่ใกล้ข้อความหรือป้าย Pre/Post
+- เฉพาะไฟล์คำถาม/แบบทดสอบจริงที่ชื่อมีลักษณะ assessment และอยู่ใต้ป้าย Pre/Post ที่ยืนยันตำแหน่งได้จึงรับหมวดจากป้ายนั้น
+- กฎนี้แก้ false positive จาก PHY212: `เอกสารประกอบการสอนครั้งที่ 2 : ทบทวนพื้นฐานก่อนเรียน...` และ `เฉลยแนวทางตอบแบบทดสอบ...` ไม่เป็น Quiz อีกต่อไป
+
+### Regression และ Artifact
+- Local Legacy **0.3.14**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.14.zip`; 9,522,700 bytes; SHA-256 `6AB94005661967F45D30A83282F37053DC0680AF5AA651F0A3D0113AFCEE023F`
+- Dashboard **0.13.27**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.27.zip`; 9,352,043 bytes; SHA-256 `8D3D195050FD6C3DC282E54F623B83F9DD23A3DC2743E5C9382A78FC7FC54545`
+- Local **0.13.24**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.24.zip`; 9,344,010 bytes; SHA-256 `9CC0E0D00B29CF2A202DC35DB7AE5DF36F66C3DDC826BC63398064EDA5658290`
+
+## 54. ล็อกหัวข้อรายงานผู้สอนเป็น “ผลการตรวจ” (2026-11-05)
+
+**สถานะ: Local Legacy แก้แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+- การ์ดบนสุดของรายงานผู้สอนแสดงหัวข้อคงที่ `ผลการตรวจ`
+- ลบข้อความเปิดเผยเกณฑ์คะแนนภายใน, 80%, สูตรทฤษฎี/ปฏิบัติ และองค์ประกอบบังคับออกจากการ์ดและข้อความสรุปผู้สอน
+- สถานะยังแสดง `ผ่าน / ไม่ผ่าน / ต้องตรวจทาน` พร้อมข้อความกลาง เช่น `ผลการตรวจผ่าน` หรือ `โปรดตรวจสอบรายการที่ต้องแก้ไขด้านล่าง`
+- การคำนวณและข้อมูลคะแนนหลังบ้านไม่เปลี่ยน
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.15.zip`; 9,522,504 bytes; 134 entries; SHA-256 `31E9A26E257893E5FC85F7222601AEC6A406E6DC284E3CFE5B14935F5950A5B2`
+
+## 55. กิจกรรมท้ายบทแบบเตรียม/พิมพ์/สแกน WORKSHEET (2026-11-05)
+
+**สถานะ: แก้ครบสามรุ่น / tests ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+- คำสั่งใต้ป้ายกิจกรรมท้ายบทที่ให้ผู้เรียนเตรียม พิมพ์ ปริ้นท์ พริ้นท์ หรือสแกน WORKSHEET/ใบงาน ถือเป็นกิจกรรมท้ายบท แม้ไม่มี Moodle Assignment แยก
+- ต้องมีคำสั่งที่ผู้เรียนต้องลงมือทำ; การกล่าวถึง WORKSHEET หรือเอกสารเฉย ๆ ไม่นับ
+- ไฟล์ PDF/เอกสารที่วางใต้คำสั่งยังคงเป็นเอกสารประกอบ ไม่ถูกเปลี่ยนชนิดเป็น Assignment; ตัวกิจกรรมเกิดจากคำสั่งข้อความ
+- Local Legacy **0.3.16**: tests 40/40; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.16.zip`; 9,522,916 bytes; SHA-256 `DAA864DCD3A4549C86948DC19896CFDECE08B062FD372D00BF3FE8F1984CF77B`
+- Dashboard **0.13.28**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.28.zip`; 9,352,288 bytes; SHA-256 `2B2597EFAB2271F3D0070EE30514954535BD20F50925C1952AB4BE517DA71F6B`
+- Local **0.13.25**: tests 36/36; ZIP `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.25.zip`; 9,344,254 bytes; SHA-256 `7B3E738E33B23B995D3EAB959343A19F5CB15904736B8D9C69614FBB269F6BDD`
+
+
+## 56. Local Legacy 0.3.17 — เพิ่ม GN แบบตัด Podcast และ AI Tutor (2026-11-05)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy / Apps Script ต้องสร้าง Deployment รุ่นใหม่ก่อนดึง GN ผ่านบริการเดิม**
+
+- เพิ่ม `GN` ในหน้าคิว การเพิ่มด้วยมือ การนำเข้า JSON การอ่าน Google Sheet โดยตรง และ Apps Script catalog
+- เกณฑ์ GN ครั้งที่ 1: ข้อมูล/รูปผู้สอนและช่องทางติดต่อ, เอกสารประกอบการสอน, วิดีโอแนะนำหรือบันทึกการสอน
+- เกณฑ์ GN ครั้งที่ 2–15: แผนการจัดการเรียนการสอน, เอกสารประกอบการสอน, วิดีโอบันทึกการสอนล่วงหน้า
+- ตัด Podcast และ AI Tutor ออกจากแถวตรวจ ข้อความแนะนำผู้สอน งานรอยืนยัน และผลผ่าน–ไม่ผ่านของ GN; หลักฐานประเภทดังกล่าวอาจยังอยู่ในภาคผนวกหลักฐาน แต่ไม่ถูกเปิดตรวจปลายทางและไม่คิดผล
+- GN ไม่ใช้คะแนน 100/110: ตัดสินด้วย checklist และความครอบคลุมวิดีโอ โดยทฤษฎีต้องผ่านครบ 15 ครั้ง ปฏิบัติต้องผ่านอย่างน้อย 7 ครั้ง; วิดีโอ GN ใช้ 15 นาทีต่อหน่วยกิตและค่าผ่อนปรนตามกฎ GN เดิม
+- แก้ผลตัดสิน backend ให้ GN สามารถได้ `pass/fail/needs_review` จริง ไม่ค้างสถานะ “รอผู้ตรวจสรุป” และทำให้การยืนยันผล/ส่งหลักฐานใช้สถานะเดียวกับหน้ารายงาน
+- Apps Script `getCatalog_` รองรับ Course Profile `683GN-...` และ service version เพิ่มเป็น 3; ถ้ายังใช้ Web app deployment เก่า บริการจะยังไม่ส่ง GN จนกว่าจะสร้าง Deployment รุ่นใหม่
+- Regression ครอบคลุม GN theory/practical ผ่าน–ไม่ผ่าน–ต้องตรวจทาน, รายงาน/PDF ไม่มี Podcast/AI Tutor เป็นเกณฑ์, queue มีตัวเลือก GN, Sheet parser รับ GN และ Apps Script regex รับ GN
+- Tests: **40/40**, fail 0
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.17.zip`
+- Size: **9,524,186 bytes**, 134 entries
+- SHA-256: `4A9C82AF501E0A52B33531FCF9177BE9D92C93B97B77D06C5F4704C0019A0B2C`
+- เปิด ZIP จริงและยืนยัน `manifest.json` เป็น version `0.3.17`, ตัวเลือก GN อยู่ใน `queue.html`, GN checklist ไม่มี Podcast/AI Tutor, rubric เป็น `GN-CLASSROOM-CHECKLIST-1.0` และ Apps Script มี `(GN|GR|GS)`
+
+
+## 48. Local Legacy 0.3.9 — เกณฑ์คะแนนเฉพาะวิชาปฏิบัติ (2026-11-04)
+
+**สถานะ: แก้ source แล้ว / tests 40/40 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### เหตุผลและขอบเขต
+- ผลที่ประกาศก่อนหน้านี้ไม่มีวิชาปฏิบัติ จึงไม่กระทบผลผ่านเดิม
+- วิชาทฤษฎียังคงสูตรเดิม 100 คะแนน ผ่านที่ 80
+- วิชาปฏิบัติใช้สูตรใหม่ 50 คะแนน ผ่านที่ 40 แต่ต้องผ่านองค์ประกอบบังคับด้วย การหารคะแนนเดิมครึ่งหนึ่งอย่างเดียวไม่ใช้ เพราะไม่ปิดช่องโหว่
+
+### สูตรวิชาปฏิบัติ
+- ข้อมูลรายวิชาและผู้สอน 5 คะแนน (อย่างละ 2.5)
+- แผนการสอน 7.5 คะแนน
+- เอกสารประกอบ 7.5 คะแนน
+- วิดีโอ 7.5 คะแนน
+- Pre-test 5 คะแนน และ Post-test 5 คะแนน
+- กิจกรรม/งานปฏิบัติ 12.5 คะแนน
+- รวม 50 คะแนน ผ่านที่ 40 คะแนน (80%); คะแนนองค์ประกอบปัดเป็นช่วง .5 และเปอร์เซ็นต์สุดท้ายเป็นจำนวนเต็ม
+
+### องค์ประกอบบังคับ
+- ข้อมูลผู้สอนครบ
+- แผนการสอนอย่างน้อย 12/15 ครั้ง
+- เอกสารประกอบอย่างน้อย 12/15 ครั้ง
+- วิดีโอผ่านอย่างน้อย 7/15 ครั้ง
+- Pre-test อย่างน้อย 7/14 ครั้ง และ Post-test อย่างน้อย 7/14 ครั้ง
+- กิจกรรมปฏิบัติอย่างน้อย 7/15 ครั้ง
+- คะแนนถึง 40 อย่างเดียวไม่พอ หากองค์ประกอบบังคับข้อใดไม่ผ่าน ผลยังเป็นไม่ผ่าน
+
+### Regression สำคัญ
+- กรณีเทียบเท่า CEG111: วิดีโอผ่าน 7 ครั้ง, แผน/เอกสาร/กิจกรรมครบ แต่ไม่มีข้อมูลผู้สอนและไม่มี Pre/Post ได้ 37.5/50 = 75% และไม่ผ่าน
+- กรณีได้ 40/50 แต่ไม่มี Pre/Post ยังไม่ผ่านเพราะติด mandatory gate
+- วิชาทฤษฎี full-score ยังคง 100/100 และเส้นทางตัดสินเดิม
+- รายงานผู้สอนไม่แสดงตัวเลขคะแนน แต่ระบุว่าใช้เกณฑ์วิชาปฏิบัติ 80% พร้อมองค์ประกอบบังคับ
+- rubric ในรายงานเป็น `GR/GS-LEGACY-PRACTICAL-50-1.0` สำหรับวิชาปฏิบัติ และคง `SCORE-100-1.0` สำหรับทฤษฎี
+
+### Artifact
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.9.zip`
+- Size: **9,519,707 bytes**, 134 entries
+- SHA-256: `596BC8E15E5676BC31B75E715F9C5BA2EEC969B6C993A066C4B195E5C89F37F6`
+- เปิด ZIP จริงและตรวจ `manifest.json` แล้วเป็น version `0.3.9`
+- ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ต้อง Load/Reload รุ่น 0.3.9 และตรวจ CEG111 ใหม่เพื่อให้รายงานใช้สูตรใหม่
+- รายงานและงานยืนยันที่สร้างไว้ก่อนอัปเดตจะไม่เปลี่ยนย้อนหลัง ต้อง Reload/Load Unpacked รุ่น 0.3.8 แล้วตรวจรายวิชาที่เกี่ยวข้องใหม่
+- ประเด็นการตัดสินผ่านแบบคะแนนจากหัวข้อ 45 แก้แล้วใน 0.3.8 รอบล่าสุด; ประเด็นชนิดวิชา PHY121 `(L)-(L)` ต้องตรวจข้อมูลต้นทาง/การอนุมาน suffix แยก และห้ามลดผลที่ประกาศผ่านแล้ว
+
+
+## 47. Backport ระบบตรวจร่วมสู่ Dashboard 0.13.22 และ Local 0.13.19 (2026-11-04)
+
+**สถานะ: แก้ source แล้ว / Dashboard tests 36/36 ผ่าน / Local tests 36/36 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### ขอบเขตและหลักการแยกรุ่น
+- ย้ายเฉพาะกติกาตรวจหลักฐานที่ใช้ร่วมกันจากรอบ Local Legacy ไปยัง Dashboard และ Local โดยไม่ยกเกณฑ์คะแนน Legacy 100/80 หรือรูปแบบรายงาน Legacy มาปะปน
+- Dashboard และ Local ยังคงระบบประเมินเดิม 110 คะแนน ผ่านที่ 80 และพฤติกรรมการเก็บ/ส่งผลของแต่ละรุ่นตามเดิม
+- การแก้ทำแบบ marker-by-marker ไม่แทนไฟล์ทั้งก้อน เพื่อรักษาความสามารถที่ Dashboard/Local มีใหม่กว่า Legacy และลดโอกาส regression
+
+### สิ่งที่ย้ายไปทั้ง Dashboard และ Local
+- รองรับ `ก่อนการเรียน/หลังการเรียน` เพิ่มจาก `ก่อนเรียน/หลังเรียน`; ป้าย Pre/Post ที่ยืนยันว่าอยู่ติดรายการจริงชนะชื่อแบบทดสอบที่คัดลอกผิด
+- URL ชื่อแบบทดสอบทั่วไปที่ไม่มีป้าย Pre/Post ชัดเจนถูกจัดเป็นกิจกรรมท้ายบท ไม่ถูกนับเป็น Pre/Post โดยอัตโนมัติ
+- ความผ่อนปรนเวลาวิดีโอตามหน่วยกิต: 1 หน่วยกิต 5 นาที, 2 หน่วยกิต 10 นาที, 3 หน่วยกิตขึ้นไป 20 นาที; เวลา 0:00 ห้ามผ่านแบบผ่อนปรน
+- Google Photos ที่ยืนยันว่าอัลบั้มว่างหลังรีเฟรชตรวจซ้ำเป็น `empty_media` และไม่สร้างงานผู้ตรวจ
+- หน้าเว็บทุกแพลตฟอร์มที่เปิดได้แต่ไม่มีตัวเล่นจริง ต้องคงที่ 3 probe ต่อแท็บและยืนยัน 2 แท็บ จึงเป็น `no_video`; spinner, หน้าไม่ complete, ปัญหาเครือข่าย และตัวครอบ player จะยกเลิกการสรุปนี้เพื่อป้องกันผลลบเท็จจากเน็ตช้า
+- ข้อมูลผู้สอนที่พบรูป ชื่อ และช่องทางติดต่อครบ ตัดสิน `complete` อัตโนมัติ; เมื่อสแกน DOM+OCR จบรอบแล้วและหลักฐานไม่ครบ ตัดสิน `missing` แทนการทิ้งเป็นงานค้างผู้ตรวจ
+- รักษาการใช้ผลยืนยันสื่อเดิมจาก fingerprint/ปลายทางเดิมของแต่ละรุ่น; definitive failure เช่น `empty_media` และ `no_video` ไม่สร้างงานยืนยันซ้ำ
+
+### การปรับเฉพาะรุ่น
+- **Dashboard 0.13.22:** รักษาการตรวจหน้าแชท AI ที่มีอยู่แล้ว, การส่ง Supabase, ระบบคิวกลาง และการแสดงคะแนนตามสิทธิ์เดิม
+- **Local 0.13.19:** เพิ่มตัวตรวจ AI Tutor ให้เทียบเท่า Dashboard; SPU AI/SPU-KM ผ่านได้จากโดเมนที่มหาวิทยาลัยอนุมัติโดยไม่บังคับล็อกอิน ส่วน ChatGPT, Poe, Gemini, Copilot, Claude, Perplexity, Character AI, Botpress, Chatbase, Voiceflow, Dify/Udify และ Coze ต้องพบโครงสร้างหน้าแชทจริงก่อนผ่าน
+- Local ยังเก็บผลในเครื่องและส่งออกไฟล์ตามเดิม ไม่มีการเพิ่มการส่งข้อมูลไป Supabase
+
+### การประหยัดโควตาและเวลา
+- ใช้กฎ deterministic จาก DOM/ชื่อ/ป้ายก่อน ไม่เรียกบริการ AI ภายนอกเพื่อจัดประเภท
+- เปิดปลายทางเพิ่มเฉพาะรายการที่ต้องยืนยันสื่อหรือหน้าแชท; SPU AI ที่เชื่อถือได้ไม่เปิดแท็บเพื่อล็อกอิน
+- การยืนยัน 2 แท็บใช้เฉพาะกรณีที่หน้าเปิดได้แต่ไม่มีตัวเล่นและผ่านเงื่อนไขสะอาดครบ; หน้าเสีย/ติดสิทธิ์/อัลบั้มว่างใช้เส้นทางสั้นกว่า
+- คง cache/fingerprint ของผลเดิมเพื่อไม่ให้ผู้ตรวจยืนยัน Podcast/วิดีโอซ้ำเมื่อปลายทางไม่เปลี่ยน
+
+### การทดสอบ
+- Dashboard automated tests **36/36**, fail 0
+- Local automated tests **36/36**, fail 0
+- Regression ใหม่ครอบคลุม: Pre/Post ภาษาไทยแบบมีคำว่า `การ`, แบบทดสอบทั่วไปเป็นกิจกรรมท้ายบท, Google Photos อัลบั้มว่าง, no-player stable probe, การยกเลิกเมื่อโหลด/เน็ต/ตัวเล่นยังอยู่, ข้อมูลผู้สอน complete/missing/pending, ความผ่อนปรน 5/10/20 นาที และ guard 0:00
+- Local เพิ่ม AI chat tests ครอบคลุม trusted SPU AI, ผู้ให้บริการภายนอก, หน้า marketing ที่ไม่ใช่แชท และสิทธิ์โดเมนใน manifest
+
+### Artifact
+- Dashboard ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.22.zip`
+- Dashboard size: **9,351,116 bytes**, 120 entries, version `0.13.22`
+- Dashboard SHA-256: `F11D0A48ABA9188D3F2B01FE0AF13BC998DA89DD66A43F6FD8D42EC89FE05266`
+- Local ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.19.zip`
+- Local size: **9,343,090 bytes**, 120 entries, version `0.13.19`
+- Local SHA-256: `6F3657B7F7ABF207E7380010717A604D3AC9D4D01EB691CFBAC72E25A9141B70`
+- เปิด ZIP จริงและอ่าน `manifest.json` ภายในแล้วทั้งสองไฟล์
+- ยังไม่ได้อัปโหลด GitHub หรือ Deploy; ห้ามกล่าวว่าเผยแพร่แล้วจนกว่าจะอัปโหลดและตรวจ URL ดาวน์โหลดจริง
+
+
+## 58. Dashboard — ใช้ผลยืนยันเดิมโดยไม่สร้างงานซ้ำ (2026-11-09)
+
+**สถานะ: แก้ backend และ Deploy Supabase Edge Function แล้ว / tests 34/34 ผ่าน / แก้ผลล่าสุด SOC119 แล้ว**
+
+### อาการและสาเหตุ
+- SOC119 เคยยืนยันผลรอบ Auditor 0.13.16 แล้ว ได้ 93/110 และผ่าน แต่รอบ 0.13.28 กลับเป็น 76/110 `needs_review` และขอให้ผู้ตรวจยืนยัน 17 คะแนนซ้ำ
+- ผลยืนยันรุ่นเดิมเก็บเป็น `reviewConfirmation.decisions` ระดับ criterion ซึ่งผูกกับเลขครั้ง/เลขหัวข้อ
+- ตัวจัด Section รุ่นใหม่ย้ายหลักฐานเดิมไปอยู่คนละเลขครั้ง จึงทำให้ key เดิมไม่ตรง ทั้งที่ปลายทางหลักฐานเดิมยังอยู่ครบ
+- backend เดิมรองรับการใช้ซ้ำเฉพาะ `evidenceDecisions` รายลิงก์จากรุ่นใหม่ และค้นเฉพาะ run ก่อนหน้าทันที จึงไม่พบผลยืนยันเก่าหากมี run `needs_review` คั่นอยู่
+
+### การแก้ไขถาวร
+- ค้นย้อนสูงสุด 10 run และเลือก run ล่าสุดที่มีผลยืนยันเสร็จสมบูรณ์ ไม่ให้ run รอตรวจที่คั่นอยู่บังผลเดิม
+- canonicalize URL โดยตัด tracking parameters (`utm_*`, `fbclid`, `gclid`, `si`, `feature`, `t`, `nav`, `ga`, `referrer`, `referrerscenario`, `usp`) แต่รักษาตัวระบุปลายทางจริง เช่น SharePoint `id`
+- ใช้ผลเดิมเมื่อ score envelope ก่อนยืนยันตรงกัน (`confirmedScore`, `possibleScore`, `threshold`) และหลักฐานปลายทางทุกตัวที่เคยยืนยันยังอยู่ครบ
+- ยอมรับหลักฐานใหม่ที่เพิ่มเข้ามาโดยไม่ล้างผลยืนยันเดิม แต่หากปลายทางเดิมหายหรือเปลี่ยน หรือ score envelope เปลี่ยน จะไม่ใช้ผลเดิมอัตโนมัติ
+- เก็บ `reviewReuseEnvelope`, `priorReviewReuse`, `reusedFromRunId`, `reusedAt` และ `reuseBasis` ใน payload เพื่อให้ตรวจสอบย้อนหลังและใช้ซ้ำต่อเนื่องในรอบถัดไปได้
+- ทำ reuse ก่อนคำนวณ publication gate และก่อนบันทึก run เพื่อให้ `reviewable_points=0`, สถานะ และผลเผยแพร่สอดคล้องกัน
+
+### การแก้ข้อมูล SOC119
+- เทียบ run เดิม `3fc5a93f-8f5c-44a9-90f0-b336fd641bd1` กับ run ล่าสุด `5893ba7f-36af-4651-b2c9-dc3ccaf53f9d`
+- score envelope ตรงกัน: 76/93 ผ่านที่ 80 และหลักฐานปลายทางเดิมไม่หายแม้มีหลักฐานใหม่เพิ่ม
+- แก้ run ล่าสุดเป็น 93/110, `pass`, `reviewable_points=0` และตั้งเป็น published run ล่าสุดแล้ว จึงไม่ควรปรากฏเป็นงานรอตรวจอีก
+
+### การตรวจสอบ
+- Dashboard tests ผ่าน **34/34**, fail 0
+- Supabase Edge Function `api` deploy เป็น version **40** และสถานะ ACTIVE
+- ฐานข้อมูลยืนยัน SOC119 ล่าสุดเป็น `pass`, score 93 และ published run เป็น run วันที่ 9 พฤศจิกายน 2569
+
+
+## 59. Dashboard 0.13.28 — ข้อมูลผู้สอนครบต้องผ่านอัตโนมัติ (2026-11-09)
+
+**สถานะ: แก้ Extension + backend + หน้าหลักฐานแล้ว / Deploy Edge Function แล้ว / ซ่อมผลล่าสุดแล้ว / ZIP 0.13.28 เผยแพร่ใหม่แล้ว**
+
+### สาเหตุ
+- `checklistForWeek()` สร้าง `instructorResult` ถูกต้องจาก `identityComplete && contactComplete` แล้ว
+- แต่เส้นทาง GR/GS ครั้งที่ 1 กลับใส่ `result("needs_review", instructorDetail)` แบบค่าคงที่แทน `instructorResult`
+- จึงเกิดผลขัดแย้ง: รายละเอียดเขียนว่า `พบข้อมูลผู้สอนครบอัตโนมัติ` แต่สถานะยังเป็น `รอตรวจ` และหน้า Dashboard แสดงปุ่มให้ผู้ตรวจตัดสิน
+- หน้า `audit-evidence.js` ยังแสดงปุ่มตัดสิน criterion แม้สถานะรวมของ run ไม่ใช่ `needs_review` ทำให้เห็นปุ่มที่บันทึกไม่ได้ในผล `has_content`
+
+### การแก้ไข
+- Extension ใช้ `instructorResult` จริงในแถวข้อมูลผู้สอนครั้งที่ 1 ของ GR/GS
+- Backend `resolveAutomaticInstructorCriterion()` ตรวจ `identityComplete`, `contactComplete`, `hasInstructorPhoto`; หากครบจะเปลี่ยน criterion 1:2 เป็น `pass`, ตัดออกจาก `reviewableCriteria`, คืนคะแนนยืนยัน 1 คะแนน และคำนวณสถานะใหม่ก่อนบันทึก
+- หน้า Dashboard แสดงปุ่มยืนยัน criterion เฉพาะ run ที่มี `internalStatus=needs_review` เท่านั้น
+- ซ่อมผลล่าสุดของ IGD211, IGD371 และ MAT320: เปลี่ยนข้อมูลผู้สอนเป็นผ่านอัตโนมัติ ตัดงานยืนยัน และคืนคะแนนหลังบ้านวิชาละ 1 คะแนน
+
+### การตรวจสอบและ Artifact
+- Extension tests ผ่าน **41/41**, fail 0
+- Dashboard tests ผ่าน **35/35**, fail 0
+- เปิด ZIP จริงและรัน tests จากไฟล์ที่แตกออกมาแล้วผ่าน **41/41**
+- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,352,449 bytes
+- SHA-256: `7E1C1BABE6DA741686C57E0FFD3C1FF69F7DA2160F922089CC772BAD736951BE`
+- Supabase Edge Function `api` version **41**, ACTIVE
+- GitHub release commit: `3192ef0cc4b08637ed5592481cad1bc095d9be92`
+
+
+## 60. Dashboard — คืนการยืนยันตารางที่ 3 และรักษา 5 ข้อ (2026-11-09)
+
+**สถานะ: แก้หน้า Dashboard + backend แล้ว / tests 36/36 ผ่าน / Deploy Edge Function แล้ว**
+
+### อาการ
+- หลังปิดงานข้อมูลผู้สอนอัตโนมัติ หน้า evidence ซ่อนปุ่มยืนยันทั้งหมดเมื่อสถานะรวมเป็น `has_content` แม้ยังมีคะแนนตารางที่ 3 รอผู้ตรวจ
+- `reviewCandidates()` รวม criterion ก่อน manual แล้วตัดรายการด้วย `.slice(0,count)` เมื่อจำนวนคลาดเคลื่อน 1 ข้อจึงตัด manual ตัวท้ายสุด คือ `การสำรองเนื้อหา`
+
+### การแก้ไข
+- ตารางที่ 3 แสดงครบ 5 ข้อเสมอ: การพบนักศึกษา, คุณภาพวิดีโอ, การวางสื่อ, การส่งงาน, การสำรองเนื้อหา
+- กันพื้นที่ 5 ข้อ manual ก่อนจำกัดจำนวน criterion ทั้งในหน้าเว็บและ backend จึงไม่ตัดข้อที่ 5 จากท้ายรายการอีก
+- เปิดปุ่ม `ผ่าน/ไม่ผ่าน` และแผงยืนยันสำหรับทั้ง `needs_review` และ `has_content` เมื่อ `possibleScore > confirmedScore`
+- backend อนุญาตการบันทึกผลของ `has_content` ที่ยังมี `reviewable_points > 0`; หลังยืนยันครบจะคำนวณคะแนนและสถานะใหม่ตามเกณฑ์เดิม
+- เปลี่ยนหัวข้อเป็น `ตารางที่ 3 — ข้อกำหนดภาพรวมที่ผู้ตรวจยืนยัน` และระบุชัดว่ามีครบ 5 ข้อ
+
+### การตรวจสอบ
+- Dashboard tests ผ่าน **36/36**, fail 0
+- Supabase Edge Function `api` version **42**, ACTIVE
+
+
+## 61. Dashboard 0.13.28 — SharePoint `.m4a` และสถานะข้อมูลผู้สอน (2026-11-09)
+
+**สถานะ: แก้ Extension + backend แล้ว / tests ผ่าน / Deploy Edge Function และเผยแพร่ ZIP ใหม่แล้ว**
+
+### อาการและสาเหตุ
+- SharePoint Stream ใช้โครงตัวเล่น `<video>` ร่วมกันทั้งไฟล์ภาพและไฟล์เสียง ทำให้ Podcast ที่ชื่อไฟล์จริงลงท้าย `.m4a` ถูกจัดเป็นวิดีโอและไม่เปิดช่องยืนยันเวลา
+- การคำนวณคะแนนข้อมูลผู้สอนใช้ `identityComplete && contactComplete` แต่ตัวปิดงานผู้ตรวจยังบังคับ flag รูปอีกชุดหนึ่ง จึงเกิดกรณีคะแนนเพิ่มและข้อความบอกว่าพบครบ แต่สถานะยังค้าง `รอตรวจ`
+- payload บางรุ่นเปลี่ยน criterion เป็นผ่านแล้ว แต่ยังเก็บข้อมูลผู้สอนไว้ใน `reviewableCriteria` ทำให้ Dashboard ค้างสถานะรอตรวจโดยไม่ควรเพิ่มคะแนนซ้ำ
+
+### การแก้ไข
+- สำหรับ Google Drive, OneDrive และ SharePoint ให้ชื่อไฟล์จริงใน URL/พารามิเตอร์ที่ถอดรหัสแล้วเป็นหลักฐานชนิดสื่อที่มีน้ำหนักสูงกว่าตัวเล่นกลาง: `.m4a`, `.mp3`, `.wav`, `.ogg`, `.oga`, `.aac`, `.flac`, `.opus`, `.wma` เป็นเสียง และนามสกุลวิดีโอยังคงเป็นวิดีโอ
+- เมื่อตรวจหลาย frame ให้ frame ที่พบชื่อไฟล์เสียงหรือวิดีโอชัดเจนชนะ frame `<video>` ทั่วไปของผู้ให้บริการ
+- backend ปรับชนิดกิจกรรมจากนามสกุลไฟล์เสียงซ้ำอีกชั้นก่อนบันทึกผล เพื่อกันข้อมูลผิดจากส่วนขยายรุ่นเก่า
+- ข้อมูลผู้สอนถือว่าผ่านอัตโนมัติเมื่อ `identityComplete`, `contactComplete` และ `reviewStatus=evidence_found` (หรือมี flag รูปผู้สอน) จากนั้นเปลี่ยน criterion เป็นผ่านและลบงานยืนยันข้อมูลผู้สอนออก
+- รายงานเดิมที่หลักฐานครบจะคำนวณสถานะแถวและสีของกล่องจากผลอัตโนมัติทันที พร้อมซ่อนตัวเลือกยืนยันข้อมูลผู้สอนที่ไม่จำเป็น
+- ป้องกันคะแนนซ้ำ: เพิ่ม 1 คะแนนเฉพาะเมื่อ criterion เดิมยังเป็น `needs_review`; หากคะแนนขึ้นแล้วแต่ `reviewableCriteria` ค้าง จะลบเฉพาะงานค้างและคำนวณสถานะใหม่
+
+### การตรวจสอบและ Artifact
+- Extension tests ผ่าน **41/41**, fail 0 ทั้ง source และ ZIP ที่แตกตรวจจริง
+- Dashboard tests ผ่าน **37/37**, fail 0
+- Supabase Edge Function `api` version **43**, ACTIVE
+- ZIP `SPU-Learning-Auditor-Dashboard-0.13.28.zip`: 120 entries, 9,353,370 bytes
+- SHA-256: `B03D7BE26D727099158BB044B3A5AB951A8B42D6C1BCC93102BCABAED291CD81`
+- GitHub ZIP blob: `75e45ba1ea70c577dd549215afaf92b6c5c60304`
+- GitHub release commit: `d8e218211f8f719bcf85eb4cb7c1a2548c4610ca`
+- รายงานที่สร้างค้างไว้ก่อนติดตั้ง/Reload ส่วนขยายยังเก็บผลเดิม; ต้องตรวจรายวิชานั้นใหม่หนึ่งครั้งเพื่อให้กิจกรรม `.m4a` ถูกสร้างเป็น Podcast เสียงและให้สถานะข้อมูลผู้สอนถูกคำนวณใหม่
+
+
+## 62. Dashboard 0.13.28 — แก้ไฟล์ ZIP ที่เผยแพร่เสียหาย (2026-11-10)
+
+**สถานะ: พบสาเหตุแล้ว / เปลี่ยนเป็นตัวดาวน์โหลดที่ประกอบไฟล์และตรวจความถูกต้องก่อนบันทึก / tests 39/39 ผ่าน**
+
+### อาการและสาเหตุ
+- ZIP ที่หน้าเว็บชี้ไปดาวน์โหลดได้เพียง 9,097,242 bytes และแตกไม่ได้ โดยมี SHA-256 `91231CAB5161BCCF94BB6A0139171A6C3E38DC5570561E75FD22AADE19F77DEC`
+- ไฟล์ใน GitHub blob ถูกตัดระหว่างอัปโหลด จึงไม่ใช่ปัญหาจาก Windows หรือโปรแกรมแตกไฟล์ของผู้ใช้
+- ZIP ต้นฉบับที่ถูกต้องมี 9,353,370 bytes, 120 entries และ SHA-256 `B03D7BE26D727099158BB044B3A5AB951A8B42D6C1BCC93102BCABAED291CD81`
+
+### การแก้ไข
+- การทดสอบจาก GitHub Pages จริงพบว่าไฟล์ส่วนขนาดหลาย MB ยังถูกขั้นอัปโหลดตัดข้อมูล จึงไม่ปล่อยชุดนั้นให้ใช้งาน
+- แบ่ง ZIP ต้นฉบับแบบ byte-for-byte เป็น 24 ส่วน: 23 ส่วนแรกส่วนละ 400,000 bytes และส่วนสุดท้าย 153,370 bytes เพื่ออยู่ต่ำกว่าขีดจำกัดที่ตรวจพบอย่างปลอดภัย
+- เพิ่ม `download-extension.html` ให้ดาวน์โหลดทั้ง 24 ส่วน ประกอบกลับในเบราว์เซอร์ ตรวจขนาดทุกส่วน ตรวจขนาดรวม และตรวจ SHA-256 ก่อนสร้างไฟล์ `SPU-Learning-Auditor-Dashboard-0.13.28.zip`
+- หากส่วนใดโหลดไม่ครบหรือ hash ไม่ตรง ระบบจะไม่ปล่อย ZIP เสียให้ผู้ใช้ และแสดงปุ่มลองใหม่
+- ปุ่มดาวน์โหลด Extension ทุกจุดใน Dashboard เปลี่ยนมาที่หน้าดาวน์โหลดแบบตรวจสอบนี้
+
+### การตรวจสอบ
+- Dashboard tests ผ่าน **39/39**, fail 0
+- ดาวน์โหลดทั้ง 24 ส่วนจาก GitHub Pages จริงแล้วได้ขนาดตรงทุกส่วน ประกอบกลับเป็น ZIP 9,353,370 bytes และ hash ตรงต้นฉบับทุก byte
+- เปิด ZIP จากข้อมูลที่ดาวน์โหลดจริงได้ 120 entries, `manifest.json` เป็น 0.13.28 และตรวจ CRC ทุกไฟล์ผ่าน (`testzip()` ไม่พบไฟล์เสีย)
+- test ตรวจว่าปุ่มใน HTML และ JavaScript ชี้ผ่านตัวดาวน์โหลดที่ตรวจ hash แล้ว
+- GitHub Pages deploy run `42744789904` สำเร็จ; release commit `6fba7f27ce82067bb27003c53f1b9f1a79a93b3e`
+
+
+## 63. Local Legacy 0.3.18 — แยกคะแนนเสริมและองค์ประกอบบังคับวิชาปฏิบัติ (2026-11-10)
+
+**สถานะ: แก้ source แล้ว / tests source และ ZIP ผ่าน 44/44 / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้อัปโหลดหรือ Deploy**
+
+### เกณฑ์ที่ยืนยัน
+- `ควรมี`: ข้อมูลผู้สอน แผน และเอกสารประกอบ มีแล้วได้คะแนน ไม่มีแล้วเสียเฉพาะคะแนน แต่ไม่เป็น gate ตัดสินไม่ผ่าน
+- `ต้องมี`: VDO และ Pre/Post-test ต้องครบตามจำนวนขั้นต่ำที่เกณฑ์กำหนด
+- `มีหรือไม่มีก็ได้`: กิจกรรมท้ายบทครั้งที่ 2–15 มีแล้วได้คะแนน ไม่มีแล้วไม่สร้างรายการแก้ไขและไม่เป็น gate
+- ข้อยกเว้น: กิจกรรมท้ายบทครั้งที่ 1 เป็นองค์ประกอบบังคับ
+
+### สาเหตุและการแก้
+- รุ่น 0.3.9 เคยตีความตัวอย่าง `พบกิจกรรม 7 ครั้ง = 7 คะแนน` ผิดเป็น gate ว่าต้องพบอย่างน้อย 7 ครั้ง และเพิ่ม gate ของข้อมูลผู้สอน/แผน/เอกสารโดยไม่มีเกณฑ์รองรับ
+- รุ่น 0.3.18 ลบ gate ที่เกินเกณฑ์ทั้งหมด เหลือเฉพาะ VDO, Pre-test, Post-test และกิจกรรมครั้งที่ 1
+- คะแนนกิจกรรมยังคำนวณจากทั้ง 15 ครั้งตามเดิม จึงเป็นคะแนนเสริมโดยไม่บังคับครั้งที่ 2–15
+- regression PHY222: คะแนน 40/50, วิดีโอผ่าน 7 ครั้ง, Pre/Post ผ่าน, มีกิจกรรมครั้งที่ 1 และมีกิจกรรมรวมเพียง 3 ครั้ง ต้องได้ `pass`
+- regression ตรงข้าม: คะแนน 40/50 แต่ไม่มีกิจกรรมครั้งที่ 1 ต้องได้ `fail`
+
+### Artifact
+- Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.18`
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-Legacy-0.3.18.zip`
+- ZIP size: **9,524,820 bytes**, 134 entries
+- SHA-256: `F294811725E928E348E3A9D7357974B113BE0063817E00EEC9EDA5C8D6F24693`
+- เปิด ZIP จริง ยืนยัน manifest version 0.3.18 และรัน tests จากไฟล์ที่แตกออกมาแล้วผ่าน **44/44**, fail 0
+
+
+## 64. Dashboard 0.13.29 — ตรวจพบ “แบบฝึกหัดท้ายบทเรียน” ที่เป็น Moodle File (2026-11-11)
+
+**สถานะ: แก้ source แล้ว / tests source และ ZIP ผ่าน 36/36 / Dashboard tests ผ่าน 39/39 / เผยแพร่และตรวจจาก GitHub Pages จริงแล้ว**
+
+### อาการและสาเหตุ
+- รายวิชามีป้าย `กิจกรรม ท้ายบทเรียน` และไฟล์ชื่อ `แบบฝึกหัดท้ายบทเรียนครั้งที่ 1 ...` ชัดเจน แต่ผลตรวจครั้งที่ 1 แจ้งว่าไม่พบกิจกรรมท้ายบท
+- ตัวอ่านพบรายการดังกล่าวแล้ว แต่กฎชื่อกิจกรรมสำหรับ Moodle Resource รองรับ `ใบงาน`, `การบ้าน` และ `กิจกรรมท้ายบท` โดยยังไม่รองรับคำว่า `แบบฝึกหัดท้ายบท/แบบฝึกหัดท้ายบทเรียน` จึงส่งรายการไปเป็นเอกสารประกอบการสอนชนิด `file`
+- ปัญหาไม่เกี่ยวกับการจับคู่ Section และไม่เกี่ยวกับการเปิดไฟล์ปลายทาง
+
+### การแก้ไขและตัวกันผลผิด
+- เพิ่มรูปแบบชื่อที่ชัดเจน `แบบฝึกหัดท้ายบท` และ `แบบฝึกหัดท้ายบทเรียน` ให้เป็นกิจกรรมท้ายบท แม้ป้ายภาพจะอ่านไม่ได้
+- ไม่ใช้คำกว้าง `แบบฝึกหัด` เพียงอย่างเดียว เพื่อไม่ให้แบบฝึกหัดเพิ่มเติมหรือเอกสารฝึกปฏิบัติทั่วไปถูกนับเป็นกิจกรรมท้ายบท
+- เอกสารประกอบการสอนที่วางใต้ป้ายกิจกรรมโดยบังเอิญยังคงเป็นเอกสาร ไม่รับชนิดกิจกรรมจากตำแหน่งอย่างเดียว
+- เพิ่ม regression test จากชื่อจริงในภาพ รวมถึงเคสกัน `แบบฝึกหัดเพิ่มเติม` และเอกสารประกอบการสอน
+
+### Artifact
+- Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.29`
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.29.zip`
+- ZIP size: **9,353,632 bytes**, 120 entries
+- SHA-256: `C3A8EDB18767C6AD7A4C7D8FC692DC0D941A704FFB425ABE9ED0D57CA4474111`
+- เปิด ZIP จริง ยืนยัน manifest version 0.13.29 และรัน test files จากไฟล์ที่แตกออกมาแล้วผ่าน **36/36**, fail 0
+- ตัวดาวน์โหลดบนหน้าเว็บประกอบไฟล์จาก 24 ส่วน ตรวจขนาดรวมและ SHA-256 ก่อนปล่อย ZIP; Dashboard tests ผ่าน **39/39**, fail 0
+- GitHub release commits: `b870999b06a34de7ccaa7f211f04271d006f2873`, `c026005c72044190b9f81297a00d6eaba345db31`
+- GitHub Pages deploy run `42949712654` สำเร็จ และทดสอบดาวน์โหลดทั้ง 24 ส่วนจาก Pages จริงแล้วได้ 9,353,632 bytes, hash ตรง และ ZIP magic เป็น `PK`
+- รายงานที่สร้างด้วย 0.13.28 หรือต่ำกว่ายังคงผลเดิม ต้องติดตั้ง/Reload 0.13.29 แล้วตรวจรายวิชาใหม่จึงจะจำแนกรายการนี้เป็นกิจกรรมท้ายบท
+
+
+## 65. Dashboard 0.13.30 — ใช้ผลยืนยันเดิมเป็นรายหลักฐานและแก้ข้อมูลผู้สอนสลับกัน (2026-11-11)
+
+**สถานะ: แก้ Extension + backend แล้ว / tests ผ่าน / Edge Function version 44 ACTIVE / เผยแพร่และตรวจ GitHub Pages จริงแล้ว**
+
+### อาการและสาเหตุ
+- MKT453 รอบ Auditor 0.13.16 เคยยืนยันแล้วและผ่าน 91/110 แต่รอบ 0.13.28 กลับเป็น 72/110 `needs_review` ทั้งที่ลิงก์ Podcast ทั้ง 15 ครั้งยังเหมือนเดิมทุกตัว
+- กฎเดิมนำผลยืนยันกลับมาใช้เฉพาะเมื่อกรอบคะแนนรวมและคะแนนที่ต้องยืนยันเหมือนเดิมทั้งชุด เมื่อ Extension รุ่นใหม่จำแนกหลักฐานได้ต่างไปเล็กน้อยจึงทิ้งผลยืนยันเดิมทั้งหมด แม้ปลายทางของหัวข้อนั้นไม่เปลี่ยน
+- การบันทึกคำตัดสินเพิ่มคะแนนแล้ว แต่ snapshot บางรายการยังเก็บ `needs_review` ทำให้หน้าผลขึ้น `รอตรวจ` แม้ผู้ตรวจยืนยันผ่านหรือไม่ผ่านแล้ว
+- รายวิชาตัวอย่างแสดงชื่อผู้สอนใต้ QR code แต่ตัวอ่านเก็บข้อความปนคำว่า `ผู้สอน` และตัวนับ Moodle และอาจใช้ QR code เป็นรูปบุคคล จึงรายงานกลับด้านว่า “พบรูป ไม่พบชื่อ”
+
+### นโยบายและการแก้ไข
+- นำผลยืนยันเดิมกลับมาใช้เป็นรายหัวข้อ โดยจับคู่ประเภทเกณฑ์กับชุดลิงก์ปลายทางที่ทำให้เป็นรูปแบบมาตรฐานแล้ว ไม่ผูกกับคะแนนรวมทั้งรายงาน
+- ถ้าลิงก์ของหัวข้อนั้นเปลี่ยนแม้เพียงรายการเดียวจะไม่ใช้ผลเก่าและต้องให้ผู้ตรวจยืนยันใหม่
+- คำตัดสินตารางที่ 3 ทั้งห้าข้อใช้ซ้ำเฉพาะเมื่อชุดปลายทางหลักฐานทั้งรายงานเหมือนเดิมทุกตัว เพื่อไม่ยกคำตัดสินภาพรวมข้ามไปยังรายงานที่เปลี่ยนเนื้อหา
+- เมื่อบันทึกหรือเปิดดูผลยืนยัน ระบบใช้คำตัดสินที่เก็บไว้แทนสถานะ `needs_review` ทันที: ผ่านเป็น `pass`, ไม่ผ่านเป็น `fail` และตัดหัวข้อที่จบแล้วออกจากคิวรอตรวจ
+- ไม่แก้ทับผล MKT453 รอบล่าสุดอัตโนมัติ เพราะผู้ใช้แจ้งว่าจะยืนยันรอบปัจจุบันเอง; การแก้มีผลกับการบันทึกครั้งนี้ รอบใหม่ และการแสดงผลย้อนหลังที่มีคำตัดสินบันทึกอยู่แล้ว
+- ตัวอ่านชื่อผู้สอนตัดคำนำหน้าซ้ำและข้อความตัวนับ Moodle เช่น `1 File, 2 URLs` ออกก่อนประเมิน
+- รูปที่ BarcodeDetector ถอดเป็น QR code ได้จะไม่ถูกใช้เป็นรูปผู้สอน และข้อความรายงานแยกชัดระหว่าง “พบรูปผู้สอน” กับ “พบภาพประกอบ แต่ยังไม่พบรูปผู้สอน”
+
+### การตรวจสอบและ Artifact
+- Dashboard tests ผ่าน **43/43**, fail 0 รวม regression ของ MKT453, ลิงก์ Podcast ที่เปลี่ยน และสถานะหลังยืนยัน
+- Extension source tests ผ่าน **36/36**, fail 0; ZIP ที่แตกตรวจจริงรัน test files ผ่าน **41/41**, fail 0
+- Supabase Edge Function `api` version **44**, ACTIVE, `verify_jwt=false` ตามค่าที่ใช้งานเดิม และมีไฟล์ `review-reuse.js` ใน deployment จริง
+- Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.30`
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.30.zip`
+- ZIP size: **9,353,971 bytes**, 120 entries
+- SHA-256: `321265EFEF62BB8345F28F3DB92510957634A14EA3391B573D16ABB949E0EC24`
+- GitHub release commits: `2efa74d0fc742e1d05360ff30883e34a55bd1e08`, `b6ad96fee518e03110d01f6992d40d9ad90a290d`
+- GitHub Pages deploy runs `42953503335` และ `42953838318` สำเร็จ
+- ตรวจจาก GitHub Pages จริง: หน้า Download แสดง 0.13.30, ทั้ง 24 ส่วนมีขนาดถูกต้อง, ประกอบได้ 9,353,971 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+
+
+## 66. Legacy 0.3.19 / Dashboard 0.13.31 — ป้องกันหัวข้อ “แนะนำผู้สอน” กลืนชื่อจริง (2026-11-11)
+
+**สถานะ: แก้ source และสร้าง ZIP แล้ว / Legacy tests 44/44 / Dashboard tests 42/42 / เผยแพร่และตรวจ Dashboard จาก Pages จริงแล้ว**
+
+### อาการและสาเหตุ
+- กล่องครั้งที่ 1 มีข้อความหัวข้อ `แนะนำรายวิชา แนะนำผู้สอน แนะนำกิจกรรม และการประเมินผล` แล้วตามด้วย `ผู้สอน อาจารย์จรรยา ผลประเสริฐ`
+- regex เดิมเริ่มจับจากคำว่า `ผู้สอน` ในหัวข้อและกินข้อความต่อเนื่องจนรวมชื่อจริงไว้ในก้อนเดียว จากนั้นตัวกรองพบคำว่า `กิจกรรม` จึงทิ้งก้อนทั้งหมด ทำให้ชื่อจริงไม่มีโอกาสถูกจับรอบใหม่
+- รูปบุคคลอาจถูกพบอยู่แล้ว แต่ `identityComplete` บังคับให้มีทั้งชื่อและรูป จึงตกเป็นไม่ครบ และข้อความรวมเดิมทำให้ดูเหมือนไม่พบทั้งชื่อและรูป
+- Dashboard 0.13.30 ใช้รูปแบบ regex เดียวกัน จึงมีความเสี่ยงเดียวกัน แม้มีตัวทำความสะอาดชื่อเพิ่มเติมแล้ว
+
+### การแก้ไข
+- เปลี่ยนเป็นตรวจทุกตำแหน่งของ marker `ผู้สอน/อาจารย์/Instructor` แยกจากกัน ไม่ให้ marker ในหัวข้อกิน marker และชื่อจริงที่ตามมา
+- อ่านเฉพาะคู่ชื่อ–นามสกุลหลัง marker และปฏิเสธคำขึ้นต้นที่เป็นหัวข้อ เช่น `แนะนำ`, `กิจกรรม`, `ข้อมูล`, `การประเมิน`, `ช่องทาง` และ `รายวิชา`
+- เพิ่ม regression จากข้อความจริง ต้องได้ `จรรยา ผลประเสริฐ`; หัวข้อ `ผู้สอน แนะนำกิจกรรม และการประเมินผล` ลำพังต้องไม่ถูกนับเป็นชื่อ
+
+### Artifact
+- Legacy 0.3.19 source tests **44/44**, fail 0; ZIP 9,525,890 bytes, 135 entries, SHA-256 `EEEF1CF01CFDDC0F8B78BEABEFA54AA2FD5AC3AEE5FF6366FAB7A28F3E4A3275`
+- Dashboard 0.13.31 source tests **42/42**, fail 0; ZIP 9,355,337 bytes, 122 entries, SHA-256 `AB4274AD2D3B7C9C360EE8ADCA07459DF3693B064E1BB7172A5990B18B9C65C4`
+- GitHub release commit `afa14014cf7ddcad7c807aaa8cfcc46982ada561`; Pages run `42977105150` สำเร็จ
+- ตรวจหน้า Download และประกอบ 24 ส่วนจาก GitHub Pages จริงแล้วได้ 9,355,337 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+
+
+## 67. Legacy 0.3.20 / Dashboard 0.13.32 — ตรวจรูป Lazy Load และทำความสะอาดชื่อผู้สอน ARC204 (2026-11-11)
+
+**สถานะ: แก้ source + tests ผ่าน + สร้าง ZIP แล้ว / เผยแพร่และตรวจ Dashboard จาก Pages จริงแล้ว**
+
+### หลักฐานจาก Structure Scan
+- 0.3.19 พบชื่อเป็น `จรรยา ผลประเสริฐคำอธิบายรายวิชา` และ false positive `General Announcements`
+- `hasInstructorPhoto=false`, `hasIntroductionImage=false`, `identityComplete=false` แต่ช่องทางติดต่อครบ
+- รูปที่ผู้ใช้เห็นจึงถูกตัดก่อนประเมินตัวตน โดยกรณีมี URL ของภาพแต่ขนาดยังเป็นศูนย์ระหว่าง Moodle Lazy Loading ไม่ผ่านเงื่อนไขเดิม
+
+### การแก้ไข
+- รูปในบริบทผู้สอนที่มี `src`, `currentSrc`, `data-src`, `data-lazy-src` หรือ `srcset` นับเป็นหลักฐานภาพได้แม้ขนาดยังไม่พร้อม
+- ยังคงตัด completion icon, activity icon, logo, badge และภาพควบคุมออกก่อน
+- ตัดหัวข้อที่ติดท้ายนามสกุล เช่น `คำอธิบายรายวิชา` และกรอง `General Announcements`
+- regression ใช้ค่าจาก ARC204 จริงและตรวจทั้งรูป Lazy Load กับไอคอนที่ต้องไม่ถูกนับ
+
+### Artifact
+- Legacy 0.3.20: tests **44/44**, ZIP 9,526,466 bytes, SHA-256 `20F7C1B18F8DCA008AFC89F61E9A95BE74A9FE5627A4F18BC813A0D8AB703628`
+- Dashboard 0.13.32: tests **42/42**, ZIP 9,355,824 bytes, SHA-256 `30DD11E0BE0079A32F59E725F67EEE1C825302BD3AD67E6D239C0772A7F9EA71`
+- GitHub release commit `9e3a3a66f52ea4aa6474bcd4d8b1cb285e637624`; Pages run `42993057489` สำเร็จ
+- ประกอบไฟล์จริงจาก GitHub Pages ครบ 24 ส่วน ได้ 9,355,824 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+## 68. Dashboard 0.13.33 — องค์ประกอบบังคับและเกณฑ์วิดีโอตามหน่วยกิต (2026-11-12)
+
+**สถานะ: แก้ source แล้ว / tests 38 ไฟล์ผ่านทั้งหมด / สร้างและตรวจ ZIP แล้ว / เผยแพร่และตรวจจาก GitHub Pages จริงแล้ว**
+
+- ผลผ่านของ GR/GS ต้องผ่านทั้งคะแนนหลังบ้านขั้นต่ำ 80/110 และองค์ประกอบบังคับ ไม่มีการใช้คะแนนส่วนอื่นชดเชยองค์ประกอบที่ขาด
+- ทฤษฎี: แผนการสอน เอกสารประกอบ และวิดีโอล่วงหน้าครบ 15 ครั้ง; Pre/Post-test ตรวจเฉพาะครั้งที่ 2–15 และต้องครบ 14 ครั้ง
+- ปฏิบัติ: แผน เอกสาร วิดีโอ Pre-test และ Post-test แต่ละองค์ประกอบต้องผ่านอย่างน้อย 7 ครั้ง โดยไม่บังคับให้เป็น 7 ครั้งชุดเดียวกัน
+- ระบบอ่านลักษณะวิชาจากชื่อ/Course Profile ก่อน: `(T)-(T)` เป็นทฤษฎี, `(I)-(L)` หรือ `(L)/(P)` และชื่อที่ระบุปฏิบัติการเป็นปฏิบัติ; ใช้ค่าจากคิวเฉพาะเมื่อชื่อไม่ระบุ
+- วิดีโอ GS/GR ครั้งที่ 1 ใช้ฐาน 15 นาทีต่อหน่วยกิตและผ่อนปรน 3/5/10 นาทีสำหรับ 1/2/3 หน่วยกิต; ครั้งที่ 2–15 ใช้ฐาน 30 นาทีต่อหน่วยกิตและผ่อนปรน 5/10/20 นาที
+- หน้ารายงานเพิ่มตารางองค์ประกอบบังคับ พร้อมจำนวนผ่าน รายการขาด/รอตรวจ และแหล่งการอ่านลักษณะวิชา
+- การส่ง Dashboard ป้องกันสถานะผ่านจากคะแนนอย่างเดียวแล้ว และแนบ `mandatoryCoverage` ในหลักฐานผลตรวจ
+- Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.33`
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.33.zip`
+- ZIP 9,359,754 bytes, 123 entries, version `0.13.33`, SHA-256 `35548E8F5E2BDCDAA03C30B54B250F52B7DF892781DBF488163125E6A360E872`
+- Release commit `2c4851887a6707b3feb9d1289f10752f67500352`; Pages run `43147828821` สำเร็จ
+- ตรวจหน้า `download-extension.html` จาก GitHub Pages จริงแล้ว: แสดง 0.13.33, ดาวน์โหลดครบ 24 ส่วน, ตรวจ SHA-256 ผ่าน และขึ้นข้อความว่าไฟล์สมบูรณ์
+
+## 69. Local 0.13.26 — ปรับระบบตรวจให้เท่ากับ Dashboard 0.13.33 (2026-11-12)
+
+**สถานะ: แก้ source แล้ว / tests 39/39 ผ่าน / สร้างและตรวจ ZIP แล้ว / ยังไม่ได้เผยแพร่บนหน้าเว็บ**
+
+- ยกกติกาตรวจร่วมและหน้ารายงานจาก Dashboard 0.13.33 มาใช้กับ Local โดยคงการเก็บรายงานและการส่งออกไฟล์ในเครื่อง
+- GR/GS ใช้คะแนนหลังบ้านขั้นต่ำ 80/110 ร่วมกับองค์ประกอบบังคับ: ทฤษฎีต้องมีแผน เอกสาร และวิดีโอครบ 15 ครั้ง พร้อม Pre/Post-test ครั้งที่ 2–15 ครบ 14 ครั้ง; ปฏิบัติแต่ละองค์ประกอบต้องผ่านอย่างน้อย 7 ครั้ง
+- อ่านทฤษฎี/ปฏิบัติจากชื่อรายวิชาอัตโนมัติ `(T)-(T)`, `(I)-(L)`, `(L)` และ `(P)`; ตัวเลือกจากคิวเป็น fallback เมื่อชื่อไม่ชัดเจน
+- วิดีโอ GR/GS ครั้งที่ 1 ใช้ 15 นาทีต่อหน่วยกิตและผ่อนปรน 3/5/10 นาที; ครั้งที่ 2–15 ใช้ 30 นาทีต่อหน่วยกิตและผ่อนปรน 5/10/20 นาที
+- รวมการแก้ข้อมูลผู้สอนจากข้อความ/รูป Lazy Load, ไฟล์เสียง `.m4a`, Forum/Chat, การจำแนก Pre/Post/กิจกรรมท้ายบท, การใช้ผลยืนยันเดิมเมื่อลิงก์ไม่เปลี่ยน และหน้าตรวจวิดีโอแบบแสดงชื่อ ป้าย ลิงก์ และเวลาแยกรายการ
+- รุ่น Local ไม่มี content script สำหรับ Dashboard และเพิ่มด่านปฏิเสธข้อความ `CENTRAL_WORKER_*` ทุกชนิด จึงไม่รับงานหรือส่งผลไปคิวส่วนกลาง/Supabase
+- เพิ่ม regression test สำหรับการแยก Local จากระบบกลาง; รวม tests **39/39**, fail 0
+- Source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.26`
+- ZIP: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.26.zip`
+- ZIP 9,359,372 bytes, 124 entries, version `0.13.26`, SHA-256 `95AFF513F7EC7A7B6297212312B474BF534CE2E7D0236712A976CC564BDA76A0`
+
+## 70. DB 0.13.34 / LC 0.13.27 — ตัดแผนการสอนครั้งที่ 1 ออกจากข้อกำหนด (2026-11-12)
+
+**สถานะ: แก้ source แล้ว / DB tests 38/38 / LC tests 39/39 / สร้างและตรวจ ZIP ทั้งสองรุ่นแล้ว / ยังไม่ได้เผยแพร่หน้าเว็บ**
+
+- กำหนดคำเรียกรุ่นตั้งแต่นี้: Dashboard = **DB**, Local = **LC**, Local Legacy = **LL**
+- ขั้นตอนบังคับเมื่อเผยแพร่ DB รุ่นใหม่: ต้องเปลี่ยนเลขรุ่นบนหน้า Download ให้ตรงกับ manifest พร้อมอัปเดตไฟล์/ส่วนประกอบ ZIP ขนาด และ SHA-256 จากนั้นตรวจเลขรุ่นและดาวน์โหลดไฟล์จริงจาก GitHub Pages หลัง Deploy ทุกครั้ง
+- ครั้งที่ 1 ใช้เอกสารประกอบการสอนร่วมกัน จึงไม่บังคับและไม่นับแผนการสอนครั้งที่ 1
+- เกณฑ์ทฤษฎี: แผนการสอนนับเฉพาะครั้งที่ 2–15 รวม 14 ครั้ง; เอกสารประกอบและวิดีโอยังคงต้องครบ 15 ครั้ง; Pre/Post-test ยังคงครั้งที่ 2–15
+- เกณฑ์ปฏิบัติ: แผนการสอนยังต้องผ่านอย่างน้อย 7 ครั้ง แต่เลือกนับจากครั้งที่ 2–15 เท่านั้น
+- รายการขาดและสรุปผู้สอนจะไม่แสดงว่าขาดแผนการสอนครั้งที่ 1
+- Regression test บังคับให้ครั้งที่ 1 ไม่มีแผนและต้องยังผ่านได้เมื่อครั้งที่ 2–15 ครบ พร้อมตรวจว่า `missingSessions` ไม่มีครั้งที่ 1
+- DB source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Dashboard-0.13.34`
+- DB ZIP: 9,360,081 bytes, 123 entries, SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F`
+- LC source: `C:\Users\Administrator\Documents\Codex\2026-08-24\new-chat\SPU-Learning-Auditor-Local-0.13.27`
+- LC ZIP: 9,359,663 bytes, 124 entries, SHA-256 `6BDA6F6BAD02ABB34A487D0E07607B35BB0C526C0398237950A7C5DFA145E8C7`
+
+## 71. DB 0.13.34 — เปิด Podcast จากผลตรวจรายครั้งในเว็บหลังบ้าน (2026-11-12)
+
+**สถานะ: แก้ source และหน้าเว็บแล้ว / tests ผ่าน / เผยแพร่และตรวจ GitHub Pages จริงแล้ว**
+
+- สาเหตุเดิม: หลักฐาน Podcast มี URL ปลายทาง ชื่อป้าย และเวลาอยู่แล้ว แต่หน้าเว็บหลังบ้านแสดงลิงก์ไว้เฉพาะส่วน `หลักฐานที่ตรวจพบ` ทำให้ผู้ตรวจต้องเลื่อนหรือกลับไปค้นในหน้ารายวิชา
+- หน้า `ผลตรวจตามครั้ง/สัปดาห์` แสดง `ลิงก์ Podcast ของครั้งนี้` ภายใต้หัวข้อ Podcast ของครั้งนั้นโดยตรง
+- แต่ละรายการแสดงชื่อที่กดเปิดปลายทางได้ พร้อมชื่อป้าย/กลุ่มและเวลาที่ตรวจได้; ถ้ามี Podcast หลายรายการในครั้งเดียวกันจะแสดงทุกลิงก์และตัด URL ซ้ำ
+- การจับคู่ใช้เลขครั้งของหลักฐาน (`auditSession` หรือ `section`) จึงไม่ดึง Podcast ของครั้งอื่นมาปะปน
+- URL ผ่านตัวกรองลิงก์ปลอดภัยเดิมของหน้าเว็บก่อนแสดง และไม่สร้างลิงก์เมื่อผลเก่าไม่มี URL ปลายทางอยู่ใน snapshot
+- อัปเดต cache-buster ของ `audit-evidence.js` เป็น `20261112a`
+- เพิ่ม regression test ป้องกันลิงก์ Podcast หายจากการ์ดรายครั้ง; ชุดทดสอบหน้าเว็บหลักผ่าน **44/44**, fail 0 (9 ไฟล์)
+- หน้า Download อัปเดตเป็น DB **0.13.34** พร้อม 24 ส่วน ขนาดรวม 9,360,081 bytes และ SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F`
+- Release commit `3fe6dbed5d09bf77a3406846d062a2cc43b8c50c`; Pages run `43180135362` สำเร็จ
+- ตรวจหน้าเว็บจริงแล้วพบเลขรุ่น 0.13.34 และข้อความลิงก์ Podcast รายครั้ง; ประกอบไฟล์จริงครบ 24 ส่วน ได้ 9,360,081 bytes, SHA-256 ตรง และ ZIP magic เป็น `PK`
+- แก้ตกหล่นหน้า `ดาวน์โหลด Extension` ในหลังบ้าน: ป้ายรุ่นล่าสุด ข้อความแนะนำ ปุ่มดาวน์โหลด ข้อความตรวจใหม่ และคำแปล เปลี่ยนจาก 0.13.28 เป็น 0.13.34 พร้อมเปลี่ยน cache-buster ของ `audit-review.js` และ `ui-i18n.js` เป็น `20261112b`
+- Version-alignment commit `ce65c415c6fffe7bbdae8dbfe31d9d11199af30e`; Pages run `43181161353` สำเร็จ และตรวจหน้า `audit-review.html` จริงแล้วพบ 0.13.34 ครบ 3 จุด ไม่พบ 0.13.28 พร้อมตรวจปุ่ม คำแปล และ cache-buster ผ่านทั้งหมด
+- ขยายลิงก์หลักฐานจาก Podcast ไปยังทุกหัวข้อมาตรฐานที่อยู่สถานะ `รอตรวจ`: AI Tutor, วิดีโอ/วิดีโอที่ต้องจำแนก, Pre-test, Post-test, กิจกรรมท้ายบท/Assignment, แผนการสอน, เอกสารประกอบ, ช่องทางติดต่อ และข้อมูลแนะนำรายวิชา
+- จับคู่ด้วยเลขครั้งและชนิดหลักฐานก่อนเสมอ; หัวข้อที่ต้องกรองชื่อ เช่น แผนการสอน/ช่องทางติดต่อ ใช้คำสำคัญในชื่อหรือป้ายร่วมด้วย เพื่อไม่ดึงลิงก์คนละประเภทหรือคนละครั้ง
+- แต่ละลิงก์แสดงชื่อ ป้าย ประเภท เวลา (เมื่ออ่านได้) และหมายเหตุการเข้าถึง; แสดงเฉพาะหน้า Super Admin ของผลล่าสุดที่หัวข้อนั้นยังรอตรวจ เพื่อลดความรกในรายงานผู้สอน
+- อัปเดต cache-buster `audit-evidence.js` เป็น `20261112c`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Evidence-link commit `c1cd066ea45963fd1bb93980d043d2791ca49f76`; Pages run `43182275695` สำเร็จ และตรวจหน้าเว็บจริงผ่านครบทั้ง AI Tutor, วิดีโอ, Pre/Post-test, กิจกรรม, เอกสาร, ช่องทางติดต่อ, cache-buster และเงื่อนไขแสดงเฉพาะรายการรอตรวจ
+- แก้ขั้นตอนยืนยันซ้ำซ้อนของวิดีโอ/Podcast: ย้ายตัวเลือก `ใช้รายการนี้/ไม่ใช้รายการนี้` มาไว้ใต้ลิงก์ในการ์ดหัวข้อรอตรวจ และตัดปุ่มผ่าน/ไม่ผ่านซ้ำของหัวข้อนั้นออก ระบบสรุปผลหัวข้อจากรายการและเวลารวมอัตโนมัติ
+- ปุ่มบันทึกจะยังปิดอยู่จนทั้งหัวข้อทั่วไปและหลักฐานรายลิงก์ครบ พร้อมแสดงความคืบหน้า `หลักฐานรายลิงก์ครบ X / Y รายการ`; ไม่รอแจ้งข้อผิดพลาดหลังผู้ตรวจกดบันทึก
+- เปลี่ยนช่องเวลาออกจากหน่วยวินาทีเป็น `นาที:วินาที` หรือ `ชั่วโมง:นาที:วินาที` เช่น `13:19` และ `1:05:30`; หน้าเว็บแปลงเป็นวินาทีเฉพาะตอนส่งหลังบ้าน
+- อ่านเวลาเป้าหมายจากรายละเอียดเกณฑ์ของหัวข้อนั้น เช่น `0:00 / 1:30:00` แทนการใช้ค่าคงที่เมื่อมีข้อมูล และอัปเดต cache-buster เป็น `20261112d`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Single-review commit `445f945cf55d3e848b3fbd00f704b0bb54b39caa`; Pages run `43184867927` สำเร็จ และตรวจหน้าเว็บจริงแล้วพบแบบฟอร์มตัดสินรายลิงก์เพียง template เดียว ไม่มีช่องวินาทีเดิม พร้อมผ่านการตรวจรูปแบบเวลา ความคืบหน้าก่อนบันทึก การสรุปหัวข้ออัตโนมัติ และเวลาเป้าหมายแบบ dynamic
+
+## 72. DB — กรอกเวลา Podcast อย่างเดียวและตัดสินจาก 10 นาทีอัตโนมัติ (2026-11-12)
+
+**สถานะ: แก้ source และ regression test แล้ว / เผยแพร่ GitHub Pages สำเร็จ**
+
+- รายการ Podcast ในหน้าหลังบ้านไม่แสดงตัวเลือก `ใช้รายการนี้/ไม่ใช้รายการนี้` อีกต่อไป ผู้ตรวจกรอกเฉพาะเวลาแบบ `นาที:วินาที`
+- ช่องเวลาใช้หน้าตา `__:__` และรับตัวเลขต่อเนื่อง เช่นพิมพ์ `1319` ระบบจัดรูปเป็น `13:19` โดยอัตโนมัติ ลดการพิมพ์เครื่องหมายคั่นและไม่ต้องแปลงเป็นวินาทีเอง
+- เมื่อกรอก Podcast ครบทุกรายการของครั้งนั้น ระบบนับรายการเป็นคลิปเสียงที่ใช้ตรวจและสรุปหัวข้ออัตโนมัติ: เวลารวมตั้งแต่ `10:00` ขึ้นไปเป็นผ่าน ต่ำกว่า `10:00` เป็นไม่ผ่าน
+- การตัดสินจะถูกบันทึกเมื่อกด `ยืนยันผลที่ระบบคำนวณ`; แบบฟอร์มวิดีโอยังคงตัวเลือกใช้/ไม่ใช้และเวลาแยกรายลิงก์ตามเดิม
+- รองรับเวลา `0:00` เป็นค่าที่กรอกถูกต้องและให้ผลไม่ผ่าน แยกจากช่องว่างที่ยังกรอกไม่ครบ
+- ผลยืนยัน Podcast เดิมที่มีเวลาอยู่แล้วจะเติมกลับในช่องและคำนวณสถานะหัวข้อทันที โดยไม่บังคับทำซ้ำเมื่อหลักฐานยังตรงกัน
+- อัปเดต cache-buster ของ `audit-evidence.js` เป็น `20261112e`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Release commit `9d7ff584cd3a3da3c87bd297da41bd962964c460`; Pages run `43187284895` สำเร็จ
+- ตรวจ deployment จาก GitHub Actions แล้วเป็น `completed/success`; สภาพแวดล้อมตรวจภายนอกบล็อกการเปิดไฟล์ GitHub Pages โดยตรง จึงยืนยันเนื้อหาไฟล์จาก commit ที่ deploy และผลชุดทดสอบแทน
+
+## 73. DB — สถานะตอบรับและข้อผิดพลาดหลังยืนยันผล (2026-11-12)
+
+**สถานะ: แก้ source และ regression test แล้ว / เผยแพร่ GitHub Pages สำเร็จ**
+
+- สาเหตุที่ภาพแสดงว่ากดแล้วไม่มีผล: แบบฟอร์มยังเลือกเพียง `20 / 21` หัวข้อ ปุ่มเดิมถูกปิดแบบเงียบและหน้าตาแทบไม่ต่างจากปุ่มปกติ จึงดูเหมือนระบบไม่รับคำสั่ง
+- เปลี่ยนให้ปุ่มกดได้เพื่ออธิบายสถานะ: ถ้ายังไม่ครบ ระบบแจ้งจำนวนหัวข้อ/หลักฐานที่ขาด แสดงกรอบแดงที่หัวข้อแรก และเลื่อนไปยังจุดนั้น
+- เมื่อข้อมูลครบและส่งจริง จะแสดงแถบสถานะติดด้านบนตามลำดับ `รับคำสั่งแล้ว` → `กำลังบันทึกและคำนวณผลใหม่` → `กำลังโหลดสถานะล่าสุด` → `อัปเดตผลเรียบร้อยแล้ว`
+- ระหว่างบันทึก ปุ่มเปลี่ยนข้อความและแสดงสถานะกำลังทำงานเพื่อป้องกันการกดซ้ำ; หากผิดพลาดจะแสดงสาเหตุและเปิดให้ลองใหม่
+- แก้การตรวจหัวข้อที่ยังว่างให้ดูค่าจริงของตัวเลือก ไม่ถือว่ามี key แล้วเท่ากับยืนยันครบ
+- อัปเดต cache-buster เป็น `20261112f`; ชุดทดสอบหน้าเว็บหลักผ่าน 44/44
+- Release commit `21cf77f40761ad1026b39721e600b22e4cf158bf`; Pages run `43191241424` สำเร็จ
+
+## 74. จัดระเบียบไฟล์ Extension part แยกตามรุ่น (2026-11-12)
+
+**สถานะ: จัดโครงสร้าง ทดสอบ และเผยแพร่ GitHub Pages สำเร็จ**
+
+- ย้ายไฟล์ `extension-<version>.part<number>` ออกจากหน้าแรกของ repository ไปไว้ที่ `downloads/dashboard/<version>/parts/`
+- แยกครบ 7 รุ่นตั้งแต่ 0.13.28 ถึง 0.13.34 รุ่นละ 24 part รวม 168 ไฟล์ โดยไม่ลบรุ่นเก่า
+- เพิ่ม `downloads/dashboard/README.md` อธิบายโครงสร้างและระบุรุ่นปัจจุบัน
+- หน้า `download-extension.html` ของ DB 0.13.34 เปลี่ยนไปอ่านจาก `downloads/dashboard/0.13.34/parts/`
+- Regression test อ่าน part จากตำแหน่งใหม่ ประกอบ ZIP ได้ 9,360,081 bytes, SHA-256 `AB5FBAD939C744A4FEDE5A40B241136B95FF78208A8D19A7C70AA7C091BB0F1F` และ ZIP magic เป็น `PK`
+- ชุดทดสอบหน้าเว็บหลักผ่าน 44/44; หลังจัดโครงสร้าง หน้าแรกเหลือไฟล์ part 0 ไฟล์
+- Release commit `850650c3c74ca9c5c8f14aa4b69618c82fdcabb2`; Pages run `43195500060` สำเร็จ
+- ตรวจ tree หลังเผยแพร่แล้ว: root part 0, ตำแหน่งใหม่ 168 ไฟล์, แต่ละรุ่น 24 ไฟล์ และมี README กำกับโครงสร้าง
+
+## 75. DB — ทำให้ผลผู้สอนและแอดมินอ้างอิงผลตรวจเดียวกัน (2026-11-17)
+
+**สถานะ: เผยแพร่ Production ครบทั้ง Supabase Edge Function v45 และ GitHub Pages แล้ว**
+
+- สาเหตุหลักคือหน้าผู้สอนอ่าน evidence snapshot ดิบจาก Storage แต่หน้าแอดมินอ่าน `source_payload` ที่มีการนำผลยืนยันเดิมหรือผลผู้ตรวจมาปรับสถานะแล้ว จึงทำให้รายการแก้ไขของผลเดียวกันไม่ตรงกัน
+- เปลี่ยน public/admin evidence API ให้ยึด `source_payload.evidenceSnapshot` ที่ผ่านการตัดสินเป็นแหล่งข้อมูลหลัก และใช้ไฟล์ Storage เป็น fallback เฉพาะผลรุ่นเก่าที่ไม่มี snapshot ในฐานข้อมูล
+- เมื่อผลเก่ามี `reviewConfirmation.decisions` ระบบจะนำการตัดสินไปปรับสถานะของ snapshot ตอนอ่านด้วย จึงแก้ผลเดิมที่เคยบันทึกไว้ได้โดยไม่ต้องรันตรวจใหม่
+- หน้าแอดมินยึด `courses.latest_internal_run_id` เป็นผลล่าสุด ส่วนหน้าผู้สอนยึด `public_course_results.published_run_id` เป็นผลล่าสุด ไม่เดาจาก `audited_at` อีกต่อไป
+- ประวัติที่มีเวลาตรวจซ้ำกันเรียงด้วย `created_at` และ `run_id`; หน้าเว็บแสดงทั้งเวลาตรวจและเวลารับเข้าระบบเพื่อไม่ให้ผลหลายระเบียนดูเหมือนรายการเดียวกัน
+- ตัด cache ของรายละเอียดผลผู้สอน (`no-store`) ทั้งฝั่ง Browser และ API ป้องกันผลเก่าค้างหลังเผยแพร่หรือยืนยันผลใหม่
+- การค้นหาผลยืนยันเดิมเรียงด้วย `created_at` แทน `audited_at` เพื่อไม่หยิบผลผิดเมื่อการรันซ้ำยังส่งเวลาตรวจเดิมมา
+- เพิ่ม regression test `teacher and admin evidence use the same resolved run snapshot`; ชุดทดสอบหลักผ่าน **45/45**, fail 0
+- อัปเดต cache-buster ของ `audit-api.js` และ `audit-evidence.js` เป็น `20261117a`
+- Supabase Edge Function `api` Production เป็น version 45; GitHub Pages run `44012717725` สำเร็จที่ commit `1fb6fcb3d1d22d91def9b2d5fbcf7b75b5ccae86`
+- ตรวจ API Production ของรายวิชา 962 แล้ว: `published_run_id` และรายการแรกตรงกันที่ `a7364996-fd2b-41c8-91be-932226b251ea`, เวลาตรวจ 17 พ.ย. 2569 10:06, Auditor 0.13.34, response เป็น `Cache-Control: no-store`
+- เปรียบเทียบสถานะหัวข้อจาก API ผู้สอนกับ canonical snapshot ในฐานข้อมูลแล้วตรงกันครบ: `pass=18`, `fail=75` (รวม needs_review ที่ซ่อนจากผู้สอน), `not_applicable=12`
+
+## 76. กฎสำคัญสูงสุดสำหรับการทำงานต่อทุกครั้ง (2026-11-17)
+
+**สถานะ: เป็นข้อบังคับถาวร ต้องปฏิบัติก่อนและระหว่างงานทุกครั้ง**
+
+1. **ประหยัดโควตาเป็นสำคัญ**
+   - ตรวจเฉพาะขอบเขตที่เกี่ยวข้องก่อน และขยายการตรวจเมื่อมีหลักฐานว่าจำเป็นเท่านั้น
+   - รวมการอ่าน ค้นหา และทดสอบที่ทำพร้อมกันได้ไว้ในรอบเดียว
+   - ห้ามค้น ตรวจ แก้ หรืออธิบายซ้ำในสิ่งที่มีหลักฐานยืนยันครบแล้ว
+   - รายงานเฉพาะผลสำคัญ สาเหตุ สิ่งที่เปลี่ยน และสิ่งที่ยังต้องดำเนินการ
+
+2. **ต้องอ่าน Handoff ก่อนเริ่มงานทุกครั้ง**
+   - ตรวจว่ามีการทำอะไรไปแล้ว ผลเป็นอย่างไร และมีข้อจำกัดหรือการตัดสินใจใดที่ต้องรักษาไว้
+   - ใช้ข้อมูลเดิมเพื่อป้องกันงานซ้ำ งานตกหล่น และการย้อนกลับไปใช้แนวทางเก่า
+   - ห้ามแก้ส่วนที่ไม่เกี่ยวข้องกับคำขอ เพราะอาจกระทบระบบใหญ่หรือสร้างข้อผิดพลาดใหม่
+   - หากข้อมูลในระบบปัจจุบันขัดกับ Handoff ต้องตรวจหลักฐานและแจ้งความขัดแย้งก่อนเปลี่ยนแปลง
+
+3. **ต้องบันทึกงานและผลดำเนินการทุกครั้ง**
+   - ทุกการแก้ไข ปรับปรุง หรือพัฒนาที่ได้รับมอบหมาย ต้องบันทึกขอบเขต เหตุผล และส่วนที่ได้รับผลกระทบ
+   - เมื่อดำเนินการแล้ว ต้องบันทึกผลจริง เช่น ไฟล์หรือระบบที่เปลี่ยน การทดสอบ ผล Deploy การตรวจ Production และสิ่งที่ยังค้าง
+   - หากยังไม่ได้ดำเนินการหรือดำเนินการไม่สำเร็จ ต้องระบุสถานะและสาเหตุให้ชัด ห้ามบันทึกว่าเสร็จแล้วโดยยังไม่มีหลักฐานยืนยัน
+   - บันทึกให้เพียงพอสำหรับนำไปทำงานต่อจากเครื่องหรือการสนทนาอื่นโดยไม่ต้องตรวจซ้ำทั้งระบบ
+
+## 77. Main Data และตำแหน่งเขียนผล GS/GR ภาค 1/2569 (2026-11-18)
+
+**สถานะ: ข้อกำหนดที่ยืนยันแล้ว ต้องยึดเป็นแหล่งข้อมูลและขอบเขตการเขียนผล**
+
+- ใช้ระบบ Dashboard เดิมของ `kafair-so` เป็นระบบตรวจ/หลังบ้าน และ Dashboard ของ `donut204` เป็นหน้าบ้าน ไม่สร้าง Dashboard แยกสำหรับเกณฑ์ผ่อนปรน
+- Main Data สำหรับรายวิชา GS คือแท็บ `69/1-GS` (`gid=1655346225`) และสำหรับรายวิชา GR คือแท็บ `69/1-GR` (`gid=1339443713`) ใน Spreadsheet `1q8Dfe2f79ehjk7NsefGGYP6UduajKJDV7E79w1_fKMg`
+- ห้ามใช้ `GRGS_Public` เป็นแหล่งเขียนผลหลัก และห้ามแก้แท็บ/ระบบ `AI Tutor` หรือ `Podcast` เพราะเป็นงานของผู้ร่วมงานอีกส่วนหนึ่ง
+- สนใจและเขียนผลเฉพาะคอลัมน์ `V`, `W`, `X` ของแท็บ `69/1-GS` และ `69/1-GR` ตามกติกา:
+  - ถ้ารายวิชามีหลักฐานหรือมีองค์ประกอบให้ตรวจ: `V = พบเนื้อหา` และ `W = ผ่าน` หรือ `ไม่ผ่าน` ตามผลตรวจ
+  - ถ้ารายวิชาไม่มีเนื้อหา: `V = ไม่พบเนื้อหา` และ `W = ไม่พบเนื้อหา`
+  - ทุกรายวิชาที่ตรวจต้องมีลิงก์หลักฐานการตรวจใน `X`
+- ผลทุกค่าใน `V:W:X` ต้องอยู่ในแถวเดียวกับรายวิชาที่ตรวจ ห้ามอ้างอิงด้วยลำดับแถวอย่างเดียว ต้องจับคู่ด้วยตัวระบุรายวิชา/ลิงก์ Course ID และตรวจความตรงกันก่อนเขียน
+- ถ้าพบ Course ID ซ้ำ ไม่พบแถว หรือข้อมูลระบุตัวตนรายวิชาขัดกัน ให้หยุดรายการนั้นและรายงานข้อผิดพลาด ห้ามเดาแถวหรือเขียนทับรายวิชาอื่น
+- หลังเขียนต้องอ่านค่ากลับจากแถวเดิมเพื่อตรวจว่า `V`, `W`, `X` ตรงกับ Course ID และผลตรวจจริงก่อนถือว่าสำเร็จ
+
+
+
+
+
+
+## 78. ตรวจรับช่วงหลัง Codex/Work quota หมด — 2026-11-18
+
+**สถานะ: แก้ source บน GitHub บางส่วนและอ่านกลับแล้ว; ยังไม่พร้อมตรวจจริง / ยังไม่ deploy API หรือ Apps Script ที่แก้ในรอบนี้**
+
+- ก่อนแก้ยืนยัน Supabase migration `20261118033556` (`semester_12569_criteria_safe`), RPC `enqueue_selected_audits_v2` และ `record_audit_result_v2`, Edge Function API v46 ACTIVE; ยังไม่พบ job/run `legacy_12569` ใน DB ณ เวลาตรวจ
+- Front repo `donut204/ooe-dashboard-2569` commit `8fc87d7e201d26a7ea6eff9f3ecfce7d7243ff76`: รองรับหัว W ของ GR ที่มี newline และคัด prefix 691GS-/691GR- ตามแท็บ (พบข้อมูล FN ปะปนจริงในสองแท็บ); ยังไม่ได้ยืนยัน Pages/จำนวนรายวิชาหลังกรองหรือ eligibility ตามตัวกรองที่เจ้าของชีตตั้งไว้
+- `google-apps-script/Code.gs` commit `e314d176767f8b1e5f24043ea163455020040792`: จับคู่แถวจาก I เท่านั้น, ตรวจ evidence URL และ profile, ตรวจ Course ID และ V–X หลังเขียน; ยังไม่ได้ deploy web app หรือทดสอบ write จริง
+- `supabase/functions/api/index.ts` commit `b04e94618c48309b8821880cda09743d5bb048b9`: ตรวจ Course ID เทียบกับ job, ไม่ส่ง needs_review/audit_failed เข้า Sheet, require verified response และ published run, แยก heuristic การยืนยันคะแนนเดิมจาก legacy, ปิด manual review legacy ชั่วคราวเพื่อไม่คิดคะแนนผิด; ยังไม่ได้ deploy เนื่องจากต้องทดสอบร่วมกับ Apps Script ใหม่และ weighted review
+- ต้องแก้ต่อ: syncCatalog ยังอ่าน COURSE_CSV_URL และ schema เดิม; สองแท็บมีข้อมูลประเภทอื่นร่วมและ eligibility เดิมอิง row visibility จึงต้องยืนยันรายการที่ต้องตรวจจริงก่อนนำเข้า ไม่เดาจาก prefix อย่างเดียว; ห้ามแตะ AI Tutor / Podcast
+- ต้องแก้ weighted review ของ legacy ให้ใช้สูตรและ mandatory gates ตามประเภทวิชา ไม่บวกทีละ 1 และแก้การแสดง maxScore 110 ที่ API ยังตรึงอยู่; ตรวจ gate score model `legacy_course_type_v1` กับ `weekly_criterion_v2` และประวัติแยกเกณฑ์ก่อนปล่อยจริง
+- Extension 0.13.35 มี staged source และ manifest; workflow ถูก trigger จาก commit `a10a302d` แต่ไม่พบ release.json และหน้า download ใน repo ยัง 0.13.34; ไม่อ้างว่า build/deploy สำเร็จ (connector ไม่แสดง push workflow runs)
+- หน้า evidence mockup มี commit แล้ว ยังไม่ยืนยัน Pages และ browser smoke test; ยังไม่ได้รัน automated tests ใหม่หรือทดสอบ end-to-end ในรอบนี้
+- ไม่มีการเปลี่ยน Google Sheet cells, DB rows, migration, queue หรือ Edge Function production ในรอบนี้; ต้องยืนยัน Apps Script deploy, API release, package/download digest และทดสอบ GS/GR อย่างละหนึ่งรายวิชาก่อนเริ่ม bulk audit
+
+## 79. Sheet Status Sync deployment handoff — 2026-11-18
+
+- ผู้ใช้ยืนยันว่า Deploy Apps Script เดิม SPU Auditor Sheet Status Sync แล้ว; ยังไม่ได้ตรวจ endpoint หรือ write จริงจากภายนอก
+- Deploy Supabase Edge Function API v47 ACTIVE จาก commit b04e946 พร้อม dependencies เดิมและ verify_jwt เดิม; อ่าน source production กลับตรงกับ GitHub
+- ยังไม่ทดสอบ end-to-end, weighted review รุ่น legacy ยังปิดไว้, catalog และ Extension release ยังต้องดำเนินการ; ไม่ได้แก้ข้อมูลรายวิชา/คิวในขั้นตอนนี้
+
+
+## 80. STOP / revised scope — GR only (2026-11-18)
+
+- คำสั่งล่าสุดผู้ใช้: หยุดและย้อนส่วนที่เกี่ยวข้องกับ GS เพราะเพื่อนร่วมงานเป็นผู้รับผิดชอบผลตรวจ GS; การพัฒนาต่อจากนี้ทำเฉพาะ GR เท่านั้น ห้ามเขียนผล GS, AI Tutor, Podcast หรือเปลี่ยนข้อมูลของผู้ร่วมงาน
+- ก่อนหยุดมี source commits สำหรับ Main Data, weighted scoring/review, evidence display; สูตรทดสอบ isolated 14 กรณีผ่าน แต่ยังไม่มี end-to-end หรือ deploy API draft นี้, ยังไม่ release Extension ใหม่
+- Front commit 6b06b51ac8444acfe80c93a1352fe301d2c37896 คืน GS ไปใช้ GRGS_Public และ mapping เดิมก่อน a769b9f (เฉพาะ GS); GR ยังใช้ source ใหม่; Pages live ยังไม่ยืนยัน
+- Apps Script source commit b003046f69e7818b9e9b4db735a444f782a0fdc6 จำกัด STATUS_SHEETS เป็น GR เท่านั้น; ผู้ใช้ต้องแก้ค่าหนึ่งบรรทัดใน Apps Script เดิมและ deploy version ใหม่คง URL เพื่อปิด GS ที่ webhook ด้วย
+- API source commit 85ba105da7cbcb19b63d82938a4b1b5dd9d77769 จำกัด catalog/queue/result/confirmation/sheet sync เป็น GR; ปิด refresh all แบบเดิมที่อาจรวม GS; ป้องกัน catalog ID ชน GS ที่มีอยู่; ไม่แก้ DB rows หรือ sheet rows
+- Production API v48 ACTIVE เป็น v47 + GR-only safety guards เท่านั้น **ไม่ใช่ source draft ล่าสุด**; ยังใช้ catalog แบบเดิม และยังปิด weighted manual review; ไม่ deploy ส่วนพัฒนาที่ยังค้างเมื่อได้รับคำสั่งหยุด
+- ตรวจ DB แบบ read-only หลังหยุด: ไม่พบ open jobs หรือ legacy jobs/runs; ไม่มีการย้อนหรือลบผลตรวจจริง เพราะไม่ได้สร้างผลตรวจใหม่ในรอบนี้; ยังไม่ทดสอบ webhook live และไม่เริ่ม bulk audit
+
+- อัปเดตล่าสุด: ผู้ใช้ยืนยันว่า Deploy Apps Script รุ่น GR-only แล้วในโปรเจกต์เดิม; เป็นการยืนยันจากผู้ใช้ ยังไม่ได้ตรวจ endpoint ภายนอกหรือทดสอบเขียนผลจริง งานพัฒนาอื่นยังหยุดตามคำสั่งล่าสุด และห้ามดำเนินการกับ GS, AI Tutor, Podcast.
+
+
+## 81. GR-only continuation — 2026-11-18
+
+- ขอบเขต GR เท่านั้น; ห้ามเปลี่ยน GS, AI Tutor, Podcast หรือข้อมูลผลตรวจของผู้ร่วมงาน; Apps Script GR-only ผู้ใช้ยืนยัน deploy แล้ว แต่ยังไม่ทดสอบ webhook จริง
+- ตรวจ Main Data 69/1-GR: 149 รายวิชา (125 เดิม + 24 ใหม่); ไม่พบ Course ID ซ้ำหรือชนกลุ่มอื่น; นำเข้าเฉพาะ 24 รายวิชาใหม่ลง courses แบบ insert-only สำเร็จ; เก็บผลเดิม 125 รายวิชาครบ; GS คง 40 active/43 total; ไม่ได้เขียนผลตรวจจริงใน Sheet
+- API GR-only: คิว/รับงาน/ยกเลิกคิว/ยืนยันผล/ส่ง Sheet จำกัด GR; ไม่เรียก global retired-evidence cleanup เพื่อไม่แตะ GS; catalog ใหม่อ่าน GR โดยตรง; เก็บการแสดงผล GS เดิมแบบ read-only. API v49 ACTIVE, อ่านกลับ source 4 ไฟล์ตรง GitHub; ไม่มีการเปลี่ยน schema, migration หรือ auth settings
+- สูตร legacy weighted 100/50, เกณฑ์ 80/40, snapshot parity, review, empty/failed status; ซ่อม background.js ที่ต้นฉบับ staged มีข้อความ truncation จาก ZIP 0.13.34 (CRC32 ตรง 985559022) ปรับเฉพาะการส่ง job context และ empty track. Commit 0e74573ebc38f496d59e4e28b23a4b7b599b53fe
+- ทดสอบ syntax และ synthetic model checks 34 รายการผ่าน; mock Apps Script/API guards 9 รายการผ่าน (ไม่เขียนจริง); ไม่อ้าง full integration/browser test หรือชุด tests เดิมทั้งหมด
+- Workflow CI commit ce621ce9f11b2623c2daaf4db4c7dafcb6c75a6b: ตรวจ SHA/size ของ baseline 0.13.34, เพิ่ม smoke tests และแก้ EXPECTED_SIZE/EXPECTED_SHA256, รองรับ manual dispatch. Run เดิม 44233526575 ยืนยัน failure จากข้อความ truncation ใน background.js; การประกอบ ZIP โดยตรงผ่าน connector ติดข้อจำกัดจำนวน calls; จะ trigger CI ด้วย .ready หลัง commit เอกสารนี้
+- หน้าคิวหลังบ้าน GR-only และหน้า evidence weighted review commit แล้ว; ยังไม่ยืนยัน Pages ใน browser; release 0.13.35 ยังไม่พบ ณ เวลาบันทึก ต้องตรวจ release.json และหน้า Download หลัง CI; ห้ามเริ่ม bulk audit จนกว่าจะติดตั้ง Extension รุ่นที่ยืนยันแล้วและทดสอบรายวิชา GR หนึ่งวิชาจริง + V/W/X ตรงกัน
+- ห้ามรัน audit ของ GS, ห้าม clear คิว GS, ห้ามแก้ Google Sheets ส่วนอื่น; การล้าง retired evidence ทั่วระบบถูกปิดใน workflow GR จนกว่าจะมีแบบ scoped.
+
+- Build รอบใหม่ GitHub Actions 44245174253 สำเร็จทุกขั้นตอน (รวม baseline SHA, syntax, weighted smoke tests, zip integrity, publish); release.json 0.13.35 ขนาด 9323076 bytes, 24 parts, SHA-256 628AB338E4F94B9EEA1A32C16B39683558051C5788CDB65202DD31F0B0EBA06D; ตรวจจำนวนและขนาด parts รวมตรง และหน้า download version/size/hash ตรง release manifest. Release commit 11249499346ba0af943be08593d42a16dd2bdd14; Pages publish status ตรวจ ณ เวลานี้ in_progress/null. ยังต้องทดสอบ Chrome authenticated worker และ GR 1 รายวิชาจริง; ไม่เริ่ม bulk audit และไม่ส่งผล GS.
+
+
+## 82. GRGS_Public architecture and GR course-picker fix — 2026-11-18
+
+- ผู้ใช้ยืนยันให้คง Dashboard หน้าบ้านใช้ GRGS_Public สำหรับทั้ง GS/GR; สูตรเดิมดึงจาก 69/1-GS และ 69/1-GR; ระบบ Auditor เขียนผลที่ยืนยันแล้วเฉพาะ 69/1-GR คอลัมน์ V/W/X. ห้ามแก้ GS, AI Tutor, Podcast, สูตรชีต และหน้าบ้าน.
+- หน้าคิวเดิมไม่พบรายวิชา และช่องเกณฑ์ไม่แสดงเพราะ CSS .scope-card select ซ่อน dropdown ทั้งหมด; เปลี่ยนบัญชีรายวิชาหลังบ้านให้ใช้ GRGS_Public แหล่งเดียวและกรองตัวเลือกคิวเฉพาะ GR, แสดง dropdown รายวิชาพร้อมรหัส/ชื่อ/Profile/ID, ค้นหาบางส่วนได้, แสดงจำนวนและ loading/error, ปุ่มโหลดรายชื่อใหม่; default เกณฑ์ผ่อนปรน 1/2569; ยืนยันก่อนสร้างคิวทั้งชุด.
+- JS commit 60f6ae80daa4b0d89c01d0857ee91a62c7d47da1; HTML commit fec2cec650563c9f9591fce21a967e757f607b64; syntax validation และ 8 checks จากข้อมูล GRGS_Public จริงผ่าน (GR 149, GS 46 read-only); DB active GR 149, รายวิชาที่ไม่มีใน DB 0; ไม่มีการสร้างคิว แก้ไขผลตรวจ หรืออัปเดต API/Extension; Pages in_progress/null; ยังไม่ได้ทดสอบ Chrome ที่ล็อกอินจริง.
+
+
+## 83. GR legacy evidence review and Mockup action panel — 2026-11-18
+
+- CLB423 course_id 21476, latest run ee650ae1-9d3d-44ad-b260-2cea5f0ff0c4 stored needs_review, 69/100, threshold 80, possible 100 from old global counters; 15 Podcast + 1 AI Tutor pending (excluded by legacy rubric); no actionable review keys. Video records 22 contain permission/endpoint access errors; user reported links likely genuinely broken. Do not assume they pass; reviewer must choose use/not_use and actual duration.
+- API criteria-12569.mjs introduces GR 1/2569 scoped review: preserves raw global coverage counters but does not treat them as a standalone blocker for legacy scoring; structural gaps still block. Scored checklist and identifiable video evidence determine manual review. Existing pending evidence read transformed in memory; no direct rewrite of stored scores. Permission/uncertain video failure may be manually confirmed or excluded; definitive failed items remain fail. Server validates exact link membership, completeness, actual submitted durations and resulting criterion pass/fail; retains reviewer decision/duration in evidence. Commit dd9a9117cf884b8c7f992fe54cdd062cb7e2b6be, 9ffe222cc2e814cdf0aedfbb4ae56c508e0ea81a, 0e6eb11d71409317642ca08c6e7b18ff5295e2c8. API v50 ACTIVE, readback source matches GitHub, GR scope/auth settings unchanged.
+- Evidence UI action panel, per-criterion drawer, bulk reject option (explicit confirmation, not auto-save), component overview and history tabs; only latest GR legacy admin run has new actions. UI commits 72d0fa15c81363694567828d8fc640ad5b39344d, 6d1a46af2e1f9c42d1793338c70b5dd253a398b9, d385bb8bdee90c8df3698d98bb3492669a5aa8f1, b4a072830ca199585799481ea9cbbfb7d55510a0, ef94e9c06d52d04c0574386cfabcc21ce0166006; Pages run 44265909068 success.
+- In-memory synthetic checks and read-only real CLB423 subset: 69 confirmed, 99 possible (actual criterion potential, not artificial ceiling of 100), 15 actions, 22 video links, 15 unique criterion controls; all-rejected simulation remains 69, fail; missing evidence rejected by server. Render tested in mock DOM, not authenticated Chrome. DB readback confirmed original needs_review 69, published_run_id null. No live review save, Main Data write, or changes to GS/AI Tutor/Podcast, formula, front public repo or Extension package. No need to reinstall 0.13.35 for this server/UI fix. User should hard refresh admin evidence page, choose actual evidence decisions then explicitly save and verify V/W/X. There is still no end-to-end authenticated browser or real Sheet write test. Keep public Dashboard GRGS_Public architecture unchanged.
+
+
+## 84. Detected video duration only / GR integrated evidence mockup — 2026-11-18
+
+- ผู้ใช้ยืนยัน: ไม่พบเวลาคลิปหรือ link_error ห้ามกรอกเวลาเอง/ไม่นับ; พบเวลาและยืนยันประเภทได้ให้นับอัตโนมัติ; พบเวลาแต่ประเภทไม่แน่ใจเท่านั้นให้ผู้ตรวจเลือกใช้และแก้เวลา. Backend GR legacy scoped classifier, excludes missing duration/error, fixed known duration cannot be altered in review, manual only known uncertain. Commit 8dadef2a5db2b989ae23a2ec64ac530f94d215d9; API v51 ACTIVE source readback matches, other API files unchanged.
+- Mockup UI: numeric input 1319 -> 13:19, 13000 -> 1:30:00; fixed/excluded no visible time field, functional session buttons 1–15, session-specific component cards, evidence drawer for all criteria, concise notes, progress bars, separate header metrics/action panel/session panel/tabs. Preview on demand for supported direct media/YouTube URLs only; links blocked by provider or unsupported open in new tab. UI commits acff673c979533626d940020d5d80f34df75742a, 755b86ca386fe1a385ef3bfb967d907d8843fa7c, 992692d4c609f15f7dffe12e149ed26fcab86693. Pages latest in_progress/null.
+- Tested server 5 synthetic checks and actual CLB423 stored evidence in memory: 22 link_error videos with zero duration => 0 editable time fields, 22 read-only video cards, 15 clickable sessions, 69 confirmed/69 possible, no actionable criteria, explicit final confirmation enabled; mixed fixture 1 detected ambiguous clip => exactly 1 editable time field. No authenticated browser QA or actual submission; DB still needs_review 69, published_run_id null. User must confirm result; no production sheet or result changes, no GS/AI Tutor/Podcast scoring changes, no public Dashboard or Extension change.
+
+
+## 85. Evidence action filtering, meeting readability, and course heading — 2026-11-18
+
+- ปรับหน้าหลักฐาน GR legacy admin ให้ส่วน “รายการที่ต้องดำเนินการ” แสดงเฉพาะรายการ `pending/reviewable` ที่ผู้ตรวจต้องตัดสินจริงเท่านั้น รายการที่ระบบสรุปเป็น `fail` แน่นอนแล้ว เช่น `link_error` หรือเปิดปลายทางไม่ได้และไม่มีเวลา จะไม่ถูกยกขึ้นเป็นงานซ้ำ แต่ยังคงแสดงในรายละเอียดรายครั้ง หลักฐานทั้งหมด และ Side Drawer เพื่ออ้างอิงได้ครบ; หากไม่มีรายการรอยืนยัน ส่วน action panel จะไม่แสดง. เปลี่ยนคำสถานะรายครั้งจาก “ต้องดำเนินการ” เป็น “ไม่ผ่าน” สำหรับผลที่ตัดสินแล้ว. Commit `89208ed23a0f603d6323ffe2793d04ffaf662ef3`.
+- ขยาย typography และพื้นที่กดของมุมมอง GR legacy admin สำหรับการฉายจอประชุม: ชื่อวิชา การ์ดสรุป แถบสถานะ แท็บ ครั้งที่ 1–15 การ์ดองค์ประกอบ ตาราง และ Side Drawer; คง responsive สำหรับจอเล็ก. Commit `5223be6eb0c0e89269696e5dda8a23792f1cbaf8`; cache `20261118review7` ใน commit `e487ab364a9c2c32f54e37a608ea3845d539f72d`.
+- ปรับหัวรายวิชาเป็นสองบรรทัด: บรรทัดแรก `รหัสวิชา · ชื่อวิชา`; บรรทัดสอง `[Course Profile]` เต็มบรรทัด แยก Course Profile ที่เคยต่อท้ายชื่อออก และ normalize กรณีข้อมูลมีวงเล็บเหลี่ยมอยู่แล้วเพื่อไม่แสดงซ้ำ. Commits `cc2fa83299b5de7b5fe958f1a50d7e96c48cb33c`, `c01659b00f621bfc0493d5efb3313d15756d0dd2`, `8a2fa49dcd7e255e1c30327332b8ad96f386bd3a`; cache `20261118review8` ใน commit `383215b98aa2d5f588402f439d6baf29851fd049`.
+- ตรวจ syntax ของ `audit-evidence.js` หลังแปลงด้วย JavaScript parser ผ่าน และตรวจจำนวนจุดแทนที่ก่อน commit ทุกไฟล์; ยังไม่ยืนยันภาพหลัง deploy ผ่าน Chrome authenticated เนื่องจากระบบควบคุมหน้าต่างไม่สามารถยืนยัน URL ของ Chrome ได้. ไม่ได้ยืนยันผล CLB423, ไม่เขียน Main Data, และไม่เปลี่ยน GS, AI Tutor, Podcast, API, สูตรคะแนน หรือ Extension.
+- แก้ไขความเข้าใจคลาดเคลื่อนของหัวรายวิชา: ฟิลด์ `courseProfile` จริงอาจบรรจุ `ชื่อวิชา [Profile]` ทั้งชุด จึงห้ามนำฟิลด์นี้ลงบรรทัดล่างโดยตรง; ให้แยกเฉพาะข้อความในวงเล็บเหลี่ยมท้ายชื่อ แล้วแสดงเป็นบรรทัดสอง. ผลทดสอบ CLB423 ตรงตาม `CLB423 · ภาษาอังกฤษสำหรับการสอบ Marlins Test` และ `[691GR-CLB423(TL)-(TT)]`. Commit `39aa9e59c605d8200007aacfd4046b4b992e8a90`; cache `20261118review9` commit `2dda3a96f85355e42b6e3374ebc612affd18a6b2`.
+- หลังผู้ใช้รีเฟรชยังเห็นรูปแบบเก่า ตรวจพบช่วงเวลาที่ GitHub Pages เผยแพร่ HTML/JS ไม่พร้อมกันและ browser เคยรับ asset URL `review9` ก่อนเนื้อหาใหม่ขึ้นครบ จึง bump เป็น `20261118review10` commit `4753033fdacdec34e523ff60c21d0911c9a3289d`. ตรวจ Production แบบ no-store แล้วพบทั้ง HTML อ้าง `review10` และ JavaScript มี corrected splitter จริง; ไม่ได้เปลี่ยน logic เพิ่มเติมหรือข้อมูลผลตรวจ.
+
+
+## 86. Published failure colors and teacher correction summary — 2026-11-18
+
+- พบสถานะ `has_content` มีสองช่วงความหมาย: ก่อนเผยแพร่ใช้เป็นผลภายใน แต่เมื่อ `public_status=has_content` หมายถึง “พบเนื้อหาแต่ไม่ผ่านเกณฑ์” อย่างชัดเจน. ปรับ UI ให้ผลที่เผยแพร่แล้วใช้โทน `fail` สีแดงทั้งการ์ดสถานะ กล่องสรุป และประวัติ; สีส้มสงวนไว้สำหรับ `needs_review`/รอตรวจ. เพิ่มข้อความ “ไม่ผ่านเกณฑ์” สำหรับผลเผยแพร่และคงข้อความผู้สอนแบบไม่เปิดเผยคะแนนภายใน.
+- เพิ่ม “สรุปการแก้ไขสำหรับผู้สอน” จากเกณฑ์ที่ไม่ผ่านโดยอัตโนมัติ และแสดงในมุมมองผู้ตรวจด้วยเมื่อผลเผยแพร่แล้ว; CLB423 มี fail criteria 15 รายการ จึงมีข้อมูลจริงสำหรับสร้างสรุป. หากผู้ตรวจกรอกหมายเหตุ ระบบแสดงการ์ด “ข้อเสนอแนะเพื่อปรับปรุงรายวิชา”; หากไม่ได้กรอกจะไม่สร้างข้อความแทนผู้ตรวจ.
+- ตรวจฐานข้อมูล CLB423 run `ee650ae1-9d3d-44ad-b260-2cea5f0ff0c4`: `internal_status=has_content`, `public_status=has_content`, 69/100 เกณฑ์ 80; การยืนยันเดิมไม่มีข้อความหมายเหตุ (`internal_note` มีเพียง reviewer marker). การสรุปอัตโนมัติจึงอิง 15 fail criteria เท่านั้น.
+- API เก็บ `reviewConfirmation.note` สำหรับผลใหม่ และอ่านหมายเหตุเดิมจาก `internal_note` โดยตัด reviewer/email ออกก่อนส่งทั้ง admin/public history. Source commit `e71fe695a0e09310aa870ea6bce103fa2f7cea0b`; Production API v52 ACTIVE และอ่าน source กลับยืนยัน helper, public field, stored note และ query fields ครบ.
+- UI commits `148092a4dc03e814dd087746413a1e63ec085d4b`, `45fe2e04a2f4a82553b0f3c3c3a7855152aee897`, `52fe1a720507d979cdddd09920f3e636412431ee`, `a99dc9ad78963acaaa4d1740f8aa763b16ae43c9`; cache สุดท้าย `20261118review12` commit `0664dc2dfa90e7dfc8489f42ab2617c0c65ac769`. ตรวจ Production แบบ no-store แล้ว HTML/JS/CSS ชุด review12 ขึ้นครบ.
+- ไม่แก้ผลตรวจหรือคะแนน CLB423, ไม่เขียน Main Data, ไม่เปลี่ยน GS, AI Tutor, Podcast, สูตรคะแนน หรือ Extension.
+
+
+## 87. Separate inaccessible video links from duration gaps — 2026-11-18
+
+- ผู้ใช้ยืนยันว่าปัญหาวิดีโอต้องแยกเป็นสองสาเหตุแบบไม่ซ้ำกัน: (1) มีลิงก์แต่ลิงก์เสีย ติดสิทธิ์ หรือหาปลายทางไม่พบ ให้สรุปเฉพาะ “เปิดปลายทางไม่ได้” และห้ามกล่าวว่าเวลาไม่ครบ เพราะยังอ่านเวลาไม่ได้; (2) ลิงก์เปิดได้แต่เวลารวมต่ำกว่าเกณฑ์ หรือไม่มีลิงก์คลิปการสอนในสัปดาห์นั้น ให้สรุป “เวลารวมของวิดีโอไม่ครบตามเกณฑ์”.
+- ปรับ `actionableIssues` ให้ access failure มีลำดับก่อน duration และ return ทันที จึงไม่สร้างสองหัวข้อจาก criterion เดียว; เพิ่มรูปแบบตรวจจับ `ลิงก์เสีย`, `link_error`, `เปิดปลายทางไม่ได้`, `ไม่พบปลายทาง` และสิทธิ์เข้าถึง. Access action ระบุให้แก้ลิงก์หรือสิทธิ์เท่านั้น ไม่กล่าวเรื่องเวลา.
+- ทดสอบ 3 กรณีผ่าน: CLB423 detail ที่มี 0:00 พร้อมลิงก์เสีย => เปิดปลายทางไม่ได้เพียงข้อเดียว; ลิงก์เปิดได้แต่ 42:18/1:30:00 => เวลาไม่ครบ; ไม่มีลิงก์คลิป => เวลาไม่ครบ. Source commit `88c9ea0f2f28fb340598e7b96886f6e006bc62f5`; cache `20261118review13` commit `e0455e0bcb9d5f706e19b9f6666ecc40b39fdd29`.
+- ตรวจ Production แบบ no-store แล้ว HTML และ JavaScript review13 ขึ้นครบ. ไม่เปลี่ยน API, คะแนน, ผลตรวจ, Main Data, GS, AI Tutor, Podcast หรือ Extension.
+
+
+## 88. Mockup-aligned course evidence header — 2026-11-18
+
+- ปรับส่วนหัวหน้าหลักฐานตาม Mockup: แถวบนแสดงประเภทวิชาเป็น chip, ภาคการศึกษา และเวลาตรวจล่าสุด; แถวกลางแสดง `รหัสวิชา · ชื่อวิชา`; แถวล่างแสดง Course Profile, หน่วยกิตเมื่อมีข้อมูลจริง และคณะ; ลิงก์เปิดรายวิชายังคงอยู่แบบข้อความขนาดเล็ก. กล่องสถานะด้านขวาคงใช้สีตามผลตรวจ.
+- ไม่สร้างหรือเดาหน่วยกิตเมื่อข้อมูลต้นทางไม่มีค่า. ตรวจข้อมูล CLB423 พบ GR, ภาค 1/2569, คณะการบิน การท่องเที่ยว และการบริการ แต่ไม่มีค่า credits จึงไม่แสดงหน่วยกิต.
+- เพิ่ม group/faculty/instructors ใน admin history response. API source commit `500485819ddf795aa85349819650c217d564ef0d`; Production API v53 ACTIVE และอ่าน source กลับยืนยัน metadata fields ครบ.
+- เพิ่มการคง `semesterCode`, `reviewerSummary`, `receivedAt` ใน public API normalization เพื่อไม่ทำข้อมูลที่ API ส่งมาหาย. Commit `ba1ab4713ed8f146d50902d8f8128fd4bdb6d3ea`.
+- UI commits `887b92615c977117a53c743989fbc457f425bfce`, `5cd25a178b19583aac0ce38a31da1fce009f1ec1`; cache `20261118review14` และ audit-api cache `20261118header1` commit `f824f5c8498aa25a8c42dc4b7983fd4d67454d42`. ตรวจ Production แบบ no-store แล้ว HTML/JS/CSS/API asset ชุดใหม่ขึ้นครบ.
+- ไม่เปลี่ยนผลตรวจ คะแนน Main Data, GS, AI Tutor, Podcast, สูตรคะแนน หรือ Extension.
+
+
+## 89. FDM206 result mismatch and authoritative GR track — 2026-11-18
+- Work quota exhausted after v53/review14. User reported `legacy_result_score_mismatch` immediately on start; audit-review.js sends retained Extension result_ready before claim, acknowledges ONLY after successful submit, retries on failure. Do not clear local storage, uninstall Extension, delete or recreate queue for this symptom.
+- Read-only verified FDM206 21443 [691GR-FDM206(TL)-(T)] theory 100/80, running job 206267d6-c42c-444e-b192-aaccdf29a778; 21442 [691GR-FDM206(TL)-(L)] practical 50/40, queued job 1d933e64-30d7-490d-9579-61afcd79500d. Before deploy neither had legacy run. Actual rejected client payload not accessible from connector; exact mismatch values unknown. Do not claim reproduction of original failing payload.
+- Verified actual GRGS_Public 149 unique Course IDs: 128 theory (T/TT), 21 practical (L), all parsed profile matches code/type. Four i-Learning titles in courses lack profile; resolve exact GR ID from published GRGS_Public if title lacks profile, fail closed if unresolved. Header/profile and queue response carry courseProfile, courseTrack and gnTrack for Extension 0.13.35 compatibility, no new extension package.
+- Backend validates GR, job criteria/semester/course ID, quality gate, track and threshold match authoritative profile, complete 15 unique sessions and scored criterion statuses, finite score bounds, no-content consistency, structural review block. Computes server canonical weighted result from checklist/legacy media review and retains original client score/status + baseline/server score in legacyScoreReconciliation and diagnostic log. No blanket acceptance of wrong track or incomplete evidence. Rubric weights unchanged. Commits 753d5a6cf602d8b967f93581b6d4cc9fb4c25f66 and 78abd1bba0a7c76c2c05910ef9e5bcdaac7e72c4.
+- 13 synthetic tests passed; real stored CLB423 payload in memory (reviewConfirmation omitted only in fixture) remains 69/100 has_content. Actual FDM206 payload and authenticated submit not tested; require user to resume on same Chrome, preserve result_ready. If track actually wrong, reject and recheck only affected course, not force accept. API v54 ACTIVE readback exact match, auth config and other dependencies unchanged. No direct DB mutations, queue reset, Sheets write, frontend, GS/Podcast/AI Tutor or Extension change. Browser worker may resume and write normally when receiving successful API response; verify run and sheet after user retries. Latest read-only job state: boundaries.
+
+<untrusted-data-ed7c3b8c-01a2-474a-ac35-dff4d7f087af>
+[{"course_id":"21442","public_status":null,"job_status":"queued","attempts":0,"legacy_runs":0},{"course_id":"21443","public_status":null,"job_status":"running","attempts":1,"legacy_runs":0}].
+
+
+## 90. Verified empty GR course classification — 2026-11-18
+- FDM206 Course IDs 21443 (T) and 21442 (L) submitted no_content, hasContent false, coverageComplete true, reachedEnd true, 0 activities/auditable/non-forum counts, explicit emptyReason, 16 section shells with structurallyComplete false. API v54 incorrectly prioritized structure review and stored needs_review; neither result published at inspection.
+- Fix in criteria-12569.mjs commit adc93fb92bc1b1cb346a09733cbfd9f4a9052bc8: verified empty scan returns no_content, 0 confirmed/possible/reviewable points, before structure gate; requires zero evidence, all criteria fail/not_applicable, completed traversal, explicit empty reason and no unresolved or topology flags. Unverified empty remains needs_review. No rubric weights, Extension, GS, front dashboard or Sheet changes.
+- Tested actual two stored payloads in memory and 8 negative variants (not reached end, topology required, activity count nonzero, missing empty reason), 10 passed. API v55 ACTIVE, readback matches GitHub. No direct DB status change. Re-audit only the two affected courses in normal queue to publish correct result and verify Main Data V/W/X. Real submit and Sheet sync not yet verified.
+
+
+## 91. FDM313 instructor false-positive and provisional T/L grouping — 2026-11-18
+
+- User verified manually that FDM313 theory and practical lack instructor introduction/contact information. Course ID 21364 [691GR-FDM313(TL)-(T)] latest run score 55/100 has_content, criterion 1:2 pass; summary identityComplete/contactComplete/photo true, 2 contact channels (online/Facebook), matchedExpectedInstructor false. Course ID 21363 [691GR-FDM313(TL)-(L)] latest score 16/50 has_content, criterion 1:2 needs_review, purported name/photo, zero contact channels, matchedExpectedInstructor false; OCR timeout vs theory complete. Both catalog rows contain one expected instructor, but submitted payload has no instructors; stored summary does not include provenance for the name/photo/contact signals. Do not assume matching course code proves equivalent content or auto-change their current stored results.
+- Confirmed code defect: release 0.13.35 central-worker-contract.js normalizeCentralJob discards instructor_names although claim returns it; background.js scanQueuedCourse uses job.instructors || "" for SCAN_COURSE and SCAN_INSTRUCTOR_EVIDENCE. Stage next-release file release-src/dashboard-0.13.36/central-worker-contract.js (commit 4a85ebd503d1cf2f09b8bef604ff47ff273cf1a8) fixes normalization with 4 synthetic tests (arrays, whitespace, absent, string). This is a partial staging file only, NOT a complete release, not built/deployed; Production stays API v55 / Extension 0.13.35.
+- Required next fix: recover full content.js/instructor-name.js from original released ZIP or local source; verify real introduction block (not Moodle user list/participant avatar/general navigation, external social link unrelated to teacher, or names in lecture files). Use expected names only as matching reference, not evidence; require relevant name/photo/contact evidence anchored to introduction; clearly absent => fail; uncertain/OCR inaccessible => needs_review; no generic auto-pass. Capture provenance and source location for each signal, verify same rubric in Extension/API. Do not change existing scores directly or ship partial scanner fix; rerun target T once release verified. No production/DB/Sheet/GS changes in this step.
+- New user instruction: if a course has corresponding theory T and practical L in the same group, use T as primary audit; separately audit standalone L only when no corresponding T exists. Colleague will supply grouping. Do NOT guess pairing from same code alone, remove or deactivate L, change course counts, propagate T result to L/Sheet, or reset queues before confirmed mapping and reporting rules. Maintain Course ID as unique identity, retain all previous results. Group mapping and downstream publication details not yet finalized; no implementation of grouping yet.
+
+
+## 92. FDM313 visual evidence, machine transfer and split workflow — 2026-11-18
+
+- Read [WORK_MACHINE_TRANSFER.md](WORK_MACHINE_TRANSFER.md) first on a new machine or new Work session. Portable snapshot contains system links, versions, scope, rules, exact next fixes, regression cases, machine-transfer checklist and limitations.
+- FDM313 21364 screenshots show automatic Moodle Teacher avatar, Week 1 objectives/Facebook groups/inquiry forum and Week 2 Live Record title with lecturer names, not a dedicated instructor introduction. User confirms no actual instructor/contact information. These are possible false-positive sources, not proven detector provenance. Exclude automatic avatars, unrelated images, names solely in titles, generic group allocation links; require evidence in legitimate instructor-introduction/contact context, retain actual provenance; absent => fail, genuine uncertainty => needs_review.
+- User will resume local scanner/Extension and browser QA in Work after quota reset, while GitHub and Supabase changes are carried out in normal chat when requested. No automatic background execution. Version 0.13.36 contract remains partial staging, not a release. Do not change results or implement grouping before confirmed mapping. Retain GR-only scope.
+- Existing Handoff content already contains truncation markers from a previous update. Preserve remaining history; use Git history to recover the last intact version separately if required. This update appends only; no production/schema/queue/Sheet/Extension changes and no transfer of local files or credentials.
+
+
+## 93. Idempotent completed-job result retry — 2026-11-18 UTC / 2026-11-19 ICT
+
+- User supplied SQL for `public.record_audit_result_v2` to recover when a result is committed but the browser loses the HTTP response. Before migration, live RPC rejected every non-running job, including completed jobs. Applied the supplied SQL unchanged to production project `nwupjnkotdkodyxnraie` via migration `20261118170109_record_audit_result_v2_idempotent_retry`; Supabase returned success and migration history confirms it. Existing security definer, signature, search_path, running-job write/publication logic and service-role guard retained.
+- Completed-job branch returns existing run ID when course ID, external audit ID, criteria mode and semester match; otherwise it raises `job is completed with a different result`. No writes in completed-job branch. Limitation: lookup is not a direct job-to-run association and does not compare payload/hash; another existing audit ID of same course/mode/semester may match, so do not claim stronger identity guarantees.
+- Production SQL readback confirms new retry branch and guards. SQL regression using completed GR FDM313 course 21364: same saved result returns original run, unknown external ID rejected, simulated anon claim rejected, tested job/run row values unchanged. No queue reset, score/data rewrite, Sheet write, Edge Function or Extension deploy. Authenticated browser/HTTP retry and downstream queue progression not yet tested; retain result_ready and resume original worker normally.
+- Security advisors flag existing default EXECUTE permissions for anon/authenticated on SECURITY DEFINER RPC; body service_role guard remains and negative test passed. No ACL change made in this supplied migration. Recommend separate scoped grant hardening after verifying callers. RPC is shared; no GR/GS-specific scoring changes made.
+
+
+## 94. HTTP 546 after completed-job retry — 2026-11-19 ICT
+
+- User screenshot showed HTTP 546, worker still displaying FDM206 L (21442), only FDM206 T (21443) queued. Production API v55 logs: POST worker/jobs/d882405e-75ab-4da3-990e-863bd5c74607/result returned 546 at 17:13:02 and 17:14:32 UTC; both shutdown reasons WallClockTime. First RPC record_audit_result_v2 HTTP 200 at 17:11:47, subsequent retries HTTP 200 at 17:13:08 and 17:14:39, followed by published pointer reads HTTP 200. Migration 93 works at RPC level; whole request still times out after persistence.
+- Read-only DB verified 21442 completed at 17:11:47 UTC, published no_content run 9a6c40e4-e653-4c06-994f-aac3ab8d5c5d; 21443 job 7f4b55e0-a887-402f-a042-be4b17313400 queued, not yet published at inspection. Main Data 69/1-GR row 466 (21442) V/W both ไม่พบเนื้อหา and X correct evidence URL, row 467 (21443) V/W blank and X existing URL. Sheet state matches saved L result; cannot prove which attempt wrote it or that webhook response was received. No manual writes.
+- GitHub submitResult awaits syncSheetStatusSafely after RPC and publication read. Helper fetch to Apps Script has no timeout or abort; likely waiting for webhook response after database commit. Apps Script mirror waits for script lock up to 30s and reads course IDs up to last row before writing/flush/readback; precise webhook delay cause unverified. Sheet has large grid (50,500 rows, not evidence all rows populated); don't assume scale is proven cause. Existing dashboard acknowledges before checking sheetSync failure and stops on failure. HTTP 546 prevents acknowledgement and triggers repeated submission.
+- Recommended fix: bounded webhook request, explicit saved-vs-sync result, retain pending result when Sheet verification fails so user can retry safely, do not claim next job until verified. On completed-job recovery verify saved run identity and avoid repeat evidence writes; consider separate reliable sheet reconciliation if needed. First check Apps Script Executions and actual deployed script before changes. Preserve GR-only scope and current published data. No production code, database, queue, sheets, or extension modified during diagnosis. Do not reset, clear storage, reinstall, or manually mark completed; pause further work safely pending fix.
+
+
+## 95. Bounded webhook, completed-result retry and dashboard acknowledgement — 2026-11-19 ICT
+
+- User authorized implementation of section 94. Before changes, both real FDM206 jobs independently completed via v55: 21442 L published run 9a6c40e4-e653-4c06-994f-aac3ab8d5c5d; 21443 T published run f2af74d1-de64-472c-88f9-90379eb6c5c9 at 17:18:24 UTC. Both Main Data 69/1-GR rows 466/467 V/W/X verified via Sheets connector, no_content. HTTP logs eventually 200, elapsed 115036 ms and 92292 ms respectively after repeated 546. These successes predate the fix; not evidence of v56 E2E success.
+- Source commit 6c58ea1a4b39154f4c709ddff91ba4a286095d9c (index.ts, audit-review.js, audit-review.html, asset 20261119sync-retry1). Webhook timeout 15s, published Main Data CSV readback timeout 10s per request. For lost/timeout response only, accept exact unique GR Course ID/profiles and matching V/W/X in published CSV, labeled verificationSource=published_main_data_csv and liveSheetVerified=false; explicit webhook errors are not masked. Completed retry checks published CSV first to avoid repeated webhook when published values already match. CSV may lag or show earlier matching values; not equivalent to live Apps Script confirmation. If no verification returns, report pending; keep result_ready and stop worker; manual start retries without rescanning. Apps Script remains unchanged and original delay cause not independently verified. No Apps Script execution access.
+- Completed retry identifies stored run using exact course/external ID/mode/semester AND created_at equal to job completion transaction timestamp, returns stored public status, and does not overwrite storage, recompute score or call result RPC again. Only sync when stored run remains published; older result skipped, unknown ID rejected. Timestamp safeguard may reject unusual legacy upserts with differing created_at; fail closed, investigate rather than force overwrite. No new schema or direct data changes, no GS changes, no extension build.
+- Syntax checked after stripping imports for standalone parser. 13 simulated/stub/static assertions passed: live webhook readback, timeout + exact published match, mismatch pending, completed readback without webhook, duplicate rejection, explicit failure not masked, GS/unpublished skip, acknowledgement after verification, completed branch before storage, timestamp association, newer publication skip, unknown result rejection. Initial test harness attempts failed before writes due to import parsing and missing URL in isolate; corrected harness then passed. Runtime Deno networking, actual authenticated Chrome retry and Apps Script/CSV response timing not exercised in tests.
+- Production Edge Function v56 ACTIVE, readback exact match of index.ts, unchanged all three other modules and verify_jwt=false. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44360541182 status completed, conclusion success at documentation time; browser cache and end-to-end user smoke test still outstanding. DB readback confirmed both FDM206 jobs remain completed with same IDs after deploy. No results manually altered or queue reset. Next: reload dashboard when Pages ready, test next normal GR job (do not requeue FDM206 solely for testing), verify V/W/X and API logs; if pending persists, investigate actual Apps Script Executions and source before further changes.
+
+
+## 96. Admin report table layout refinement — 2026-11-19 ICT
+
+- User screenshot showed large typography squeezed into 12 columns, broken score numerators/denominators, multi-line action labels, raw reason codes, and isolated fifth KPI card. User clarified that larger readable text must be accompanied by coherent spacing and layout.
+- Source commit 8e3e6a54a2110f65297677c7543ae1b41b124f7b modifies audit-review.js, audit-review.html and adds report-only audit-report-layout.css. Assets version 20261119report-layout1 and 20261119layout1. Owner/Super Admin reports group 12 original fields into eight columns (course, audit time, score with confirmed/possible/threshold, evidence count, internal/published status, reason, decision, actions). Regular Admin groups six into five, without adding privileged data or decision controls. Date/time split; course identity readable; all three scores retained, action labels nowrap, action buttons stacked, badge sizes consistent; published has_content is red, internal status mapping remains. Reasons for known legacy codes translated; raw reason preserved in title; automatic decision no longer redundantly repeats badge. Filter/KPI grids responsive; horizontal table scroll on narrow screens. No change to scoring rules, data, queue, API, Extension or worker logic.
+- JS parser and 12 simulated render/static checks passed (column counts, scores, decision actions, evidence/requeue IDs, published color, regular Admin visibility, empty colspan, worker recovery unchanged). Not an actual authenticated Chrome visual test. GitHub readback verified new asset references and CSS. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44362538077 status in_progress, conclusion not yet reported at note time. User should refresh once deployed and verify actual typography/spacing at their screen resolution; further visual adjustment only if needed.
+
+
+## 97. Apps Script performance recovery and GRGS_Public single read source — 2026-11-19 ICT
+
+- Apps Script Version 4 Executions screenshot: prior 5–9s, later 67–178s, Completed does not establish JSON ok. User provided editor code, consistent with repository mirror. In chat supplied optimized replacement (TextFinder exact Course ID, 5s tryLock, batched row E:X, skip same V/W/X write/flush, timing logs without secret). User subsequently tested; v56 production result HTTP 200 for five requests at 3.887–5.998s around 01:18–01:23 ICT (including original completed retry). Apps Script deployed version and actual content not independently read, so do not claim mirror updated or code verified live. Existing web app URL unchanged in API. No need to alter script for catalog issue.
+- At 01:26:39 ICT user tried all-GR queue: v56 POST jobs/selected HTTP 400, function log catalog_GR_http_401. Root cause syncCatalog retained private raw sheet CSV gid 1339443713. User explicitly reiterated section 82: GRGS_Public is the read source (catalog/public results); 69/1-GR for Apps Script V/W/X writes and direct live verification only. Screenshot Publish to web settings showed selected GRGS_Public, AI_Tutor_Public, Podcast_Public, not raw tab. Never publish raw Main Data or edit formula/sharing/other groups to fix this.
+- Live native GRGS_Public read A1:R250 returned 195 courses (149 GR, 46 GS). A2 formula VSTACK/FILTER/HSTACK with SUBTOTAL/OFFSET selects visible rows from raw tabs. Public progress column O maps raw U (not V); reviewStatus P maps W; courseLink Q maps I; evidence R maps X. Exact 149 unique GR IDs, 128 T/TT and 21 L, all metadata matched active DB (code, title, faculty, links, instructor names), no absent courses. Four i-Learning titles remain without profile; existing fallback uses GRGS_Public. Use public visible GR list rather than inventing new filtering rules or fixed counts.
+- API source commit bd497c1c37ed571e0dd7b15f9a620b117adbbeb8, production v57 ACTIVE, source readback exact. syncCatalog now fetches GR_PUBLIC_CATALOG_URL gid 131857057, parses actual headers and filters GR, validates IDs/profile and uniqueness, retains existing upsert/queue RPC. Additional guard rejects if any active GR ID missing before writes, because public filter might be incomplete; intentional removals require review. No private raw CSV references. On webhook timeout/network failure public W/X readback is diagnostic only (publishedVerified); cannot confirm private V because it is not exposed, so result stays pending until Apps Script verifies V/W/X. Completed retries still reuse stored run, no overwrite. No changes to front-end, scoring, DB records, queue, formulas, GS, AI Tutor, Podcast, sharing or Extension.
+- 9 simulated/live-data checks passed: exact real GR metadata/IDs, GS exclusion, T/L counts, duplicate rejection, bad link/header rejection, private URL removed, real matching W/X does not falsely verify V, missing active guard before upsert. Syntax passed. Live DB readback after deploy: 149 active GR, 130 published, 0 queued/running. Authenticated browser all-GR queue action has NOT been exercised on v57; user to explicitly click queue creation and verify. Do not create queue automatically or re-publish raw tab.
+
+
+## 98. Automatic retry for unattended GR queue — 2026-11-19 ICT
+
+- v57 live all-GR selection succeeded HTTP 202 at 01:43:30 ICT. Seven jobs completed, 142 queued. First six result requests 4.011–6.121s. CEG334 L Course ID 21296, job 592559af-0d00-4e21-866f-f9d7c1dcbed8, run 5dc64f10-f58d-4d62-a003-c37b33492ea9, completed 01:56:04 ICT. v57 returned HTTP 200 at 01:56:30 after webhook 15s timeout plus public CSV 10s timeout. Read-only native Sheet row 2282 V/W/X and GRGS_Public W/X matched existing published has_content (ไม่ผ่าน); cannot prove latest webhook wrote them. No manual sheet write. User asked to implement automatic retry for overnight operation.
+- Commit 393c549d5fb156c18b96756cf7bf8b28093657e0, changes audit-review.js, audit-api.js, audit-review.html only; asset versions 20261119auto-retry1. Transient submission/Sheet failures (timeouts, network, sheet_busy, HTTP 408/425/429/5xx including 546) retry same retained job/result up to 3 times after 30/45/60s. Permanent errors stop; exhausted budget stops, retains result. Requires live verified V/W/X (ok, verified, liveSheetVerified) or explicit result_not_published before ACK and next claim. No public-only verification. Submission client request timeout 90s. Non-auth HTTP errors retain status metadata. Per-page single-flight guards prevent concurrent step/start/reset; schedule cannot shorten existing retry deadline; manual stop during retry wait cancels retries and retains result; in-flight stop waits for current submission response. Reset disabled during in-flight operations; otherwise resets page state only. If ACK fails, stop rather than claim. Session renewal resumes retained job without resetting retry budget, if renewal succeeds; otherwise pauses for login. Retry state in page memory resets on reload/manual start, not a persistent service. Avoid simultaneous worker tabs; keep Dashboard/Chrome open and computer awake; Google session renewal, browser/network and Apps Script availability remain constraints.
+- JS syntax and 14 mock state-machine checks passed (backoff timing/no bypass, same result, one ACK before claim, retry exhaustion, manual stop, permanent error, HTTP 546, public-only rejection, unpublished skip, reset, parallel steps, unexpected retained-state change and auth renewal). GitHub readback confirmed both asset references and timeout. No DB/Edge Function/Apps Script/Extension release, queue mutation, scores, formulas, GS/AI Tutor/Podcast changes. DB still 142 queued and 7 completed at verification. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44381747762 status completed, conclusion success at note time. Actual authenticated Chrome retry and overnight operation not yet tested; do not guarantee uninterrupted run. After Pages success refresh Dashboard then start worker once, observe retained CEG334 submission and next queued job; avoid requeue/reset/reinstall. This mitigates intermittent slow response, not underlying Google latency.
+
+
+## 99. Durable GR sheet synchronization and overnight queue resilience — 2026-11-19 ICT
+
+- User explicitly prioritized completion of every GR audit before next afternoon. Changed previous stop-on-unverified-mirror behavior: advance auditing only after exact persisted Run ID and durable GR-only mirror queue registration (or live V/W/X verification, or explicit unpublished skip). Pending/blocked mirror is NOT counted as verified. Source commit 9cba98cb483030f756c886ad3cd9d6e4997c6b24; API v58 ACTIVE with exact source readback; Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44383040148 completed success, assets 20261119durable-sync1.
+- Migration 20261118194240_gr_sheet_sync_outbox applied successfully; repo SQL supabase/migrations/202611190001_gr_sheet_sync_outbox.sql. Separate row per GR Course ID, bound to current published run and status, pending/verified/blocked/superseded state, attempts, retry timestamp, lease token, verification time/error. Service-only table/RPCs with RLS and grants revoked for anon/authenticated; SQL SECURITY INVOKER. Registration occurs after saved result and before ACK; a failed registration requires retained result retry. New publication on same course updates outbox target; old pointers/stale lease tokens cannot verify. Immediate attempt via existing authenticated Apps Script, no raw CSV; public sheet still catalog/read source. Transient failure keeps per-course six-minute lease (Apps Script may still finish after HTTP lost) and durable pending row, retries one due item between audits and after audit queue drains. Explicit validation/configuration failure marked blocked for human attention, not hidden. Manual result publication also tracked via same helper. No scoring, GR scope, Sheet formula, sharing, Extension, existing jobs or results mutated. Do not publish raw sheet.
+- Dashboard also retries transient submission indefinitely after initial 30/45/60s backoff (then every 5 min); permanent submission/quality errors still require attention. Due mirror drain runs through authenticated page, not a standalone cron/background service. Shows separate verified/pending/blocked counts and first eight unresolved courses. Waits for outstanding leased jobs instead of falsely reporting empty; retains claimed job in page memory for lost START response; lost ACK checks idle state; reconnects transient Extension status; session renewal periodically attempts every 60s if prompt fails. Google login may still need human interaction; one active dashboard tab, awake Chrome required. No guarantee against browser crash, invalid audit data, permanent errors or Google downtime.
+- 12 implementation/mock checks, 14 additional UI state-machine checks, rolled-back SQL regression (exact run/old run rejection, exclusive lease, stale token rejection, timeout persistence, retry, verified idempotency, counts, anon role guard) passed. Security readback RLS enabled, anon SELECT false, authenticated INSERT false, service_role INSERT true; no RLS policies intentionally because service-only, informational advisor lint 0008 expected. Existing unrelated SECURITY DEFINER warnings not changed. Actual authenticated Chrome/Apps Script v58 e2e not yet exercised. Before user restarts: 7 selected jobs completed, 142 queued, outbox 0 rows (no live v58 registrations yet). Existing retained CEG334 job should register or verify on next start; previously checked native row 2282 V/W/X matched, no manual write. No requeue or reset needed. When checking next day, verify actual current-round course count and statuses (incl. audit_failed/needs_review), mirror queue counts and W/X readback; incomplete work must be disclosed. Verified count is only tracked v58 publications, not all historical runs. Avoid rescanning completed courses merely to test.
+
+
+## 100. GR 1/2569 outcome-driven review, truthful possible score, full score reconciliation — 2026-11-19 ICT
+
+### User instructions (supersedes the previous blanket structure-review behavior for GR legacy_12569 only)
+- ผ่าน: คะแนนยืนยันถึงเกณฑ์; retain explicitly agreed practical mandatory gates (50/40, minimum video/pre/post coverage, first-session activity). Theory remains 100/80 including 30 video points. Do not add new mandatory gates. รอตรวจ: only when identifiable evidence requiring an actual reviewer decision can change fail to pass, with concrete controls and computed result rather than arbitrary pass/fail buttons. ไม่ผ่าน: genuine attainable ceiling below threshold or mandatory gates cannot be satisfied. Structural anomalies are separate warnings when they do not undermine score credibility; a genuinely incomplete/unreliable scan is a technical failure requiring rescan, not a fictitious score ceiling or empty review.
+- User rejects unexplained score such as JBC229 confirmed 35 / possible 100 without actionable evidence. User wants compact component summary: use contiguous ranges e.g. 2–15, 2–4, 7, 10–12; separate failed and pending sessions. User also explicitly requests checking every already audited course and recording instructions, actions and outcomes in this Handoff.
+
+### Verified root cause and full population review
+- Old criteria-12569.mjs set theory potentialTotal to 100 whenever structurePending; reconciliation forced needs_review even above threshold; legacyReviewKeys suppressed all controls in this case. This was a decision/ceiling bug, not an arithmetic difference in confirmed scores. Initial exact checklist replay: all 149 active GR latest pointers inspected; 116 completed latest legacy results (95 theory / 21 practical) matched stored confirmed score and threshold, 31 older-mode results and 2 technical audit_failed. Exactly three inflated ceilings and outcome mismatches: BUS111 21235 (85→100 old, actual possible 90; pass), EBC340 21265 (66→100 old, actual 66; fail), JBC229 21495 (35→100 old, actual 35; fail). OCM101 21486 remains legitimate actionable review: 51 confirmed, conditional cap 81, 15 known-duration video candidates. Independent replay with all existing recorded video times accepted returns only 59 (strict existing manual confirmation duration rule). 81 is reachable only if actual additional/corrected times are verified, not merely accepting all links. Do not invent duration or override evidence. Existing rules for duration review retained.
+- Evidence-specific warning analysis: BUS111 mapped Week 0 introduction to session 2 then declared Week 1; full scan, high confidence, 15 sessions, no unmapped scoring activity; conservative score classification still pass after removing all possibly affected session-2 points. EBC340 has Course BOT SPUAI URL in extra intro box before declared Week 1; no scored element there, 66 ceiling unchanged. JBC229 lone unmapped item is skipped_unclassified generic contact URL in ignored session 16; not scored. Unknown/ambiguous scored items still require technical review. Preserve topology raw observations, do not waive arbitrary coverage loss.
+- Source commits aa0b522be6988080e7cb66031009e71fbff6dfd6 (rule, UI and backend) and 4523c962f7675eb95801885494c920c3beb38ce7 (observed duration diagnostic and summary refinement); API v59 then v60 ACTIVE with exact deployed source compared to GitHub. Pages success https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44449154034 ; asset cache versions audit-review 20261119score-review1, audit-evidence 20261119score-review2. Changes confined to GR legacy scoring path and corresponding admin presentation; existing theoretical/practical rubric weights and gates, queue machinery and Apps Script/GRGS_Public separation unchanged. Backend removes blanket potential 100; warning downgrade is narrow, evidence-based and recomputed server-side. New material structure block becomes audit_failed (not published, preserves prior published pointer); needs_review keys only for genuine outcome-changing scored item(s). Existing unresolved cases are recalculated read-side; confirmed-score drift blocks manual summary rather than silently overwriting. Manual video diagnostic legacyObservedPotentialScore uses same canonical scoring function with currently read durations, does not change publication/allowed review. UI replaces three arbitrary decision buttons on legacy pending rows with evidence-confirmation link or rescan guidance; existing real per-criterion/duration controls preserved; zero-key historic calculated final result flow available where valid. Summary compresses and separates failure/review ranges; distinguishes mandatory gate failure with score above threshold; no claim that all failed criteria have no evidence.
+- Verification: JS syntax and seven explicit mock checks passed (material block not full score, auxiliary ignored URL warning, unknown scored unmapped block, threshold pass without unnecessary keys, legitimate 15 candidates, range use, durable sync preserved). Stored evidence projections replayed BUS111/EBC340/JBC229 and OCM101 against revised code and matched stored confirmed values, expected status/keys and ceilings. OCM101 actual durations passed validation with score 59; new diagnostic fixture (51/59/81) and range formatter 2–15, 2–4/7/10–12 passed. No authenticated browser interaction tested; user should refresh only when worker safe, verify real OCM controls. No Extension rebuild, Apps Script, GS, AI Tutor, Podcast, raw sheet sharing or formula changes.
+
+### Existing result correction and post-change independent audit
+- Applied one guarded atomic SQL transaction to ONLY 3 exact latest run IDs, no open jobs, same earlier published status, original needs_review, no reviewer confirmation, expected legacy reason/scores/coverage. BUS111 6977a10e-7821-4d4d-bab4-fc7533372df5 → pass 85/100 possible 90; EBC340 c29e3dad-4268-4613-95f6-dd3aed210ac6 → has_content 66/100 possible 66; JBC229 47875692-36a5-4957-98d1-44a752f4a43e → has_content 35/100 possible 35. Confirmed scores, audit timestamps, run IDs, old historical runs and evidence activities untouched. Corrected source scorecard, reason and flags; stored legacyPolicyCorrection with former internal/public statuses, original scorecard, prior published run ID, reason, points, note and source commit. Existing original evidence object not rewritten. Updated courses published pointer and public_course_results for the same three, registered exact current run into durable outbox in same transaction; no fabricated reviewer decisions. Supabase readback confirmed the three final states. Existing previous published status was already pass/has_content/has_content respectively. All three mirror items still pending on final readback; do not claim V/W/X live verification yet.
+- Final independent SQL arithmetic replay across every current latest legacy result in one consistent read: 149 active GR latest pointers; 120 current legacy results, 118 with usable scoring snapshots (97 theory / 21 practical), 29 still older current-mode results while queue runs. All 118 confirmed scores, threshold, attainable ceiling and calculated status matched; 15 sessions and 89 counted source criteria each, no discrepancies. Current-only counts: 10 pass, 94 has_content, 13 no_content, 1 needs_review (OCM101), 2 audit_failed (BBM206 978, BBM315 975: worker_error; investigate/requeue these separately, no valid scores). Queue snapshot 120 completed jobs, 27 queued, 2 running (149 total); completed job does not mean valid academic audit. Mirror snapshot 108 verified, 3 pending. Dashboard full counts may include 29 earlier-mode results, do not present them as results of this round. No mass requeue or manual sheet writes. After remaining queue finishes, repeat full latest legacy arithmetic/status and outbox validation before deadline; user must handle actual OCM101 evidence and two failed scans if still present. User requested full audit, not merely sample; 118 scored results checked, remaining uncompleted/nonlegacy/failed results cannot be certified yet.
+
+
+## 101. Video duration tolerance regression and credit-aware replay investigation — 2026-11-19 ICT
+
+- User reiterated full-session video tolerance: 1 credit 5 min, 2 credits 10 min, 3 credits 20 min. Existing Handoff also records first session 15 min/credit with 3/5/10 min tolerance respectively, sessions 2–15 base 30 min/credit with 5/10/20 min tolerance; zero duration never passes. User explicitly lacks time to rescan all courses; prioritize stored-evidence reconciliation, not wholesale requeue.
+- Confirmed OCM101 21486 in live GRGS_Public is 3(3-0-6). Screenshot session 15 duration 1:24:32 marked fail despite 70-min relaxed minimum after type confirmation. Root cause v60 criteria-12569.mjs legacyVideoRequired returns nominal duration from originalDetail/default 2700/5400, and uses it for prepareLegacyReview, legacyObservedPotentialScore and validateLegacyVideoDecisions. audit-evidence.js criterionEvidenceLinks independently parses same nominal detail into data-required; preview therefore strict too. Section 100's 59 observed score used strict duration and is NOT a valid relaxed-policy estimate. Do not ask user to finish OCM101 review under old rule. Existing 2 historical manual confirmations in legacy 1/2569 (FDM313 21363 and CLB423 21476) had no video evidence decisions; do not invent reviewer choices. No production source/data changes performed in this investigation.
+- Read-only latest GR snapshot: 135 latest legacy runs, 3 audit_failed; 1995 stored video criterion rows (including one failed run with snapshot), 144 pass_tolerance entries across 55 courses. This demonstrates automated tolerance existed; it does not prove credits or every evidence classification correct. Of 132 non-audit_failed courses: 1980 video criteria, 1785 with parseable observed/nominal duration pairs, 195 without (all fail). GRGS_Public exact Course ID credit join covers 149 catalog courses. 300 nominal-duration discrepancies across 20 courses, all 15 sessions per course. IDs: 21101,21105,21150,21170,21255,21256,21294,21296,21298,21306,21320,21323,21368,21386,21387,21397,21459,21468,21476,21490. Of these, 18 have 1–2 credits, DGA335 21368 has 4 and LSM297 21490 has 6. 40 apparent fail rows with durations at or above credit-derived minimum in nine courses (LLB221 21101, ENG112 21170, ICT315 21256, CEG111 21294, CEG334 21296, EEG271 21320, EEG224 21323, EEG463 21386, LLB106 21387). These are candidates only, not proven scoring errors until provider/eligibility/dedup and gates compared. 12 apparent pass-duration anomalies (one EBC314 21263, 11 LSM297 21490); verify underlying evidence and scope for >3 credits before changes. No fail rows within tolerance of their own displayed nominal target in parseable data. 195 missing duration-pair rows require structured activity evidence inspection before certification. Prior §100 score replay validated arithmetic given stored statuses, NOT correctness of credit-dependent video classification.
+- Next implementation: ensure exact-course GRGS_Public credit metadata supplied to worker and stored in audit payload (no default 3), reconcile UI and server against same authorized relaxed threshold, retain type/evidence eligibility, no zero-duration or inaccessible evidence, preserve actual manual decisions. Determine special course/credit >3 scope using existing policy before altering these results; do not infer from score track or course code. Perform read-only replay of saved structured activities and evidence across latest GR results, report exact changed sessions/score/status and genuine insufficient evidence; apply guarded corrections only when supported, register durable V/W/X sync, retain original audit history and correction trace. Test credit boundaries, OCM101 and source/extension parity. Do NOT mass requeue or change GS/Podcast/AI Tutor, raw sheet sharing or formulas. User needs results urgently; this is an investigation, not a deployed fix or completed score certification.
+
+
+## 102. Credit-aware relaxed video duration and stored-evidence correction — 2026-11-19 ICT
+
+- User explicitly authorized urgent implementation, no whole-set rescanning, before reporting. This section supersedes §101 investigation-only status. Exact GRGS_Public Course ID and course code join confirmed 149 active GR rows, credit counts 1:8, 2:13, 3:126, 4:1, 6:1. Migration 20261119041442_gr_catalog_course_credits adds nullable integer course_credits (1–30 constraint); production migration seeded all 149 by exact ID/code/active GR in same transaction. Repo migration records schema only; authoritative catalog sync now supplies values, so do not rely on stale hard-coded seeds in other environments. GS unaffected.
+- API v61 ACTIVE, commit 3c8696ab68fd450f5e29a23dfdfe9a79277a9e61; exact deployed rubric source verified. GR catalog parser retains credits from the first number in registrar format and syncs course_credits; claim metadata includes actual credits (0.13.36 contract already accepts raw.credits/course.credits); legacy reconciliation requires verified credit and stores courseCredits. No Extension rebuild. Backend prepare/review/observed score and UI use minimum rather than nominal duration: 1st session 12/25/35 min for 1/2/3 credits; 2–15 25/50/70 min. Handoff earlier explicitly has >=3 capped 20-min full-session allowance; for 4/6 credit special cases implementation extends first-session 10-min cap to >=3 as a chosen interpretation, no separate special-course exception was found. For 6-credit LSM297, failed first-session duration is below minimum even with 20-minute allowance; full-session classification uses documented >=3 cap. If university has a separate work-integrated-course policy, confirm it before treating special-course score as final. Zero and excluded/inaccessible/unknown-type media are not automatically counted. Existing nonvideo rubric weights and practical gates preserved.
+- Explicit auditSession null/zero means unmapped: never extract digits from out-of-range section titles in legacy scoring. EBC314 21263 topology rows prove section-16 "15 Wrap Up for Business Presentation" is out of range, and the previous backend falsely added 3662 seconds from its five videos to the actual mapped session 15 total 2219 seconds. New scorecard uses only 2219; final nonpass unchanged. UI legacy evidence filtering now also respects explicit mappings, commit 6585ab5e6c6fd4cb2a372bc58b4323e9511ab1a1; Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44458542136 completed success, asset 20261119credit-tolerance2. API v61 rubric and UI boundaries tested (six threshold cases, OCM101 5072 sec accepted vs 4199 rejected for a 4200-sec minimum), JS syntax passed, explicit mapping fixture passed. The deployed API's worker contract/source is verified but authenticated Chrome and live manual submission after deploy not independently tested. No change to GS/AI Tutor/Podcast rules, sheet formula/sharing or queue reset.
+- Stored-evidence read-only replay at 134 complete usable current-round courses, 2010 scored video sessions. Exact mapped/eligible HTTP(S) video links, deduplicated per session, fixed observed seconds separated from manual and excluded. Result: 40 false-fail video sessions across 9 courses supported by existing fixed video durations; 12 false-pass video sessions across 2 courses (EBC314 one, LSM297 eleven); 20 courses with old incorrect nominal credit targets, plus EBC314 and OCM101. 195 missing parsed duration pairs were not presumed failures by text alone: structured activities included in replay, no qualifying positive fixed times implying a status change outside identified cases. Prior 144 pass_tolerance items prove Extension had tolerance; original problem included default credits and strict manual/backend threshold, not absence of all tolerance. Recalculated all affected scores twice from exact stored checklists with canonical function. One guarded atomic SQL transaction applied 22 exact current runs, using pre-read fingerprint md5(source_payload::text), prior score/status, no open job, current latest/public pointer, verified credits and no saved reviewer confirmation; all 22 succeeded. Original video items, original scorecard, original scores/status/possible points/reason/published pointer and source commit traced in legacyCreditCorrectionV61; activities, Run IDs, audit timestamps and historical runs unchanged. Public score/status updated only for already-published same run. Outbox registration same transaction, no manual sheet write. Do not undo or repeat transaction without checking correction marker and current fingerprint.
+- Nine numeric changes: LLB221 21101 66.5→80.5 (has_content→pass); ENG112 21170 39→63; ICT315 21256 42→46; EBC314 21263 48→46; CEG111 21294 32→37.5; CEG334 21296 21→22; EEG271 21320 71→73; LLB106 21387 25→41; LSM297 21490 36.5→30. EEG224 21323 and EEG463 21386 gained passing video sessions but numerical score unchanged due practical 7-session video cap. Other corrected credit thresholds without total-score change: LLB199 21105/21150, ICT315 21255, CEG39067 21298/21306, DGA335 21368, LLB496 21397, SOC119 21459, EBC199 21468, CLB423 21476. Latest OCM101 21486 remains needs_review: confirmed 51, 15 real candidate videos, attainable conditional cap 81; correct relaxed observed-duration result 73 if all existing candidates are valid, superseding prior incorrect 59 strict estimate. Session 15 1:24:32 passes duration if confirmed as eligible. Do not invent extra duration to reach 80.
+- Post-correction full latest current-semester arithmetic replay 135 unique usable results, 135 exact matches (confirmed/possible/threshold/status/15 sessions), zero discrepancies, no manual confirmations in latest usable set. Does not certify original external content independently. Latest snapshot: 149 total, 138 current legacy results (13 pass, 108 has_content, 13 no_content, 1 needs_review OCM101, 3 audit_failed: GEC121 962 structural, BBM206 978 worker_error, BBM315 975 worker_error), 11 older-mode/latest results because 10 queued + 1 running; current-round valid scored 135. Current-public tracked mirror: 125 verified, 3 pending BUS431 21302 sheet_busy, CMM261 21123 timeout, LLB221 21101 corrected new status awaiting sync. Native GRGS_Public LLB221 read still "ไม่ผ่าน" before sync; do NOT report all Sheets synchronized. Existing worker should finish pending outbox, do not clear/requeue all. For urgent report use current-round verified Supabase counts with incomplete/sync status explicitly, handle genuine failed scans and OCM101 separately. User may refresh evidence page safely (not the running worker tab) to verify new threshold. No live browser E2E; not a guarantee of full round completion.
+
+
+## 103. OCM101 reviewer correction, session 15 only — 2026-11-19 ICT
+
+- User confirmed that session 15 of OCM101 (Course ID 21486) was inadvertently marked not_use and should count. Existing latest published legacy 1/2569 run f6e6a50e-84ba-4df4-90b1-8b3ac0dfa514 had score 71, video 20, status has_content; original reviewer confirmation had 15 decisions, session 15 alone not_use with 5072 seconds (1:24:32). Verified exact mapped activity and stored duration; minimum after 3-credit tolerance 4200 seconds (70 min). Canonical rubric replay 71→73, video 20→22, overall still has_content (threshold 80). Other 14 reviewer decisions preserved.
+- Existing manual review endpoint rejects already finalized zero-reviewable run, so applied guarded atomic SQL correction only to this exact latest published run and matching source fingerprint, with zero open jobs. Updated the criterion, matched activity, reviewer decision and evidence decision, both scorecards, confirmed/possible score, public projection. Preserved original reviewer confirmation, activity, criterion, scorecard and score under legacyReviewerCorrectionOCM101Session15. No invented durations, no new run, no other course changes. Readback: database score 73, public projection 73, session 15 counted=true, exact evidence use entry matches, history saved; durable sheet sync remains pending. No direct Main Data edit, no code/deployment change. Refresh evidence page to see result; no need to reconfirm other items. Pending sync requires normal worker drain; do not claim live V/W/X verification until confirmed.
+
+
+## 104. GR theory threshold 80 to 70 — 2026-11-19 ICT
+
+- User instructed "ปรับเกณฑ์ผ่านของคะแนนจาก 80 ลงมาเหลือ 70". Scope interpreted as GR theory legacy_12569 semester 1/2569, 100 points maximum, threshold 70; practical 40/50 and existing mandatory gates unchanged, existing numeric marks (including the previously agreed 79.5→80 normalization), credits, duration tolerances and evidence decisions unchanged. No change to current criteria, GS, GN, AI Tutor, Podcast or raw sheets. No whole-set re-audit.
+- GitHub commit fcfa5bf71ff3bd7391cf9f9e1de32508464cfbfd; API v62 ACTIVE, deployed index.ts and rubric exactly matched source. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44461544843 completed success; evidence asset 20261119threshold70. Canonical theory passScore and course profile threshold now 70; existing Extension still sends 80 for legacy theory, explicitly accepted as old-client compatibility input and independently rescored on server to 70, including empty or technical failure thresholds. No Extension release; its local pre-server score status may still reflect 80. Admin evidence prefers internal status, historical old-threshold pending display is not recalculated on read. Syntax and canonical boundary/profile tests passed (70 passes, 65 fails, 65 with 5 reviewable needs_review, practical 40 retains gates). No authenticated browser end-to-end or review submission tested.
+- Read-only replay of every latest run with old passing_score=80: 122 unique, 118 usable score snapshots and 4 technical failures. All usable confirmed/possible scores matched canonical replay with no score changes. Applied one guarded atomic transaction checking exact latest run, fingerprint, original score/status/publication and no open job. Two earlier attempts rolled back completely (public mapping check and ambiguous SQL column); final transaction succeeded with 122 latest threshold corrections, zero exceptions. For 6 reopened reviews, DB requires null public_status on needs_review: created explicit policy-derived current internal run per course, using original audit time and evidence, deterministic external ID policy70:<original run UUID>, retained previous published run unchanged and recorded provenance; not a new scan or additional audit job. Other runs updated in place with correction trace legacyThresholdCorrection70, preserving original threshold, status, scorecard and publication. Updated public projection and registered durable V/W/X sync for 14 newly passed exact runs in transaction. No direct sheet edits. Four technical failures stay audit_failed.
+- Newly passed 14 courses: ACT415 79, ALB235 76, BUS306 78, DGA225 71, DGA241 70, EBC413 74, EEG271 73, HMM221 72, ICT203 73, ICT468 73, IGD371 77, LSM49467 73, LSM497 73, OCM101 73. Reopened actionable reviews: ACT331 65→70, ACT333 65→70, DGA335 66→71, EBC223 66.5→71.5, MEG461 69→74 (instructor info/contact session 1), MAT119 66→70 (videos sessions 13 and 15). These are conditional ceilings, not awarded marks. Public result remains prior publication until reviewer decides. Newly completed MGT34167 67→72 now also needs_review under v62.
+- Verified after deploy/correction: 149 active GR, 145 latest current legacy results; 29 pass (28 theory/1 practical), 92 has_content (78 theory/14 practical), 13 no_content, 7 needs_review, 4 audit_failed; 4 still in open jobs with older latest mode. Zero current-round latest results with threshold 80. Current published sync outbox: 116 verified, 18 pending, all fourteen newly passed rows pending at readback. Use internal current round counts for reporting with review/failed/unfinished and sync caveats. Keep worker open to drain and do not claim Main Data or GRGS_Public are synced until actual confirmation.
+
+
+## 105. Repeated structural failures DBM322 and GEC121 — 2026-11-19 ICT
+
+- User reported repeated unsuccessful scans and asked for diagnosis, with screenshot at 13:14/13:10. Read-only Supabase inspection confirmed at least three latest attempts each, Extension 0.13.35, current GR legacy_12569 theory threshold 70. Both reports have coverageComplete=true, reachedEnd=true, structurallyComplete=true, topologyConfidence=high, unmappedNonForumActivityCount=0, but topologyReviewRequired blocks publication with legacy_structure_review_required. Repeating the same scanner without correcting section interpretation cannot resolve this.
+- DBM322 21399: latest run d02160fd-c1f6-4511-a348-4de9db2f9f04 (13:14), earlier c1f68fe4-d086-4767-a11a-ade2e808f55c and 6e2e088b-41b6-4660-b704-b93900102668. Stored provisional confirmed 86, possible 91; latest status audit_failed. Explicit headings follow Week 0 : ครั้งที่ 1 Introduction through Week 14 : ครั้งที่ 15. Existing parser prefers Week number instead of explicit Thai session number; Week 0 falls back to session 2, Week 1 maps 1 and so on; real session 15 ends up 14, empty session 15. This is substantive whole-sequence misalignment, not a harmless topology warning. Give explicit Thai ครั้งที่ N precedence when supported by the complete unambiguous contiguous 1–15 sequence (and verify Week+1 convention), preserve welcome/intro as applicable; reconstruct checklist/video evidence under corrected mapping using stored evidence only if all required section-level evidence is sufficient, otherwise re-scan JUST this course with corrected parser. Do not publish 86 as a verified score. Existing public result still pass from 7ed7c42c-b8f3-476a-9de9-60f3085051c3 (older criteria).
+- GEC121 962: latest run 1dfd581d-489f-45d1-aea1-976252efd40c (13:10), earlier 9a323f46-c934-4372-8cbd-ed426d8e0bb0 and a737c823-3880-4bc5-b405-aae4ae931f2d. Stored provisional confirmed 23, possible 28. General and ADDITIONAL RESOURCES mapped session 1; ADDITIONAL INFO mapped fallback session 2 despite zero stored activities in that section; Week 1 then maps 1, producing reversal. All Week 1–15 map to their matching declared number. UNIT 1/2/3 ACTIVITY have some stored material and remain a separate potential mapping issue; UNIT 4 ACTIVITY and FINAL PROJECT out of range, zero stored activities. Do not globally disregard auxiliary sections or assume that no stored activity implies no HTML/text. Candidate is narrow structural warning after evidence-level validation that empty auxiliary slot does not materially affect score; 23/28 remain provisional until validated. Existing public result has_content from a7364996-fd2b-41c8-91be-932226b251ea. Do not blanket waive topology safety for DBM322 or other classes.
+- No production code, audit results, queue, or Main Data values changed in this diagnosis. Next task: targeted correction for these two cases only, with before/after mapping and scoring evidence, durable sync queue for any new valid published result. Do not invoke whole-set re-audit.
+
+
+## 106. Targeted topology repair and verified Extension 0.13.37 — 2026-11-19 ICT
+
+- User authorized fixing DBM322 and GEC121 after §105 repeated structural-failure diagnosis. The repair is deliberately scoped to exact course IDs, GR legacy_12569 semester 1/2569, and complete high-confidence 15-session scans. No new scoring rule, threshold, video tolerance, GS/AI Tutor/Podcast logic, raw-sheet formulas/sharing, API deploy, whole-set audit or queue reset. Current API v62 stays in place.
+- GEC121 962: read-only canonical weighted replay from the actual latest 1dfd581d-489f-45d1-aea1-976252efd40c snapshot confirmed 23/100, conditional ceiling 28, threshold 70, fail. Explicit Week 1–15 map exactly, one reversal is caused by ADDITIONAL INFO with zero stored activity; all session-2 activity comes from Week 2 and stored checklist names its Lesson Plan. No evidence that this empty auxiliary slot affects the score. This is a conclusion about captured evidence, not proof of all unseen HTML; other existing UNIT activity mappings left unchanged. Guarded atomic SQL required exact latest run/fingerprint 246f31bfa5dd2f25dbc7ec72002245f2, prior publication, no open jobs, original 23/28, complete/high confidence, exact single reversal, 15 correct explicit headings, no activity in ADDITIONAL INFO and no other section mapped with captured activities to session 2. Changed only latest internal/public status audit_failed→has_content, downgrade this topology finding to warning, retain raw mappings and original coverage/scorecard/status/published pointer in legacyTopologyCorrectionGEC121. Updated public projection and registered durable outbox exact run. Verified DB status has_content, score 23, publication correct; sheet V/W/X still pending. No direct Sheet edit and no rescan required for GEC121 on current captured evidence.
+- DBM322 21399: existing stored snapshot does not preserve all raw document/classification metadata needed to faithfully rebuild checklists after moving contents between first and subsequent weeks; 86/91 is provisional and was NOT published/mutated. New narrow helper repairLegacyCourseTopology in release-src/dashboard-0.13.37/legacy-topology-repair.js runs before assigning auditSession/dedup/checklists; requires exact contiguous Week 0–14 + explicit Thai ครั้งที่ 1–15 with expected one reversal, complete scan, unique keys, prior welcome boxes mapped 1 or ignored, monotonic revised map and full 15-session coverage. GEC121 future scans only exclude ADDITIONAL INFO when actually no scanned activities in it and all 15 explicit Week headers match. Refuses extra/ambiguous reversal, incomplete scan, activity in affected GEC121 box, other groups/criteria/course IDs, and honors existing successful manual mapping before auto repair. No blanket topology bypass. Corrected mapping replay against both actual stored physical heading lists plus section activity names passed: DBM322 Week 0→1 through Week 14→15, GEC121 Week 1–15 remain exact with empty additional-info slot excluded. Six synthetic positive/negative tests and syntax passed, original first fixture failure was code-mode URL availability and was addressed with explicit allowed-host URL parsing before commit. No authenticated Chrome end-to-end scan yet.
+- Source commit 148f257f15cd32a306127dafd185585f2dd7608b; build https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44472616197 SUCCESS; package built from exact verified 0.13.35 archive, only background.js, helper and manifest replaced; partial 0.13.36 instructor-contract staging deliberately not included in this narrowly scoped release. Published commit 65e524275d9add65800488a8b7bac74e71c81466; Pages https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44472652140 SUCCESS. Release manifest 0.13.37, 24 parts total 9324605 bytes, SHA-256 F46A36FC00AE472F7171982F3DD27C1BB24F7E2219C9E10A81292E8A26609660; part count/size/page manifest checked. Download https://kafair-so.github.io/spu-learning-auditor-dashboard/download-extension.html. User should stop worker after current job/ack, update existing unpacked extension folder without removing installed extension (preserve Chrome storage and existing ID), reload in chrome://extensions, refresh admin dashboard, retry ONLY DBM322 and allow sync. If sync backlog exists keep current worker running until safe to update, not reset. Inspect actual new results and V/W/X; DBM322 latest remains audit_failed until new valid scan, older published pass remains in place.
+
+
+## 107. Evidence presentation and ordinary Moodle Quiz activity correction — 2026-11-19 ICT
+
+- User instructed that relaxed video-duration thresholds are internal only and must not be shown in evidence; reaffirmed Moodle Quiz can count as end-of-chapter activity. Scope GR legacy_12569 1/2569 for scoring; preserve theory 70/100, practical 40/50, credited video tolerances, prior reviewer decisions, GS/current/AI Tutor/Podcast scoring, and Main Data formulas/sharing. No re-scan, queue reset, or extension reinstall.
+- Commit e8024c9c3dc1e51a4315b81fc1866bacc236b225; API v63 ACTIVE, exact deployed index.ts and criteria-12569.mjs matched GitHub; Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44475375019 SUCCESS; evidence asset cache key 20261119quiz-evidence1. Display formatter in audit-evidence.js and public evidence API removes relaxation wording, shows actual duration / nominal credit-based duration, maps pass_tolerance to ordinary pass on display, and keeps internal required duration unchanged for manual review math. For the screenshot example, 0:00:00 / 0:35:00 relaxed becomes 0:00:00 / 0:45:00 nominal at 3 credits/session 1; no video decision or score changed by display-only fix. Read-only public snapshot sanitization preserves evidence, not internal thresholds. Syntax, fixture of ordinary Quiz vs explicit PRE-TEST and nominal duration/redaction passed; authenticated Chrome display/live submission not independently tested.
+- Root cause ordinary Moodle quiz stored as kind=quiz was excluded by extension checklist, including first-session required activity and optional later sessions. Existing Handoff already permits ordinary Moodle Quiz as activity while Pre/Post stay in their own categories. New server-side applyLegacyMoodleQuizActivities uses exact mapped session and actual SPU Moodle quiz-view link, deduplicates quiz ID, excludes disabled/excluded/misplaced evidence and pre/post-labelled or pre/post-classified duplicate links, respects existing explicit reviewer confirmation, and runs before weighted scoring. Ordinary quiz includes sessions 1–15 under legacy policy; current criteria remains unchanged. No fictitious Quiz or double-count of Pre/Post.
+- Read-only scan of all 149 current GR courses found 437 stored ordinary-kind Quiz items in 57 courses. Canonical replay validated all 57 baseline scores and potential totals. 36 courses/180 activity rows changed, all 36 numerical scores increased, zero exceptions. Guarded atomic SQL verified exact current run IDs, matching fingerprints/scores/coverage/publication/no open jobs/no manual confirmation and applied only applicable activity criteria; original items and scoring trace preserved in legacyMoodleQuizCorrectionV63. In-place updates for 35 courses with unchanged overall status; one policy-derived internal run for ENG112 21170 (63→69, possible 74; reviewable session-1 instructor contact information). Its earlier published result remains nonpass until actual confirmation, no false pass or new scan. Screenshot identified APM437 21409 by Air Cargo Operations Briefing evidence: score 14→16, session 1 shows "พบกิจกรรมท้ายบท 1 รายการ: แบบฝึกหัดท้ายบทที่ 1 (Moodle Quiz)", session 2 also qualifies; final nonpass unchanged. No direct sheet write, no change to published pass/fail categories in this correction, evidence URLs for existing published runs unchanged. ENG112 publication/sync must follow regular review after confirmation.
+- Final readback: 149 current GR results: 37 pass, 98 nonpass with content, 13 no content, 1 needs_review (ENG112); zero audit_failed. 36 corrections/180 rows persisted. Current published-run outbox join reports 143 verified, no pending/blocked within tracked join; this is not a fresh direct GRGS_Public read nor a guarantee that donut loaded it. Existing public score is not exposed in donut's P status. Need refresh evidence page (Ctrl+F5). No authenticated browser end-to-end test.
+
+
+## 108. Published teacher report: component overview and weekly detail — 2026-11-19 ICT
+
+- User explicitly requested restoring public/User evidence overview and per-week components, citing courseId=21341 (ALB311). Teacher renderer had an early return showing only outcome, correction summary and publication history, despite public API already supplying published weeks. User-facing detail is read-only and not a grant of admin review access.
+- Source commit 1b61b2d2e3a340c6c8a727814528d0f5daa56d52: audit-evidence.js, audit-evidence-v2.css, audit-evidence.html (JS/CSS cache key 20261119teacher-weekly1). Public view now displays clickable actual recorded session chips, component coverage table (counts and concise grouped missing-session ranges), read-only weekly cards with criterion status and descriptions, and retains outcome, correction summary and published history. Shares existing overview formatter with admin; admin review controls untouched. Legacy excluded criteria stay hidden in public overview/weekly details; optional activity remains marked optional. No raw evidence links or reviewer controls added beyond existing course link; no internal scores, thresholds, or tolerance wording displayed. Retains public API v63 sanitized evidence projection; no backend changes, re-audit, scores, Sheet writes, or queue changes. Actual recorded sessions only, empty evidence shows explicit empty state.
+- Syntax and synthetic rendering tests passed: all 15 selectable sessions and panels, initial selection, missing ranges, nominal video display, no internal scoring or review inputs, empty state. Real ALB311 published run 137db2c8-fb25-42eb-aef6-c3638d6ff0ab has all 15 weeks; actual stored snapshot passed through public API projection and new teacher renderer in test, confirmed 15 session buttons/panels, nominal 1:12:59 / 1:30:00, no relaxation wording/score/admin controls. No authenticated Chrome end-to-end UI click test. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44480641909 status at Handoff write: completed/success. Refresh User page after successful deployment.
+
+
+## 109. User evidence polish and ALB311 targeted evidence correction — 2026-11-19 ICT
+
+- User requested fixing misaligned icons on the read-only User summary cards and removing published history from User only. CSS cascade conflict: .teacher-summary-grid span overrode display:grid and icon color/size/margin. Commit b48e246ac76a03667d32f8d68e4a3d0e9760a6c7 scopes caption styling to article>div>span, centers 20px icon glyph in 40px box, removes User history render only, retains privacy note, overview and weekly session detail; cache key 20261119teacher-polish1. Admin renderer byte-identical from history.map onward. Source readback checks passed; Pages run https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44483118553 completed/success; no authenticated Chrome visual test.
+- User provided screenshot confirming teacher photo, name and QR contact for ALB311 21341, and reported session 9 video was previously passed. Exact current published/internal legacy_12569 run 137db2c8-fb25-42eb-aef6-c3638d6ff0ab score 63, threshold 70, no open jobs. OCR timeout, no OCR evidence, instructor detector rejected intro region as media title context; exact rejected image unproven. Corrected criterion 1:2 from fail to pass based on reviewer evidence. Original scanner summary retained. QR destination not independently opened.
+- Session 9 exact Moodle activity 3154199 and same OneDrive asset identifier in runs 81c79e19-92fc-4b58-93c2-bf554ab7d76c (Nov 10) and 33f302a5-fca1-4a62-8e17-925252214cb8 (Oct 27), both measured 4681 seconds; current play_required, zero newly measured seconds, explicitly opens but needs foreground playback. Other clip activity 3154198 consistently 1142 seconds. Targeted historical evidence reuse, not a new scan or invented time: 5823 seconds (1:37:03) vs nominal 5400, minimum 4200. Preserve current raw play_required/systemDurationSeconds=0 and original item in correction trace; credited historical time marked in item/access note. No global reuse rule change; external asset not independently replayed live.
+- Guarded atomic SQL transaction required exact latest/published run, md5 a3ee98b6e7036ef5e492cf2155594e97, correct GR/semester/credits, original score/status, complete 15 sessions, no open job, two matching historical measured durations, verified prior sync row with no lease. Updated 1:2 and 9:3 only, underlying video evidence, both scorecards, public projection and status; original data saved in legacyALB311Correction20261119. Independent readback and arithmetic replay match: courseInformation 5→10, video 10→12, 63→70, pass; other rubric parts/statuses unchanged, run ID/audit date/history retained. Durable sync row pending for exact publication pass; no direct Sheet edit, verify Main Data V/W/X and GRGS_Public after worker drain. No API deploy, Extension rebuild, other course/GS/AI Tutor/Podcast changes or queue reset. Follow-up: permanent scanner regression for image-based instructor evidence (including timeout/context handling) and foreground OneDrive playback; avoid generic false positives or counting newly unread unrelated media. This specific correction does not fix the scanner.
+
+
+## 110. All-GR score regression investigation (read-only) — 2026-11-19 ICT
+
+- User requested all-course investigation after ALB311 and emphasized false nonpass risk. Checked latest main at 37ba069bea1b273d32bd9c517d68ce4370110c5f and live Supabase all 149 active GR Course IDs, all latest legacy_12569 1/2569; observed 39 pass, 97 has_content, 13 no_content. 130 have earlier published runs; 19 do not. No audit job, result, Sheet or scanner writes. Independently replayed latest weighted scores and pass gates: 136 nonempty results matched all numeric rubric parts and total, plus 13 zero no_content. One test-only boolean/number comparison for HMM215 was not an actual discrepancy (46.5, all gates true). Fixed observed eligible video time vs current credit minimum checked across 136 nonempty reports; zero nonpassing video criteria already meeting minimum with fixed recorded time (excluding explicit manual rejection). Two courses had conditional detected video candidates meeting a session minimum; none of the nonpass courses would reach course threshold from those alone.
+- Compared latest prior published per-session scored criteria (not raw total across different rubrics): 34 courses had at least one pass→nonpass/nonapplicable/review change; 30 instructor, 5 video sessions, 1 activity. Looking at ANY earlier published run: 32 courses had former instructor pass now nonpass/review; 41 latest instructor fails had OCR timeout (overlap, not additive). Earlier instructor logic can falsely accept generic text/avatar; never blanket restore all. FDM313 already documented genuine false positive. No direct authenticated Moodle inspection this round.
+- Priority unresolved instructor cases where one verified instructor criterion could change overall nonpass to pass: CEG351 21462 66→71 (contact LINE found, photo/name not verified; old auto-pass text not credible name), EBC340 21265 67→72 (OCR timeout, explicitly rejected region “Line Group QR Code and Instructors”, old auto-pass), IAI239 21519 68→73 (OCR timeout, expected name matched in DOM; scanner rejected explicit LINE contact as lacking context; photo not verified), MGT423 21480 66→71 (scanner rejected explicit LINE/QR contact block; old auto-pass text not credible name). Inspect actual photo/name/contact, especially EBC340/IAI239. EBC223 21236 66.5 and MEG461 21390 69 have explicit reviewer rejection of criterion 1:2; preserve unless new evidence and reviewer reopens. CEG111 21294 37.5/40 could gain 2.5 but practical pre/post mandatory gates fail, so not a pass on instructor alone.
+- Video comparisons: latest prior published pass→nonpass in session 1 of CBC431 21465 (2099 s), CMM262 21124 (1939), DES112 21366 (2096), EBC226 21305 (1848), ICT203 21328 (2039); recorded total unchanged, all below current 2100-s minimum, not missing duration; do not automatically restore or change boundary. Broader historical match on same course/session/Moodle href and exact destination or OneDrive asset, then same destination regardless Moodle href and same href with changed destination, including unpublished historical snapshots: no additional course with stored positive earlier duration and latest zero on same matched media in nonpass session. Already-corrected ALB311 has another session 14 play_required clip with earlier 672 s, 1990+672=2662 <4200 sec even if reused; does not change pass status. Dedup matches by clip; different URL forms may yield two match records for one clip. Not proof of live external asset or exhaustive across unrecognized URL aliases/mapping changes. GEC121 session 13 activity changed from Practice Activity pass to not_applicable; 23→24 at most, no outcome change, needs mapping/evidence inspection rather than assume absence.
+- Latest nonpassing video sessions with eligible-kind captured zero-duration rows: 52 courses / 284 sessions, 457 rows (93 link_unavailable, 172 access_denied, 47 duration_pending, 16 play_required, 90 internal_upload, 35 link_error, 4 no_video). Initial large ceiling screen included internal uploads and access blocks; not actual recoverable marks. Target actual media playback/read retry, not whole course audits: CLB423 21476 69, session 4 already 46:57 / 50:00 relaxed, one play_required clip; or other sessions 1,2,5–7,10,13–15. OCM225 21484 47, duration_pending sessions 3–15, needs enough verified times and check repeated destination content; conditional score 73 if all 13 pass. CMM261 21123 44, duration_pending sessions 4–10,12–15; video alone <=66; if instructor also verified <=71. DGA231 and LLB496 internal uploads excluded by existing external-video rule; no restore. Other access/endpoint cases potentially cross only if actual eligible videos recovered: ACT321 50, EBC223 66.5 (13/15), ICT306 68.5 (8 no_video, 9 link_error), ICT465 69 (7), JBC334 60 (access denied), MGT423 66 (9/15), SDM242 65 (access denied); no historical matching duration, no claimed missing points. Prioritize ICT465 and CLB423 plus 4 instructor courses, then other near-threshold cases; treat access denied/link unavailable as evidence to verify, not auto-pass. No current browser/OCR/player test or new scanner release, no publication change. User-facing conclusion: arithmetic is consistent with captured evidence, cannot certify all results are correct because of scanner false-negative risk. Recommend a dedicated targeted evidence regression/quality-gate before final reporting; retain prior genuine confirmations, avoid wholesale re-audit, no blanket use of old results.
+
+
+## 111. Dashboard Extension 0.13.38 — GR evidence regression recovery — 2026-11-19 ICT
+
+- User requested scanner fix and a prioritized re-audit list before final reporting. Scope: Dashboard central worker GR / legacy_12569 / 1/2569 only for the new instructor context path and video retry/provider-cache changes. No change to weights, actual passing threshold, manual decisions, Supabase API, scores, Sheet rows, existing jobs, GS, or Podcast/AI Tutor rubric. Handoff §110 is the read-only baseline, not an instruction to blanket restore old passes.
+- Source commit 935dcf1336f25aef578d99d3fcb786a92ab610d7; build https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44487422815 completed/success, all job steps including guarded source patch, syntax, regression fixtures, archive integrity and publish successful. Reconstructed verified 0.13.37 archive (size 9324605, SHA-256 F46A36FC00AE472F7171982F3DD27C1BB24F7E2219C9E10A81292E8A26609660), applied exact single-anchor patches, new content script and manifest version. Files: release-src/dashboard-0.13.38/gr-instructor-context.js, release-tools/patch-dashboard-0.13.38.py, release-tools/test-dashboard-0.13.38.mjs, .github/workflows/build-dashboard-0.13.38.yml. Release commit 903b8034f169938c3ca4d53af9ec406b9c26c8ae; 9330120 bytes, 24 parts, SHA-256 7A16A3A944C68920E85439CB5E0BF8DF601BF5049C6009274A3D3C18745FBAC1; read back release.json and download page matching 24 parts, hash and size. Pages workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44487469007 at documentation time completed/success. Download https://kafair-so.github.io/spu-learning-auditor-dashboard/download-extension.html after Pages success and page version confirmation.
+- Instructor fixes: retain registrar instructor names in normalized central job for matching only; inspect authored introductory regions and neighboring labels within same section (not generic navigation, Moodle avatars, unrelated later video titles); accept a contextual name, contact channel and explicit portrait label or detected face in contextual image, not generic image as photo; bounded optional QR and face detection (browser support varies), targeted OCR on one selected image with timeout and provenance. Incomplete plausible intro evidence remains reviewer-verifiable; no-context absence fails; unavailable scan remains technical uncertainty. Persist context status/provenance and instructorEvidenceStatus. Automated fixtures cover ALB311-shaped English intro with unlabeled vs explicitly labeled portrait, IAI239-style expected name and adjacent LINE contact, EBC340-style QR heading, QR text not proof of usable contact, FDM-style unrelated titles/images, cross-section isolation, non-instructor intro, central job GR instructor transport and GS current scope. This is a targeted recovery path, not proof that all actual Moodle layouts are supported; no authenticated live Chrome/OCR/player run or real course rescan performed. Instructor portrait metadata or face in contextual region is not identity biometrics; human verify any questionable result, especially near threshold.
+- Video fixes: same-course Microsoft provider-wide negative-cache bypass only in GR legacy video reader (actual same-file cache preserved); play_required gets second bounded fresh-tab attempt rather than being immediately conclusive; provisional untrusted OneDrive duration triggers foreground probe, 24 vs 18 max polls within deadline, transient probe catch. Existing access denied/broken link handling remains; never invent missing seconds. No claim that provider gesture/permissions have been resolved or this change will recover all time. No new server-side publication quality gate implemented. Keep remaining uncertainty separate from confirmed pass/fail calculation.
+- Re-audit priority 1 (6 unique Course IDs, order chosen by suspected scanner failure / pass impact): IAI239 21519 68 instructor; EBC340 21265 67 instructor; CLB423 21476 69 video (session 4 first); CEG351 21462 66 instructor; MGT423 21480 66 instructor and video 9/15; ICT465 21325 69 video 7. Priority 2 if time/access allows (7): ICT306 21261 68.5 video 8/9; EBC223 21236 66.5 video 13/15 ONLY (prior explicit instructor rejection, do not undo it); SDM242 20940 65 access-denied videos; JBC334 21492 60 access-denied videos; ACT321 21127 50 unavailable media; OCM225 21484 47 duration pending 3–15; CMM261 21123 44 duration pending 4–10,12–15 and instructor. These are conditional upside cases, not verified missing points. Prioritise first 6, inspect actual changed components and scores; avoid re-auditing ALB311 already corrected to pass, all 149 indiscriminately, or treating internal uploads DGA231/LLB496 as recoverable; maintain explicit reviewer decisions. User should safely finish/acknowledge any existing worker result before update, extract/install new ZIP and verify manifest 0.13.38; no clearing local storage/queue. Submit only after targeted verification; do not certify unresolved cases as verified. No jobs created or run by assistant.
+
+
+## 112. Admin Extension panel version drift — 2026-11-19 ICT
+
+- User's refreshed admin screenshot showed latest and button 0.13.34, despite 0.13.38 archive and download-extension.html already published. Actual cause was distinct hardcoded admin HTML and audit-review.js overwrite, not merely browser cache. Source fix 32624d2658df163ce9cbacec881269a95a29e91f: audit-review.html shows 0.13.38 in all three original locations and links download-extension.html?v=0.13.38; audit-review.js no longer overwrites the release version/link/button label; ui-i18n.js translates versioned Thai download labels generically. Both changed JS cache keys 20261119extversion1. Original three source blobs verified before patch; readback confirms 0.13.38, correct download link, no 0.13.34 in admin HTML/JS and cache keys present. GitHub Pages https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44500781235 at documentation time in_progress/not yet concluded. Authenticated UI not independently rendered; public URL open attempt inaccessible. No change to archive, scanner, scores, queue, review decisions or Supabase. Future release workflow must also update the three admin HTML version strings and versioned download href when publishing (not yet automated); no more hardcoded JS version override. Recheck actual installed Chrome manifest 0.13.38 before scanning priority courses.
+
+
+## 113. Thai/English localization and Dark/Light appearance — 2026-11-19 ICT
+
+- User requested correct language switching in admin and evidence pages and complained white surfaces remained in dark mode. Root causes: incomplete exact/fragment dictionary, URL lang overriding switch, mutation bookkeeping overwriting/staling source strings, date rendering fixed at initial language, light evidence-specific CSS variables and insufficient selector coverage. Changes committed c37c15401f34f126fe32415219a4b1bed3383bb2 and c317a774b3a6a3a9da14c47951890684b07e2d0d. New shared UI dictionary (402 exact labels, 90 fragment mappings); `ui-i18n.js` tracks raw/last translated text and attributes, disconnects observer during translation, persists preference, updates initial URL lang, localizes Thai dates, handles dynamic updates and native admin confirmation prompts. Course heading and selected source evidence titles protected from translation; no machine translation of arbitrary raw evidence or course content. Evidence language changes do not reload runs or erase pending reviewer choices. Shared helper also used by other pages, but new dark stylesheet is loaded only by audit-review/evidence.
+- New `audit-dark-complete.css` with dark variables and explicit rules for admin cards, preflight, tables, dialogs, queue/worker, evidence components/session chips, inputs, native color scheme, status colors, and button/pseudo-element specificity. Light mode unchanged by the new stylesheet. Both page cache keys 20261119langtheme3. No changes to audit rules, extension, API, scores, data, or queue behavior.
+- Automated syntax and mock DOM regression workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44506492069 completed/success; covers reversible dynamic text, URL preference, Thai dates, representative evidence labels, prompt, and CSS source coverage. GitHub Pages https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44506491815 completed/success; readback confirmed both HTML pages reference new CSS and UI cache keys. No authenticated browser rendering or exhaustive live visual/translation test; remaining uncommon dynamic Thai detail strings or unstyled UI may need targeted follow-up. Do not assert 100% coverage or translate arbitrary instructor-authored content; test all four language/theme combinations and review form state in real browser if available.
+
+
+## 114. GR Moodle Pre/Post regression and verified instructor-name waiver — 2026-11-19 ICT
+
+- User reported ICT218 (21326, latest 0535b80e-d727-4943-903d-b2857a2f8099, 0.13.38, 183 activities, 58/100): Pre/Post Moodle Quiz correctly classified but failed despite explicit old tolerance, teacher photo/LINE/office contact present in supplied screenshot and name absent. User authorized repair and waiver. Preserve GR legacy_12569 semester 1/2569 only, existing 2–10 Pre/Post relaxation (no extension of sessions 11–15), unchanged ordinary Quiz activity rule, scoring weights, video rules, GS/current, Podcast/AI Tutor, and reviewer confirmations. Missing name may be waived only with actual verified contextual photo and contact; never credit unrelated images or generic QR alone. ICT218 manual waiver trace explicitly records absence of name, not fabricated name. No independent live Moodle or QR test.
+- Read-only candidates: 46 courses / 683 Pre/Post rows with existing tolerance text, matching actual mapped SPU Moodle Quiz href, proper role, eligibility and no item-level reviewer rejection. Baseline independent scoring replay matched candidate stored scorecards on the 43 eligible courses. Guarded atomic SQL (exact latest/published run, original md5, score/status, full coverage, no queued/running jobs, no existing reviewConfirmation, outbox no lease/current run and projection match) corrected 43 courses / 644 Quiz rows plus ICT218 instructor (645 criteria), preserving original scan/criteria/scorecard/mandatory coverage trace under legacyQuizCorrection20261119. Post-write readback 43/43 matching score, internal status, public projection/score; 0 mismatch. No new audits performed. Pass changes CEG351 66→76, DGA371 63→73, EBC223 66.5→76.5 (instructor rejection preserved), EBC340 67→72, ICT218 58→73 (Quiz +10, reviewer name waiver +5), ICT460 69→79, ICT465 64→74. 149 current GR public outcomes: pass 48, has_content 88, no_content 13. Seven changed publications registered in GR sheet outbox pending; DGA371 missing outbox inserted using normal schema. Do not claim Main Data/GRGS_Public synced until worker confirms. No Sheet formula/direct edits. Three candidates intentionally not changed: ENG112 already pass 74 and has prior reviewConfirmation (preserve); ICT306 63.5 with Quiz-only 65 and potential 70; LSM326 56 with Quiz-only 66 and potential 71; latter two require targeted instructor/other review before final publication; scores still original, not promoted automatically. Re-evaluate these only after evidence confirmed; no need to rescan 43 corrected runs or ICT218 solely for this defect.
+- Fix source commit ea5a52502731f8c63d2a69e9c6b95d2fe9c6ce70: 0.13.39 exact verified 0.13.38 archive reconstruction, scoped presentQuiz immediate pass for eligible tolerated actual SPU Moodle Quiz, keep scope through checklist refresh, instructor contextual contact without colon, explicit verified portrait + real contact can pass with recorded nameWaived flag, uncertain unlabeled photograph remains reviewable. Regression fixtures verify eligible vs ineligible/excluded/out-of-scope quiz, verified photo/contact without name, no arbitrary image/QR pass, server fallback only 2–10. Build success https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44508686342. Release commit a1fe5c39621a4fd91603611be9e45709f38087fe, size 9330641, 24 parts, SHA-256 046E50F1CA0D2C03991DC8D09F617691CB8F0B8D3DF88EDA5E2C53D814B0533B; download page and admin panel both verified point to 0.13.39 with correct hash/parts. Pages https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44508741425 at documentation completed/success. No authenticated real Chrome scan; finish pending worker submission before updating and avoid reruns with old version.
+- Server safeguard applyLegacyMoodlePrePost committed and fixture tested, but deploy FAILED on npm registry missing tarball @supabase/auth-js@2.119.2; verified original active API v63 unchanged, not v64. Avoid unrelated dependency edits just before reporting. New Extension contains actual scanner fix; server fallback not active yet. Next action when practical: resolve/pin compatible dependencies against exact deployed sources, test and deploy API while preserving auth, then verify v64+ code. Do not re-audit with old version as old API allows same false fail. Check sync worker and Main Data V/W/X/GRGS_Public before final reporting, review ICT306 and LSM326, preserve ENG112. 
+
+
+## 115. ICT306 first-session activity reviewer correction — 2026-11-19 ICT
+
+- User confirmed screenshot of Moodle Quiz labeled “แบบทดสอบหลังเรียน สัปดาห์ที่ 1” under authored “กิจกรรม ท้ายบทเรียน” heading, requested counting despite incorrect name. Latest/published ICT306 Course ID 21261 run f29e173e-7264-487b-9f53-c7a7a71cfbca (0.13.39), score 70/pass after prior instructor confirmation, 158 activities. Matched actual activity 3043776, session 1, groupContext กิจกรรม ท้ายบทเรียน.png, raw kind post_quiz eligible/nonexcluded. No independent live Moodle inspection. This is course-specific reviewer exception, not general rule that Post-test is assignment.
+- Atomic guarded correction (exact run, md5 fa7fa5011efd4ae728bacb81a6fd67d8, complete 15 sessions, scorecard baseline 70, no open audit job, existing no-lease pass outbox) set 1:6 pass with reviewer-confirmed detail, reclassified only this activity kind to quiz with originalKind and reason, saved original criterion/activity/scorecard in legacyICT306ActivityCorrection20261119. Prior reviewConfirmation criterion:1:2 retained unchanged; no duplicate Post-test credit, no other changes. Assignment 14→15, total/potential 70→71, both cards and public projection score match, 15/15 activities pass, publication remains pass. Status-only sync outbox preserved (readback pending); do not claim Sheet synced unless verified. No Extension/API changes, no new audit. Avoid unnecessary rescan of ICT306 after correction; reverify if a future run replaces it.
+
+ 
+## 116. BUS431 misleading video destination warning — 2026-11-20 ICT
+
+- User screenshots of BUS431 21302 (latest and published run e8dedffb-36c2-4811-904f-5b33076f8c74, Extension 0.13.35, 53/100 has_content) showed recommendation “เปิดปลายทางไม่ได้” for sessions 2–15 even though user could open the linked videos in Moodle. For session 2, stored VOD BUS431 Week1-1 (activity 3074635) duration_read 1217 seconds and Week1-2 (3074636) duration_read 1641 seconds, total 2858 seconds = 47:38, below 70-minute adjusted minimum for 3-credit semester 1/2569 and below displayed nominal 90 minutes. Stored LiveRecord BUS431-130168 Coach Aj.YUI (3074637) and LiveRecord BUS431 266 (3074638) are kind=recording, linkStatus=skipped_recording, not counted by policy; one is hidden to students in user's screenshot. Read-only full run grouped evidence: all 34 kind=video across 15 sessions mediaStatus=duration_read, and 30 kind=recording with skipped_recording; no classified VOD access error in stored evidence. No logged-in live Vidyard endpoint verification. Do not change video scores or reinterpret excluded recordings as countable pre-recorded videos.
+- Root cause is public/admin evidence UI actionableIssues(): general 'access' regex on criterion detail includes the generic sentence “ไม่นับคลิปที่ไม่พบเวลาหรือเปิดไม่ได้”, which made all video fail criteria appear as broken destinations. Fixed by deriving video access warnings only from per-session eligible kind=video/video_candidate activity mediaStatus/linkStatus (link_error, link_unavailable, access_denied, login_required or broken), explicitly excluding kind=recording. Insufficient video time is a separate issue. Specific warning now “ลิงก์วิดีโอเปิดปลายทางไม่ได้” (English: Video link destination inaccessible) only when actual matching media status indicates failure; for BUS431 issue becomes “เวลารวมของวิดีโอไม่ครบตามเกณฑ์.” Applies to admin and teacher summary, preserving existing source-level detail and media evidence, scores, decisions, status, privacy.
+- Commits af76f7df5fc2a6eebe2ad65b22993a8c61fccc25 and 08576e47b479d643557a3e35354079d7e940e6c3; changed audit-evidence.js, audit-evidence.html, ui-i18n.js, audit-review.html and tests/CI. JS/i18n cache key 20261120videoissues1. New node regression fixtures cover BUS431 valid VOD+skipped recordings, true VOD access errors, different-session status isolation, empty evidence and Podcast rule; localization test changed to allow cache-version increments. Verify dashboard appearance workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44663870250 completed/success (first run failed only because old test hardcoded i18n cache key, corrected in follow-up). Pages deployment https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44663869115 should be checked for success separately. No Supabase writes, Extension rebuild or rescans; source result still BUS431 53/100 has_content. For any future re-audit, inspect whether Vidyard clips cover required time and if LiveRecord policy applies, but do not infer that an opened link meets required video minutes.
+
+ 
+## 117. Current GR pass-to-nonpass history audit (read-only) — 2026-11-20 ICT
+
+- User asked whether any active GR course with historical pass is now nonpass. Queried Supabase project nwupjnkotdkodyxnraie, all 149 active GR latest run/published statuses against ANY older pass by same Course ID at/before latest audit. Read-only audit, no score/DB/queue/Sheet or Extension changes. Current: 50 pass, 86 has_content (nonpass), 13 no_content. Of 20 courses with any prior pass, exactly TWO are current nonpass; no latest-vs-course-public-status mismatch and latest run is the published run in all 149. Both older passes used criteria_mode=current, blank semester_code, threshold 80; current nonpasses use legacy_12569, semester 1/2569, threshold 70. Zero regression to nonpass from a prior pass using the SAME criteria mode and semester. These are cross-criteria comparisons, not proof of an auditor bug or fair numerical score delta.
+- BUS431 Course ID 21302: latest run e8dedffb-36c2-4811-904f-5b33076f8c74 (0.13.35), 53/100 has_content vs old passes 81/100 on Nov 3 and Nov 11 (most recent run 469f84c4-8815-4fa8-84bc-76d2223e12ce), current criteria. Current legacy scorecard: teachingPlan 1/15, video 2/30 (session 1 only), instructor courseInformation 5/10, teachingMaterials 15/15, pre 7.5/7.5, post 7.5/7.5, assignment 15/15. 34 current VOD items are duration_read, 30 LiveRecord skipped_recording. Session 2 counted 47:38 (2858 seconds) vs nominal 90 minutes/relaxed 70 minutes; session 3 counted 46:02, session 9 47:13, session 10 49:30, session 14 47:22. No positive evidence that a VOD actually failed to open; display-only misleading warning was fixed in §116. Main outstanding issues: missing plan labels in sessions 2–15, insufficient VOD duration, instructor evidence review. Do not auto-reinstate old pass.
+- MKT453 Course ID 21379: latest run d8f2eb86-24f9-4f48-9b39-477941ed76fc (0.13.36), 63.5/100 has_content vs old passes 91/100 on Oct 27 and Nov 10 (most recent 6073219c-ef3b-4a2c-943f-d8748d5e89c1), current criteria. Current legacy scorecard video 0/30, teachingPlan 15/15, teachingMaterials 15/15, courseInformation 5/10, pre 7.5/7.5, post 7/7.5, assignment 14/15; mandatory video 0/15. Stored 36 videos duration_read overall, but counted time does not reach per-session minimum (session 2 31:03, session 3 44:14, session 9 53:38; session 10 0:00). Duplicate destinations and some broken links flagged in sessions 10 and 14; OCR timeout affects instructor evidence. Inspect video dedupe and per-session durations plus instructor evidence if near final publication; do not infer missing 30 points or restore historical total without actual matching evidence.
+- Decision for final reporting: prioritize targeted review BUS431 and MKT453 since both have older pass -> current nonpass, but old and new criteria differ. No automatic retroactive changes, no blanket rerun of 149 courses. Distinguish current 50 passes from previous Handoff snapshot of 48; data may evolve from new publications. Recheck after any subsequent scan before confirming final status.
+
+ 
+## 118. Lesson plan / teaching materials English detail localization — 2026-11-20 ICT
+
+- User provided English-language audit-evidence screenshot showing correct headings 'Lesson plan' and 'Teaching materials' but mixed-language scanner details: 'พบเอกสาร Lesson plan ...', '(ไฟล์ปลายทาง: ...)', 'เปิดปลายทางแล้วแต่ยืนยันว่าเป็น PDF ไม่ได้ ...' and 'Not foundเอกสาร Teaching materials'. This was UI localization of generated scanner detail only, not missing/incorrect source evidence. Root cause: generic phrase-level translations split the original 'ไม่พบเอกสาร เอกสารประกอบ' into 'Not found' plus untranslated 'เอกสาร', and similarly partially translated document-found grammar.
+- Implemented `documentEvidenceEnglish(raw)` in ui-i18n.js, before generic fallback, scoped to scanner-produced 'พบ File PDF', 'พบเอกสาร', and 'ไม่พบเอกสาร' followed by exactly 'แผนการสอน' or 'เอกสารประกอบ'. Handles singular/plural file counts; 'destination file' metadata; PDF non-verification and non-PDF notes; selectively translates scanner boilerplate while preserving instructor-authored filenames, activity titles and user-supplied Thai names verbatim. Thai mode still shows original text and switching EN→TH→EN is reversible with existing source-text tracking. Does not alter stored evidence, scores, audit rubric, decisions or Extension.
+- Code commits f544b841b768151e13e674cdd9ea53fcff4c3804, 6478788cfba8484820cd281b44e57f27ce6d7ad3 and final test correction 0ee4a3a55414b3091178e2d7653dae0e48ae0912. Cache key for ui-i18n.js updated on both audit-evidence.html and audit-review.html to 20261120documents1. Regression fixtures in tests/dashboard-appearance.test.mjs cover example screenshot grammar, no-documents in both categories, PDF found count, PDF-not-verifiable suffix, untranslated authored Thai file title, and dynamic language round trip. Earlier attempts failed CI due to escaped JS template literal (corrected) and a test starting in Thai mode before asserting English (corrected); final Verify dashboard appearance https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44673180535 completed/success. GitHub Pages https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44673181493 at documentation time completed/success; separately confirm completion before claiming live deploy success. No authenticated Chrome visual rendering test. No SQL/DB write, no Extension rebuild, no need to re-audit courses solely for these localization strings.
+
+ 
+## 119. Audit summary mixed-language copy and session badges — 2026-11-20 ICT
+
+- User screenshot of English audit evidence page reported a mixed-language, concatenated red summary paragraph: “Latest auditDoes not meet criteria โปรดแก้ไขตามรายการสรุปด้านล่างก่อนตรวจครั้งถัดไป”. In the “Required actions for instructors” list, grouped-session badges displayed singular “Session 1–7, 9–15” for multiple sessions. Other line items such as Teaching materials / Lesson plan were already localized following §118. Root cause: composite scanner/statusExplanation sentence had no exact translation, and the fallback substring dictionary independently replaced adjacent Thai segments with English without spacing. Generic “ครั้งที่ ” → “Session ” did not pluralize ranges.
+- Fixed ui-i18n.js with exact translations for the complete latest nonpass summary, standalone latest-nonpass text, pass summary and remaining incomplete-status copy/actions; these run BEFORE generic fragment replacement. Added tightly scoped numeric-session parser in english(raw) that returns singular “Session 1” but plural “Sessions 1–7, 9–15” or “Sessions 2–9, 11–15”; preserves original digits, commas, en-dashes and source text when switching back to Thai. Does not alter free-form instructor-created content. Versioned ui-i18n script query on audit-evidence.html and audit-review.html to 20261120statuscopy1 for proper cache busting.
+- Commit 2ff247ea4f129d5b1973fa356975d8c204c84bfe. Expanded tests/dashboard-appearance.test.mjs with 14 assertions and dynamic English→Thai→English round trips for full summary and multi-session badge. Verify Dashboard Appearance workflow https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44673888701 completed/success. GitHub Pages deployment https://github.com/kafair-so/spu-learning-auditor-dashboard/actions/runs/44673888850 at Handoff write time completed/success, verify completion independently before claiming public page updated. No authenticated Chrome visual run; no SQL, results, scoring, queue, Worker, Extension or Supabase changes. Applies automatically to Admin/User evidence rendering and old published reports when viewed via new UI, no re-audit necessary.
+
+
+
+## 120. Local Legacy 0.3.21 — current Dashboard Legacy scanner port — 2026-11-20 ICT
+
+- ตามคำขอผู้ใช้ ได้สร้าง Local Legacy รุ่นแยก `0.3.21` จากฐาน `0.3.20` เพื่อใช้ตรวจรายวิชาเทอมเก่าที่มีปัญหา โดย port พฤติกรรมตัวตรวจจากแพ็กเกจ Dashboard Legacy `0.13.39` ที่ตรวจ SHA-256 ตรงกับ Release (`046E50F1CA0D2C03991DC8D09F617691CB8F0B8D3DF88EDA5E2C53D814B0533B`). เก็บ `0.3.20` ไว้เป็น rollback และไม่แก้ Dashboard, Supabase, Main Data, GS, AI Tutor หรือ Podcast production.
+- เกณฑ์ที่ผู้ใช้ยืนยัน: Course Profile `T/TT` ใช้ทฤษฎีเต็ม 100 ผ่าน 70; `L/LL/P` ใช้ปฏิบัติเต็ม 50 ผ่าน 40. ระบบ infer ประเภทจาก Course Profile ก่อน fallback ข้อความ; แผนการสอนครั้งที่ 1 นับรวมกับเอกสารประกอบ, video tolerance ครั้งที่ 1 = 3/5/10 นาที และครั้งที่ 2–15 = 5/10/20 นาที ตาม 1/2/3+ หน่วยกิต. Potential score ไม่ถูกยกเป็น 100 เพียงเพราะโครงสร้างยัง pending.
+- Port ส่วนสำคัญของตัวตรวจปัจจุบัน: contextual instructor scan ของ GR/GS, ป้องกัน QR ถูกนับเป็นรูปผู้สอน, name waiver ต้องมีรูปจริง+ช่องทางติดต่อ+context ยืนยัน, Microsoft/OneDrive retry และ authoritative duration checks, topology repair hook. สำหรับ LL งานเก่าไม่ตั้ง scope 1/2569 จึงไม่เข้า topology repair แบบ current-term โดยอัตโนมัติ.
+- รักษา Local workflow เดิม ได้แก่ queue/report/history ภายในเครื่อง. ไม่มี Dashboard bridge, ไม่มี Supabase host permission และปิด Central Worker ทั้งตอนเริ่มต้นและทุก message endpoint เพื่อป้องกันการส่งข้อมูลออกหรือกระทบระบบกลาง. ส่ง Course Profile จาก local queue เข้า audit payload เพื่อจำแนก T/L ได้ถูกต้อง.
+- Source: `SPU-Learning-Auditor-Local-Legacy-0.3.21`. Release ZIP: `SPU-Learning-Auditor-Local-Legacy-0.3.21.zip`, 138 files, 9,536,431 bytes, SHA-256 `57ED13B9CF033BCFC04490B41C49A689EDDA16C2324848507808D955DA009EE9`.
+- ทดสอบ JavaScript syntax ผ่าน; automated regression 45/45 files ผ่านจาก source และผ่านซ้ำจาก ZIP ที่แตกออกมาตรวจ, 0 failed. ครอบคลุม 70/100, 69 fail, 40/50 practical, T/L inference, tolerance, session-1 document behavior, manifest isolation และ instructor-name scanner. หลังเพิ่มบันทึก TEST-RESULTS มีการ rebuild ZIP และตรวจ manifest/version/hash ใหม่; การเปลี่ยนรอบสุดท้ายเป็นเอกสารทดสอบเท่านั้น ไม่กระทบโค้ดที่ผ่าน suite.
+- ยังไม่ได้ทดสอบ End-to-end ผ่าน Chrome กับรายวิชาเทอมเก่าจริง. ขั้นต่อไปให้ติดตั้ง/Reload `0.3.21` และทดสอบรายวิชาเก่า 1 วิชา โดยตรวจ Course Profile, ประเภท T/L, คะแนน, หลักฐานชื่อ/รูปผู้สอน และลิงก์ Microsoft ก่อนใช้กับชุดรายวิชาอื่น.
+
+
+## 121. Local Legacy 0.3.22 — Moodle Quiz Pre/Post + Google Drive foreground duration fallback — 2026-11-20 ICT
+
+- User supplied `SPU-Learning-Auditor-Local-Legacy-0.3.21.zip` and screenshots of a Moodle Quiz Pre-test / Post-test session 4 incorrectly combined as two Post-tests, and EBC411 course id 19810 Google Drive MP4 playable manually but scanner duration unknown. Changes made in the uploaded ZIP source, not in Dashboard production.
+- `classifier.js`: when Moodle module path is `/mod/quiz/view.php` and `assessmentTitleKind(title)` explicitly detects pre_quiz/post_quiz, return this item-level classification before contextual image/adjacent/inherited assessment label overrides. Keep label-based fallback for generic Quiz titles and other module behavior.
+- `background.js`: `readGoogleDriveInForeground` fallback after inactive-tab duration probes fail; owned audit tab is temporarily activated using existing `withTemporaryForeground`, the previous tab restored, up to 12 polls, and two equal positive finite duration observations required; never invents duration or automatically credits unknown seconds. Access gates and deadline retained, no new permissions.
+- `manifest.json` version 0.3.22; README, RELEASE-NOTES and TEST-RESULTS updated; 41/41 supplied automated test files passed, 0 failed, syntax checks passed; ZIP verified with 138 entries and manifest 0.3.22. Artifact locally generated `SPU-Learning-Auditor-Local-Legacy-0.3.22.zip`, 9,526,473 bytes, SHA-256 `fb147379a13946daa22279b4cf3474065fe676f74fbf6b79d3637084e9e67ee8`.
+- Still pending actual Chrome end-to-end acceptance on session-4 Moodle Quiz and EBC411 Google Drive MP4. Cannot claim provider duration recovery will succeed on every Drive file. No production Dashboard, Supabase, Main Data, Worker or current criteria touched. User-facing ZIP is a local conversation attachment; it was not uploaded to GitHub Releases.
+
+
+## 122. Local Legacy 0.3.23 — preserve Moodle direct-link teaching video evidence — 2026-11-20 ICT
+
+- User reported that four clearly named external links under an image-only “Pre-Recorded Class Video” label (Video class 1 Informative speech & 4 types, Video class 2 The volume, Video class 3 The Pitch, Video class 4 The pitch Practice) in session 2 were shown by Local Legacy 0.3.22 as “พบลิงก์วิดีโอภายนอก 0 รายการ · 0:00 / 1:30:00”. Target remains evidence accuracy >=90%, but this threshold has NOT yet been independently measured with real-course labelled samples.
+- Verified these exact four titles classify as `video` even without group context. Source-root plausible cause: `content.js` previously collected direct external anchors only when a readable `groupContext` existed; unreadable category artwork (no alt/readable image filename) could discard the external link before classification. Additionally direct-linked Moodle activity rows with no `/mod/.../view.php` anchor could be mistaken for inherited category labels on the following activity. Actual authenticated Moodle page DOM / user scan JSON was not available to confirm root cause on the original site.
+- Fix 0.3.23 `content.js`: collect an explicit `Video/VDO...` external anchor only inside a real Moodle activity row / Section despite unreadable category pill; prevent unrelated next links from inheriting the previous activity's media label; retain a single matching provider URL discovered within the same Moodle URL module row as `externalTargetHint`. `background.js` uses this precise same-row hint before Moodle redirect discovery and distinguishes an unresolved Moodle video link from no visible video. New `video-link-evidence.js` centralizes unresolved/pending classification for both initial score and recalculation; `report.js` displays the original Moodle activity link when target resolution failed. Unresolved links get `needs_review` and their titles remain visible, never silently score video duration / auto-pass. Internal Moodle video uploads still excluded, duplicate/recordings excluded, confirmed prior passing durations unchanged.
+- Artifact is a patch overlay, not a standalone extension: `SPU-Learning-Auditor-Local-Legacy-0.3.23-UPDATE.zip` with 15 changed/new text/source files, 156,704 bytes, SHA-256 `9cd8786588f4e82b80c9e6b74d96f7b8c990a7579c7e85ff60b312cc8f92e47d`. To install: keep an unpacked 0.3.22 folder and copy patch contents on top (back up first); retain unchanged original assets, vendor, icons and fonts. Extension manifest then reads 0.3.23. No Dashboard, Supabase, Worker, Main Data or current-criteria changes, no new host permissions.
+- Validation: JavaScript syntax checks passed; 42/42 `.test.mjs` passed (0 failures) from the patched source, and 42/42 passed again after applying the ZIP patch onto the original 0.3.22 release contents. Chromium synthetic DOM exercise found 4/4 named direct-video links and ignored 1/1 adjacent unrelated links; browser fixture has no authenticated Moodle nor real media. Verified version after overlay: 0.3.23. Real-course E2E and aggregate >=90% accuracy benchmark are STILL PENDING; no claim that all video durations are now readable.
+
+
+## 123. OPEN Work handoff — EBC314 Moodle six video URLs not detected / no measured duration — 2026-11-20 ICT
+
+- ผู้ใช้ส่งภาพ EBC314 ครั้งที่ 1 (Moodle `1 Orientation : SELF STUDY`, `Course Orientation`, 3 Files / 6 URLs / 1 Quiz) ที่มีลิงก์ `Video Class 1–6` อยู่ใต้ป้าย `Pre-Recorded Class Video` แต่รายงาน Local Legacy ยังคงแสดง `พบลิงก์วิดีโอภายนอก 0 รายการ · 0:00 / 45:00` พร้อมสถานะไม่ผ่าน หลังอัปเดต 0.3.23 จึงยังไม่ถือว่าแก้สำเร็จ. ภาพเดิมของ Video class 1–4 ครั้งที่ 2 และ EBC411 Google Drive MP4 เปิดเล่นได้แต่ตรวจเวลาไม่ได้ เป็น regression cases เพิ่มเติม.
+- **สถานะ: ยังไม่ได้แก้** / ส่งต่อเป็น GitHub Issue #1 ให้ ChatGPT Work ใช้เป็นคำสั่งดำเนินการ: https://github.com/kafair-so/spu-learning-auditor-dashboard/issues/1. Handoff นี้เป็นการมอบหมาย ไม่ใช่การยืนยันว่า Work เริ่มทำงานแล้ว.
+- ให้ Work ใช้ source จริงจาก `0.3.22` full ZIP + `0.3.23-UPDATE` overlay ในบทสนทนา; ตรวจ Moodle DOM/redirects จริงที่ยืนยันสิทธิ์ได้, ติดตามรายการตั้งแต่ content extraction → classification → external destination → duration metadata/player → report and scoring. ห้ามใช้ผลจำลองแทนการยืนยันกับรายวิชาจริง; ตรวจว่า URL ทั้ง 6 ถูกเก็บหรือหลุดขั้นตอนไหน, อ่านเวลาได้จริงเท่าใด, รายการที่อ่านไม่ได้ต้องแสดงพร้อมสาเหตุ, ไม่เดาเวลา/ให้ผ่านอัตโนมัติ.
+- เกณฑ์ตรวจรับ: แสดงลิงก์วิดีโอ 6 รายการใน EBC314 พร้อมสถานะและเวลาที่ตรวจวัดได้จริงเมื่อเข้าถึง; ทดสอบลิงก์ 4 รายการและ EBC411 ด้วย; ป้องกัน duplicate, audio/podcast, ลิงก์ข้างเคียง และการจัด Pre/Post ผิดแบบเดิม. ความแม่นยำ >=90% เป็นเป้าหมายที่ต้องวัดจากตัวอย่างที่มีผลจริง ไม่ใช่จำนวน test files ที่ผ่าน. ส่ง ZIP แบบเต็มพร้อม tests, release notes, SHA-256, rollback และบันทึก Handoff.
+- ขอบเขตห้ามกระทบ Dashboard, Supabase, Main Data, Central Worker, เกณฑ์การตรวจปัจจุบัน, ประวัติและผลยืนยันเดิมของผู้ตรวจ. Pending Chrome end-to-end testing and implementation.
+
+## 124. Local Legacy 0.3.24 — candidate build, authenticated acceptance still open — 2026-11-20 ICT
+
+- Work reviewed Issue #1 and Handoff §§120–123 at main commit `fa575826ff5e02ccf902cb8f5db36e9af831125f`, and verified the complete 0.3.22 ZIP and 0.3.23 overlay against their recorded SHA-256 hashes. The existing Handoff contains a pre-existing truncation marker in the older history. The complete current file as stored in Git was used for this append.
+- Source findings: the six EBC314 names already classify as video when extracted intact. Some activity layouts could substitute a container title for the link title or omit direct links within a section description. A preceding introductory box could shift the numbered Orientation session. Video URL resolution could select unrelated page-level markup before real Moodle navigation. These findings are reproducible in source and fixtures; the precise failure on the authenticated course is still unconfirmed.
+- Candidate changes are confined to the Local Legacy package: `content.js`, `section-mapping.js`, `background.js`, `external-target.js`, `rules.js`, `manifest.json`, tests and release documentation. Extract individual names, map `1 Orientation : SELF STUDY` to session 1, prioritize navigation and scoped Moodle URL display, keep same-row fallback, retry Drive Preview for the same file with existing resourcekey/authuser, reject audio time and distinguish found/openable/measured counts. Existing scoring thresholds, title-time policy, history and provider permissions are retained. No Dashboard application, Supabase, Main Data or Central Worker edits or data writes.
+- Regression: Node with LinkeDOM, 49 passed, 0 failed, 0 skipped. Fixtures: first-session 6/6 links, second-session 4/4, adjacent negative 1/1 and explicit Moodle Pre/Post 2/2. Non-vendor JavaScript syntax passed. Browser fixture launch was blocked by the runtime's process socket restriction. The separate Cloud Chrome attempt for EBC411 (19810) reached the Moodle sign-in page.
+- Complete test-candidate archive `SPU-Learning-Auditor-Local-Legacy-0.3.24.zip`, 141 files, 9,560,220 bytes, SHA-256 `9538769f1ada31fdef2c36760fae9bd2c29fe13015bea56cf2abc785ea891cd5`. Includes install steps, regression suite, test report and rollback. Restore the previous backed-up unpacked folder at its original path to preserve the Chrome extension ID. Prior 0.3.22 ZIP and 0.3.23 overlay remain usable, with 0.3.21 documented in §120.
+- Keep Issue #1 open. Real EBC314, the four-link case, EBC411 Drive MP4 and Moodle Quiz acceptance remain unverified. Measure link accuracy as TP/(TP+FP+FN), and duration accuracy as clips within ±2 seconds divided by all labelled playable clips. Count unread playable clips as errors and report access-restricted items separately. The >=90% target is unmeasured. Record per-item outcomes and observed time while redacting access tokens and share keys.
+
+## 125. Local Legacy 0.3.25 — fix EBC314 `Pre record Icon` gate before URL inspection — 2026-11-20 ICT
+
+- New EBC314 diagnostic evidence confirmed the exact failure stage. The scanner had retained all six Moodle URL rows, but every row showed group `V Pre record Icon` and was classified as `recording`. In 0.3.24, `PRE_RECORDED_VIDEO_PATTERN` did not accept `Pre record`; the generic recording rule matched the isolated word `record`. `recordingFastPath` then set `linkStatus=skipped_recording`, so `background.js` intentionally did not resolve/open the destination. This directly explains the report's 0 external videos, 0 opened links and 0:00 measured time. This supersedes §124's previously unconfirmed failure-stage statement.
+- Local-only fix 0.3.25: recognise `Pre record`, `Pre recorded`, `Pre teaching` and the observed `... Icon`/`... Video` label forms as pre-recorded teaching-video context; normalise invisible controls, private-use Moodle icon characters and leading link glyphs before item-title classification; never use recording fast-path inside a recognised teaching-video group. Explicit Live/Record/Zoom outside that group still takes the fast exclusion path. A conflicting explicit Live Record within a teaching group is opened for safe verification instead of silently skipped.
+- Legacy Moodle wrappers can leak an adjacent PDF icon/MIME hint. For URL activities, a real `.pdf` item title or destination remains authoritative, but an inherited `fileTypeHint=pdf` can no longer override a clearly named Video/VDO item or a verified pre-recorded-video group. Moodle file-type evidence is scoped to the exact module row. No scoring threshold, duplicate policy, title-duration acceptance, provider permission, Dashboard, Supabase, Main Data or Central Worker change.
+- Targeted matrix uses the supplied six EBC314 names, exact group `V Pre record Icon`, adverse `fileTypeHint=pdf`, and four title-prefix forms (plain, U+200B zero-width, link glyph, private-use icon): 24/24 classified `video`, 0/24 `recordingFastPath`, 0 unresolved. This measures 100% for the repaired discovery/classification gate only. DOM fixture retained first-session 6/6 and second-session 4/4 links, kept the exact label on module rows, rejected adjacent Office-hours 1/1, and preserved Moodle Pre/Post 2/2.
+- Full source regression and tests from the final extracted ZIP both passed: 49/49 files, 0 failed, 0 skipped; all non-vendor JavaScript passed `node --check`; ZIP integrity passed. Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.25.zip`, SHA-256 `fe61b830945d1f8bf94c0b53183b8e2f2e5e26a37ecf932c208d9af3c397c471`. Release includes README, release notes, test evidence and rollback guidance.
+- Authenticated acceptance remains open because the available browser session reaches Moodle sign-in and exposes no real provider player. Do not claim the real six destinations or their durations are verified. Re-run only the two selected courses with 0.3.25. EBC314 acceptance requires six discovered links before destination deduplication, no `skipped_recording` rows, a resolved/access status per link and actual player seconds where playable. Measure link TP/(TP+FP+FN) and playable-duration accuracy within ±2 seconds; target >=90%, count unread playable clips as errors and report access-gated clips separately. Keep GitHub Issue #1 open until this live evidence exists.
+
+## 126. Local Legacy 0.3.26 — restore Moodle URL-to-player resolution before duration reading — 2026-11-20 ICT
+
+- The user's real 0.3.25 EBC314 result narrowed the remaining failure precisely: session 2 retained four external teaching-video links, but displayed confirmed-openable `0/4`, destination-duration reads `0/4` and `0:00 / 1:30:00`. Therefore 0.3.25 repaired classification but all rows still failed between Moodle URL discovery and provider-player inspection. This is live evidence of the broken stage, not yet evidence of successful duration recovery.
+- Root cause was a regression introduced by the 0.3.24 scoped-video resolver, before the previously repaired Google Drive/SharePoint/player duration readers. For video calls it skipped the exact same-row destination hint, suppressed authenticated Moodle HTML target extraction, inspected only the top frame and accepted page targets only when exactly one usable candidate existed. Real provider pages can expose multiple equivalent/supporting URLs, so `readExternalTarget()` returned `null`; the duration reader was never invoked. Version 0.3.25 did not remove this separate resolver gate, which explains why the old 0:00 symptom returned while the duration-reader code itself remained present.
+- Local-only repair 0.3.26 restores the proven order: exact module-row target, HTTP Location, authenticated Moodle HTML, actual tab navigation, then ranked candidates from every frame. Removed `scopedVideo`/`redirectOnly` and the `targets.length === 1` rejection. Preserved target filtering/ranking, same-course deduplication, audio rejection, stable positive duration checks and Google Drive foreground recovery. No guessed/manual duration and no credit before actual stable player evidence.
+- Executable regression calls the actual resolver functions and deliberately supplies the removed fifth `scopedVideo=true` argument to reproduce the old call shape. Same-row hint 1/1, Moodle HTML 1/1 and tab/all-frame fallback 1/1 resolved; owned tab closure also verified. EBC314 classification protection remains 24/24 video and 0/24 recording fast-path. LinkeDOM Moodle fixture passed 3/3, retaining orientation 6/6 and session-two 4/4 links, excluding Office hours and preserving Pre/Post classification.
+- Direct enumeration of the deliverable contains 43 `.test.mjs` files (not 49); all 43/43 passed with 0 failures and 0 skips from source and again from a fresh extraction of the final ZIP. This corrects the earlier test-file-count wording in §§124–125. All 52 non-vendor JavaScript files passed `node --check`; ZIP integrity and manifest version 0.3.26 verified.
+- Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.26.zip`, 149 ZIP entries, 9,564,621 bytes, SHA-256 `4f7c95d480ae40c5cc6fdb6e4229a516e345020f2f387eef51e917b4e07fe825`. Replace 0.3.25; rollback is the backed-up prior unpacked folder at the same path to retain the Extension ID and local history. No Dashboard, Supabase, Main Data, Central Worker, scoring threshold, permission or historical-result change.
+- Keep Issue #1 open. Authenticated acceptance is still pending because this work session cannot enter the user's Moodle/provider session. Re-run only the two selected courses with 0.3.26. Acceptance requires confirmed-open and destination-duration counts above zero with actual per-link time; finding titles alone is insufficient. Measure link TP/(TP+FP+FN) and playable-duration accuracy within ±2 seconds across the two-course labelled set; target >=90%, count an accessible but unread clip as an error, and report access-gated clips separately. Do not claim completion until this evidence is received.
+
+## 127. Local Legacy 0.3.27 — Vidyard duration when the total clock is hidden — 2026-11-20 ICT
+
+- New real evidence identifies the EBC314 provider as Vidyard. The user can open and play the clip normally, while the control bar does not keep the total duration visible; a value such as `16:43` appears only as a floating timeline tooltip. That tooltip is not automatically the full length because it can be the pointer position, so it must not be credited as duration evidence by itself.
+- Vidyard's official Player API documents the authoritative fields `player.metadata.length_in_seconds` and `chapters_attributes[].video_attributes.length_in_seconds` after player readiness: https://knowledge.vidyard.com/hc/en-us/articles/360009871054-Using-the-Vidyard-Player-API-Legacy and https://knowledge.vidyard.com/hc/en-us/articles/360009997413-How-to-use-Vidyard-with-Google-Analytics-GA4-UA. Existing Local Legacy recognized the Vidyard host and tried `<video>.duration`, but its bootstrap regex accepted only camelCase/generic keys such as `durationSeconds` and `lengthSeconds`, not Vidyard's snake_case field. Chrome's default isolated scripting world also cannot see the page-owned `VidyardV4.players` registry. Therefore a playable hidden-clock Vidyard clip could remain duration unknown.
+- Local-only repair 0.3.27 adds two evidence paths: `length_in_seconds` from Vidyard HTML/bootstrap metadata, and a bounded MAIN-world `VidyardV4.players` probe after readiness. It reads the documented top-level and chapter fields, polls at most 12 × 250 ms, accepts only finite positive durations up to eight hours, and records source `vidyard-metadata`. It deliberately ignores floating timeline tooltip values as total duration. Generic `<video>.duration`, muted play initialization, retries, target filtering/ranking, duplicate suppression, audio rejection and all Drive/SharePoint recovery remain unchanged.
+- Targeted evidence uses the screenshot value `16:43 = 1,003 seconds`: bootstrap metadata 1/1, nested chapter metadata 1/1 and simulated live `VidyardV4.players` registry 1/1 returned 1,003 seconds without visible total-clock text. The report exposes the source as direct Vidyard Player duration metadata.
+- Full source and fresh-ZIP regression passed: 44/44 `.test.mjs`, 0 failures, 0 skips; LinkeDOM Moodle fixture 3/3; all 53 non-vendor JavaScript files passed `node --check`; manifest 0.3.27 and ZIP integrity verified. Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.27.zip`, 151 entries, 9,568,061 bytes, SHA-256 `291b116dd07a4984641004e9150a1d1cd04a0045feba438facb2af4a4468a1b0`.
+- Replace 0.3.26 with 0.3.27 in the same unpacked folder and Reload to preserve Extension ID/local history. No Dashboard, Supabase, Main Data, Central Worker, scoring threshold, permission or historical-result change. Keep Issue #1 open. Real acceptance still requires the two selected courses to show confirmed-open and destination-duration counts above zero and actual per-link duration/source; target accuracy remains >=90%, and an accessible but unread clip counts as an error.
+
+## 128. Local Legacy 0.3.28 — repair the real EBC314 pre-record classification path — 2026-11-23 ICT
+
+- The user supplied both the 0.3.27 diagnostic and a complete EBC314 structure scan (Course ID 19734, 133 activities, 17 sections). Replaying the actual first two sessions through the shipped 0.3.27 classifier reproduced the failure exactly: all six Orientation links and four Informative Speech links had `moduleTypeHint=url`, `fileTypeHint=video`, `groupContext="V Pre record Icon"`, yet all 10/10 returned `recording`. This proves the failure occurred before destination/duration reading and supersedes assumptions based only on the earlier six-title synthetic fixture.
+- Precise code cause: `fileTypeHint=video` entered the early internal-video branch in `classifier.js`; that branch tested the generic isolated word `record` against the combined context, matched the `record` inside `Pre record`, and returned `recording` before reaching the later URL branch's pre-record safeguard. Since `background.js` opens media only for `video`, `video_candidate` and `podcast`, these ten rows never entered `media-read`. The diagnostic's zero time therefore did not mean Vidyard was unreadable; the affected rows were never sent to it.
+- Local-only 0.3.28 repair protects recognised `Pre record/Pre-recorded` teaching-video context in both the early internal-video and URL branches. Only strong Live/ย้อนหลัง signals may override that context. Explicit `Live Record Week 1` and a genuine `Record ย้อนหลัง` group remain recording. Ordinary teaching-video titles containing words such as `Video Recording ...` or `Rubrics for Live Presentation` remain video when placed under the real pre-record group. No guessed duration or automatic credit was added.
+- Real-structure replay after the change: first two sessions 10/10 routed as video; all 76/76 activity titles beginning Video in the uploaded EBC314 scan routed as video. The executable classifier matrix covers the exact ten titles × two observed file-type hints × four hidden/icon prefixes = 80/80 video, zero recording fast-path and zero manual-review classification. Negative controls retain explicit Live andย้อนหลัง classification.
+- The same diagnostic contained 34 distinct `media-read` destinations, all real Vidyard share URLs. Read-only live verification on 2026-11-23 found HTTP 200 for 34/34 and a positive standards/provider duration tag parsed for 34/34. One actual share page and embedded `play.vidyard.com` frame was inspected: page metadata reported 1,085 seconds and the real ready `<video>` element reported 1,085.533 seconds. This confirms the existing 0.3.27 Vidyard reader can read these destinations once classification allows them to reach it; it does not by itself prove the rebuilt extension has completed an authenticated Moodle run.
+- Full source and fresh-ZIP regression: 44/44 test files and 50/50 subtests passed, 0 failures, 0 skips; LinkeDOM Moodle fixture retained 6/6 Orientation plus 4/4 session-two links; stress fixture processed 900 synthetic courses / 162,000 activities; all 100 non-vendor JavaScript/test files passed `node --check`. Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.28.zip`, 151 entries, 9,532,349 bytes, SHA-256 `0a066d28964f6317240b63b3b34377a096d4827e35cd9c082c05c5616dc94a74`; manifest 0.3.28 and ZIP integrity verified after extraction.
+- Scope remains Local Legacy only. No Dashboard, Supabase, Main Data, Central Worker, score threshold, provider permission, history or confirmed reviewer result changed. Keep Issue #1 open until the user installs 0.3.28 and reruns the two selected courses. Acceptance requires the first ten EBC314 rows to produce `media-read`, confirmed-open and positive per-link duration/source; measure link TP/(TP+FP+FN) and playable-duration accuracy within ±2 seconds. The real source replay and provider endpoint checks are both 100%, but aggregate two-course E2E accuracy is still not claimed before that authenticated result.
+
+## 129. Local Legacy 0.3.29 — complete English rendering of teacher-facing reports — 2026-11-23 ICT
+
+- The user supplied two screenshots of an actual 0.3.28 report with report language set to English. Static navigation and controls were translated, but system-generated report content remained Thai or mixed fragments: `ผลการตรวจ`, video coverage, theory/requirement rows, `Session 1 — ตรวจองค์ประกอบSession 1`, Thai checklist headings, and sentences such as `พบ PDF teaching plan`, `พบLink evidence` and `อ่านเวลาจากDestination`. This is a verified presentation defect and does not change the stored audit result.
+- Root cause: `translateThai()` relied on exact/fragment dictionary replacement. Dynamic result sentences contain counts, durations and Moodle-authored titles, so the complete text did not match; isolated fragments were replaced and produced mixed-language grammar. Responsive table labels in `data-label` were also outside the translated attribute set.
+- Local-only 0.3.29 adds whole-pattern English translation for generated report sentences while preserving the course/file/activity title that follows the system prefix. Coverage includes result heading/message, video coverage and theory/practical requirement, both session-heading formats, checklist/evidence/status labels, instructor evidence, PDF teaching plan/material results, external-video discovery/open/duration counts, Pre/Post absence and end activity. Responsive `data-label` values now follow the selected report language. Moodle-authored course and evidence titles intentionally remain exactly as entered; the extension does not invent an English translation for source content.
+- Screenshot-derived regression contains 23 exact report strings. Every generated English output is asserted against the complete expected sentence and checked for zero Thai characters; the separate guard confirms an authored title such as `SDM241 การออกแบบตัวละครเบื้องต้น` remains unchanged. Full source and fresh-ZIP regression: 44/44 test files, 50/50 subtests, 0 failures, 0 skips; all 100 non-vendor source/test files passed `node --check`; stress remains 900 courses / 162,000 activities.
+- Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.29.zip`, 151 entries, 9,536,858 bytes, SHA-256 `c8c18a1b7d6223678e0985222cc2230279854da9c6cc0f4663819cb1231aabc7`; manifest 0.3.29 and ZIP integrity verified from a fresh extraction. No Dashboard, Supabase, Main Data, Central Worker, scoring rule, media reader, permission, history or prior reviewer decision changed. The separate EBC314 two-course authenticated acceptance from §128 remains open.
+
+## 130. Local Legacy 0.3.30 — saved-PDF English evidence completion — 2026-11-23 ICT
+
+- The user supplied the actual saved EBC211 audit PDF plus Overview and Required actions screenshots after 0.3.29, proving that the first localization pass was incomplete. The PDF is 8 A4 pages / 735,953 bytes. Text extraction and visual rendering of all eight pages found additional extension-generated Thai or mixed-language copy in structure coverage, session-mapping exceptions, consolidated instructor guidance, Pre/Post/video correction text, the Moodle Quiz heading, audit timing, cumulative work labels, slow-item headings, metadata/player fallback notes, and non-PDF destination evidence. Required actions also retained Thai help/empty-state text and Save/status controls. Moodle-authored course, file and activity titles were separated and intentionally preserved verbatim.
+- Root cause remained composite dynamic text: several nodes were generated as complete sentences after the original dictionary was written, while partial keyword replacement created forms such as `พบ Section การสอน`, `ใช้เลขSession`, `รายงานนี้แสดงStatusผลและEvidence`, `ไฟล์Destination` and `เลือกผลหรือConfirm duration`. Local-only 0.3.30 translates the complete generated patterns before fragment fallback and adds exact UI labels for the remaining static controls. Dynamic counts/session numbers and authored titles remain intact.
+- Saved-PDF regression now adds 23 exact system-text cases and asserts both the complete expected English sentence and zero Thai characters in English output. Coverage includes the actual `17 Section`, Session 1 merge reason, 15-required/1-passing video correction, 45 metadata fast paths / 0 player fallbacks, non-PDF destination filename, Required actions help/empty state, Save audit result and No unsaved changes. The existing authored-title guard remains.
+- Full source and final fresh-ZIP regression passed: 50/50 tests, 0 failed; 104 JavaScript/module files passed syntax checks; manifest 0.3.30; ZIP integrity passed. Complete archive `SPU-Learning-Auditor-Local-Legacy-0.3.30.zip`, 151 entries, 9,581,967 bytes, SHA-256 `781740c8655805965b9ed5cd8370a435cc3e06f045c92a4779e6f824b8dddac5`.
+- Scope is presentation/localization only. No audit result, score, video detection/duration reader, Dashboard, Supabase, Main Data, Central Worker, permission, stored history or reviewer decision changed. Existing saved reports use the new translation after installing/reloading 0.3.30; they do not need a course re-audit solely for language. The separate authenticated two-course EBC314 acceptance from §128 remains open and must not be claimed complete from this localization release.

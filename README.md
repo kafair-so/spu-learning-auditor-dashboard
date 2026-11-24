@@ -1,5 +1,13 @@
 # 📊 OOE Dashboard 2569
 
+## 📚 Project Handoff (เริ่มงานจากนี่)
+
+**[เปิด Handoff Index — DB / LC / LL / DL / Shared Core / Web Platform](INDEX.md)**  
+[Archive ประวัติเดิม](HANDOFF_MASTER_ARCHIVE.md) · [Working Protocol](INDEX.md#ขั้นตอนบังคับก่อนและหลังทำงาน)
+
+> ประวัติเดิมที่ [SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md](SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md) คงอยู่เพื่อรักษาลิงก์ย้อนหลัง; บันทึกงานใหม่ใน Handoff ของระบบที่เกี่ยวข้อง
+
+
 แดชบอร์ดสำหรับติดตามข้อมูลรายวิชาออนไลน์ของ **สำนักการจัดการศึกษาออนไลน์ (OOE) มหาวิทยาลัยศรีปทุม**
 
 ระบบรวบรวมข้อมูลสำหรับติดตาม **GR, GS, AI Tutor และ Podcast** โดยเชื่อมข้อมูลจาก Google Sheets และแสดงผลผ่าน GitHub Pages
