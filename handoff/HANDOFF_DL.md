@@ -9,7 +9,7 @@
 
 - GitHub Source: `release-src/dashboard-0.13.35/`, `release-src/dashboard-0.13.37/`, `release-src/dashboard-0.13.38/`, `release-src/dashboard-0.13.39/`
 - Build scripts: `release-tools/patch-dashboard-0.13.38.py`, `release-tools/patch-dashboard-0.13.39.py`, `.github/workflows/build-dashboard-0.13.39.yml`
-- Release manifest: [`downloads/dashboard/0.13.39/release.json`](downloads/dashboard/0.13.39/release.json) → **0.13.39**, ZIP 9,330,641 bytes, 24 parts, SHA-256 `046E50F1CA0D2C03991DC8D09F617691CB8F0B8D3DF88EDA5E2C53D814B0533B`
+- Release manifest: [`downloads/dashboard/0.13.39/release.json`](../downloads/dashboard/0.13.39/release.json) → **0.13.39**, ZIP 9,330,641 bytes, 24 parts, SHA-256 `046E50F1CA0D2C03991DC8D09F617691CB8F0B8D3DF88EDA5E2C53D814B0533B`
 - Release/Source verified **ใน GitHub**, ไม่ได้ยืนยัน Chrome ที่ผู้ใช้ติดตั้งอยู่จริง ณ 24 พ.ย.
 
 ## Policy / Criteria (scope-locked)
