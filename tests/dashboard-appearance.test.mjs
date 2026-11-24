@@ -64,6 +64,18 @@ assert.equal(summaryNode.nodeValue,failedSummaryEn);
 assert.equal(sessionNode.nodeValue,'Sessions 1–7, 9–15');
 
 const skip=makeNode('ชื่อวิชา หลักฐาน');skip.parentElement.closest=()=>true;nodes.push(skip);api.setLanguage('en');assert.equal(skip.nodeValue,'ชื่อวิชา หลักฐาน');
-for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261120statuscopy1'));assert.ok(h.includes('audit-dark-complete.css?v=20261119langtheme3'))}
+for(const p of ['audit-review.html','audit-evidence.html']){const h=fs.readFileSync(p,'utf8');assert.ok(h.includes('ui-i18n.js?v=20261120statuscopy1'));assert.ok(h.includes('audit-dark-complete.css?v=20261124layered1'))}
 const css=fs.readFileSync('audit-dark-complete.css','utf8');for(const k of ['--ev-card:#172332','preflight-list li','teacher-summary-grid article','component-tile.fail','review-drawer','media-tag.pass','component-summary tr.fail'])assert.ok(css.includes(k));
+
+const requiredPalette=['--dark-bg:#0c131d','--dark-card:#1b2a3a','--dark-soft:#24384c','--dark-border:#4b637b','--dark-muted:#bfd0e1','--dark-link:#a9d2ff'];
+for(const token of requiredPalette)assert.ok(css.includes(token),'Missing layered dark token '+token);
+for(const selector of ['.audit-command-center .scope-card','.audit-command-center .queue-criteria-card','.audit-command-center .course-scope','.audit-command-center .queue-orbit','.audit-command-center .queue-stat.queue-stat-running','.audit-command-center .queue-stat.queue-stat-failed','.audit-command-center .queue-now','.audit-command-center .queue-courses'])assert.ok(css.includes(selector),'Missing scope separation '+selector);
+const toLum=hex=>hex.match(/[a-f0-9]{2}/ig).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((acc,v,i)=>acc+v*[.2126,.7152,.0722][i],0);
+const contrast=(a,b)=>{const x=toLum(a.slice(1)),y=toLum(b.slice(1));return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+for(const surface of ['#1b2a3a','#24384c','#2c4460'])assert.ok(contrast('#bfd0e1',surface)>=4.5,'Muted text contrast below WCAG AA on '+surface);
+assert.ok(contrast('#f2f6fd','#1b2a3a')>=7,'Primary text contrast below AAA');
+assert.ok(!css.includes('filter:invert('),'Do not invert theme graphics');
+assert.ok(fs.readFileSync('audit-review.html','utf8').includes('audit-dark-complete.css?v=20261124layered1'));
+assert.ok(fs.readFileSync('audit-evidence.html','utf8').includes('audit-dark-complete.css?v=20261124layered1'));
+
 console.log('Language source, reversible updates, URL preference, dates, evidence labels and dark stylesheet coverage OK');

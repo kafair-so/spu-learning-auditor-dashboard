@@ -98,3 +98,197 @@ html body.theme-dark .extension-hero .extension-check.error{background:var(--dar
 html body.theme-dark .evidence-page .evidence-link,html body.theme-dark .evidence-link{background:#223b57!important;color:var(--dark-link)!important;border-color:#49637e!important}
 html body.theme-dark .review-buttons .review-pass.selected,html body.theme-dark .review-buttons .review-pass.is-selected{background:#23503f!important;color:#c9f8e3!important}
 html body.theme-dark .review-buttons .review-fail.selected,html body.theme-dark .review-buttons .review-fail.is-selected{background:#56303c!important;color:#ffe2e6!important}
+
+/* 2026-11-24: Layered dark surfaces (Web Platform only).
+   Visual separation is created by luminance + restrained semantic accents,
+   not by filters; no current/legacy scoring or JavaScript behavior changes.
+   Keep source/user evidence and pass/fail states untouched. */
+html body.theme-dark{
+ --bg:#0c131d;--ink:#f2f6fd;--muted:#bfd0e1;--line:#4b637b;
+ --surface:#1b2a3a;--surface-soft:#24384c;
+ --dark-bg:#0c131d;--dark-card:#1b2a3a;--dark-soft:#24384c;
+ --dark-raised:#2c4460;--dark-border:#4b637b;--dark-text:#f2f6fd;
+ --dark-muted:#bfd0e1;--dark-link:#a9d2ff;
+ --ev-card:#1b2a3a;--ev-line:#4b637b;--ev-muted:#bfd0e1;
+ background:#0c131d!important;color:var(--dark-text)!important;
+}
+html body.theme-dark .topbar,
+html body.theme-dark .admin-topbar{
+ background:#111d2c!important;border-bottom:1px solid #49627b!important;
+}
+html body.theme-dark :is(.panel,.table-panel,.table-wrap,.admin-intro,.review-drawer,.session-overview){
+ background:var(--dark-card)!important;
+ border-color:#4a627b!important;
+ box-shadow:0 10px 24px rgba(0,0,0,.12)!important;
+}
+html body.theme-dark :is(.scope-card,.course-scope,.queue-courses,.queue-orbit,.worker-console,.monitor-board,.queue-now,.queue-summary-grid) :is(.muted,small){
+ color:var(--dark-muted)!important;
+}
+html body.theme-dark :is(input:not([type=checkbox]):not([type=radio]),select,textarea,option,.file-input){
+ background:#101d2b!important;color:#f2f6fd!important;border:1px solid #68819b!important;
+}
+html body.theme-dark :is(input,textarea)::placeholder{color:#aec2d6!important}
+html body.theme-dark :is(input,select,textarea):focus-visible{
+ outline:2px solid #a7d0ff!important;outline-offset:1px!important;
+ box-shadow:0 0 0 4px rgba(103,174,253,.14)!important;
+}
+html body.theme-dark :is(button,select,input):disabled{
+ cursor:not-allowed;opacity:.68;
+}
+
+/* Command center: neutral page, raised hero, independently tinted groups. */
+html body.theme-dark .audit-command-center{
+ background:linear-gradient(145deg,#203046 0%,#1c293a 64%,#1b2735 100%)!important;
+ border:1px solid #54718d!important;
+ box-shadow:0 18px 42px rgba(3,9,18,.34)!important;
+}
+html body.theme-dark .audit-command-center::after{
+ background:radial-gradient(circle at center,rgba(96,167,237,.22),rgba(96,167,237,0) 69%)!important;
+}
+html body.theme-dark .audit-command-center .command-title h2{
+ color:#fff!important;letter-spacing:.01em;
+}
+html body.theme-dark .audit-command-center .eyebrow.dark{
+ color:#a5d6ff!important;letter-spacing:.14em;
+}
+html body.theme-dark .audit-command-center .command-title .section-icon{
+ background:linear-gradient(145deg,#244f75,#2d617b)!important;
+ color:#bfe9ff!important;border:1px solid #5584a3!important;
+}
+html body.theme-dark .audit-command-center .scope-card{
+ background:#26384a!important;border:1px solid #59738c!important;
+ border-left:3px solid #82b9f1!important;
+ box-shadow:0 3px 12px rgba(5,12,22,.12)!important;
+}
+html body.theme-dark .audit-command-center .queue-criteria-card{
+ background:#313340!important;
+ border-color:#706879!important;border-left-color:#e7b77b!important;
+}
+html body.theme-dark .audit-command-center .scope-card :is(strong,label),
+html body.theme-dark .audit-command-center .course-scope>label{
+ color:#f7faff!important;font-size:13px!important;
+}
+html body.theme-dark .audit-command-center .course-scope{
+ background:linear-gradient(125deg,#17313f,#182b3d 76%)!important;
+ border:1px dashed #6794a4!important;
+ border-left:3px solid #6acfc7!important;
+}
+html body.theme-dark .audit-command-center .course-scope .course-scope-row{
+ gap:10px;
+}
+html body.theme-dark .audit-command-center .scope-segments{
+ background:#142335!important;border:1px solid #64819d!important;
+}
+html body.theme-dark .audit-command-center .scope-segments .scope-segment:not(.active):not([aria-pressed=true]){
+ background:#25394f!important;color:#e1edf9!important;
+ border:1px solid #47617a!important;
+}
+html body.theme-dark .audit-command-center .scope-segments .scope-segment:not(.active):hover{
+ background:#355373!important;color:#fff!important;
+}
+html body.theme-dark .audit-command-center .scope-segments .scope-segment:is(.active,[aria-pressed=true]){
+ background:linear-gradient(135deg,#2e76c2,#215eaa)!important;
+ border:1px solid #9dcafb!important;color:#fff!important;
+ box-shadow:0 0 0 2px rgba(112,182,255,.12)!important;
+}
+html body.theme-dark .audit-command-center #queueCatalogStatus{
+ color:#c4d9e9!important;line-height:1.55;
+}
+html body.theme-dark .audit-command-center :is(#queueScope,#queueCriteriaMode,#queueCourseSelect,#queueCourseSearch){
+ border-color:#7893ac!important;
+}
+html body.theme-dark .audit-command-center .queue-orbit{
+ background:radial-gradient(circle at 50% 45%,#263e5b 0%,#172639 72%)!important;
+ border:1px solid #5a7390!important;
+ box-shadow:inset 0 0 0 1px rgba(167,203,245,.05)!important;
+}
+html body.theme-dark .audit-command-center .queue-orbit-ring{
+ border-color:#3f5770!important;border-top-color:#95c5ff!important;
+ border-right-color:#5298e0!important;
+}
+html body.theme-dark .audit-command-center .queue-orbit-ring strong{
+ font-size:30px;color:#fff!important;
+}
+html body.theme-dark .audit-command-center .queue-stat{
+ --status-accent:#8cbeff;
+ position:relative;overflow:hidden;
+ background:#25354a!important;border:1px solid #5b7693!important;
+ box-shadow:0 5px 14px rgba(6,15,28,.14)!important;
+}
+html body.theme-dark .audit-command-center .queue-stat::before{
+ content:"";position:absolute;inset:0 auto 0 0;width:4px;
+ background:var(--status-accent);
+}
+html body.theme-dark .audit-command-center .queue-summary-grid>.queue-stat:nth-of-type(3){
+ --status-accent:#75d8db;
+ background:#1e383e!important;border-color:#548b91!important;
+}
+html body.theme-dark .audit-command-center .queue-stat.queue-stat-running{
+ --status-accent:#70d7ab;
+ background:#1d3b36!important;border-color:#4b917a!important;
+}
+html body.theme-dark .audit-command-center .queue-stat.queue-stat-failed{
+ --status-accent:#f3a1b0;
+ background:#412c39!important;border-color:#8c596d!important;
+}
+html body.theme-dark .audit-command-center .queue-stat span{
+ color:#d3e0ec!important;font-size:12px;
+}
+html body.theme-dark .audit-command-center .queue-stat strong{
+ color:#fff!important;font-size:27px;
+}
+html body.theme-dark .audit-command-center .queue-stat.queue-stat-running strong{color:#b4f4d8!important}
+html body.theme-dark .audit-command-center .queue-stat.queue-stat-failed strong{color:#ffcfda!important}
+html body.theme-dark .audit-command-center .queue-summary-grid>.queue-stat:nth-of-type(3) strong{color:#b4f5f3!important}
+html body.theme-dark .audit-command-center .queue-now{
+ background:#293c51!important;border:1px solid #597791!important;
+ border-left:4px solid #95c5ff!important;
+}
+html body.theme-dark .audit-command-center .queue-now :is(strong,small){color:#e7f3ff!important}
+html body.theme-dark .audit-command-center .queue-courses{
+ background:#172434!important;border:1px solid #59718b!important;
+}
+html body.theme-dark .audit-command-center .queue-courses-head{
+ background:#25394c!important;border-bottom:1px solid #536c85!important;
+}
+html body.theme-dark .audit-command-center .queue-course-item{
+ border-bottom-color:#425a72!important;
+}
+html body.theme-dark .audit-command-center .queue-course-item:hover{
+ background:#293e53!important;
+}
+html body.theme-dark .audit-command-center .worker-console{
+ background:#1d3041!important;border-top:1px solid #58738d!important;
+}
+html body.theme-dark .audit-command-center .worker-chip{
+ background:#2b4964!important;border-color:#5e85a3!important;color:#dff0ff!important;
+}
+html body.theme-dark .audit-command-center .monitor-event{
+ background:#213347!important;border:1px solid #546e88!important;
+}
+html body.theme-dark .audit-command-center .monitor-event.completed{
+ border-left:3px solid #71d7b1!important;
+}
+html body.theme-dark .audit-command-center .monitor-event.failed{
+ border-left:3px solid #f5a2b3!important;
+}
+html body.theme-dark .audit-command-center .monitor-event.running{
+ border-left:3px solid #95c5ff!important;
+}
+html body.theme-dark .audit-command-center .queue-feedback{
+ background:#253b51!important;border:1px solid #5b7c9b!important;
+}
+
+/* Do not allow a later generic dark selector to erase the semantic pass/fail colors. */
+html body.theme-dark .result-summary.fail,
+html body.theme-dark .component-tile.fail,
+html body.theme-dark .session-chip.fail{background:var(--dark-red-bg)!important;border-color:#87515d!important}
+html body.theme-dark .result-summary.pass,
+html body.theme-dark .component-tile.pass,
+html body.theme-dark .session-chip.pass{background:var(--dark-green-bg)!important;border-color:#427a62!important}
+
+@media(max-width:760px){
+ html body.theme-dark .audit-command-center .scope-card,
+ html body.theme-dark .audit-command-center .course-scope{padding:15px!important}
+ html body.theme-dark .audit-command-center .queue-stat{min-width:0}
+}
