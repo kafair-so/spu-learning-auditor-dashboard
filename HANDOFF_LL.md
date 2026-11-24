@@ -47,6 +47,35 @@
 - [ ] ตรวจข้อความไทยค้างใน EN PDF ด้วย saved-file test เหมือน §130 เมื่อมี report ใหม่
 - [ ] ประเมิน code patch เป็น reusable shared fixture และเสนอ backport ไป DB/LC/DL ทีละสาย
 
+
+## Operational safety — อย่าให้รายงาน Local Legacy เพี้ยน
+
+### คะแนน/ประเภท/การอ่านหลักฐาน
+
+- แยก Course Profile **T/TT** กับ **L/LL/P** ก่อนตัดสิน rubric; ทฤษฎี 100/70, ปฏิบัติ 50/40 ตามนโยบายที่บันทึก ณ §120. การนำตัวตรวจอ่านหลักฐานจาก DL มาปรับ LL ไม่ได้แปลว่าต้องยก legacy_12569 ของ DL มาใช้ทุกภาคเรียน
+- เหตุการณ์ Week 1 มีข้อกำหนดต่างจาก current DB/LC โดย LL §120 ยืนยันว่า lesson-plan ถูกนับรวมกับ teaching materials. ระยะวิดีโอผ่อนปรน 3/5/10 นาที Week 1 และ 5/10/20 นาที Week 2–15 ตามหน่วยกิต 1/2/3+
+- **GN (§56)** มีข้อยกเว้น Podcast และ AI Tutor; ห้ามบังคับใช้การตรวจ GS/GR แบบเหมารวมและห้ามเดาว่ากิจกรรม optional เป็น mandatory
+- ค่า `0:00` ที่อ่านเวลาไม่ได้ไม่ใช่หลักฐานว่าสื่อไม่มีจริง: ดู media provider, redirected URL, metadata, access rights และ video category ก่อนตัดคะแนน
+
+### EBC314 forensic history & acceptance (Course ID 19734)
+
+| รุ่น | ปมปัญหาที่ตรวจ | สิ่งที่ต้องไม่ทำซ้ำ |
+|---|---|---|
+| 0.3.22 | Moodle Pre/Post Quiz จัดประเภทขัดแย้ง และ Google Drive วิดีโอ EBC411 อ่านเวลาไม่ได้ | จัดประเภทจาก title จริงก่อน override จากป้ายข้างเคียง |
+| 0.3.23 | Direct Video Class links ใต้ image-only label ไม่ถูก collect | อ่าน URL ใน activity row จริง แม้ label OCR ไม่ได้; ไม่ดึงลิงก์ของรายการถัดไป |
+| 0.3.24–0.3.26 | Moodle redirect, player lookup และ URL→duration reader ยังพลาด | ไล่ content→classifier→destination→provider probe→duration→report |
+| 0.3.27 | Vidyard ไม่มี total clock ถาวร | อ่าน authoritative `length_in_seconds` หรือ `VidyardV4.players`, ไม่ใช้ timeline tooltip เป็น full duration |
+| 0.3.28 | คำว่า `Pre record` ถูก early-branch จัดเป็น `recording` ก่อนคลาส `video` | context แบบ Pre-recorded ต้องไม่ถูกตีความเป็น LiveRecord โดย substring `record`; fixture EBC314 6/6 |
+| 0.3.29–0.3.30 | รายงาน EN ยังมีข้อความระบบไทยปน | แปล **whole system sentence** และเก็บ source title/user authored text เดิม; test saved EBC211 PDF |
+
+**สถานะความเชื่อมั่น:** §128 ผ่าน synthetic fixtures แต่กำหนดให้ทดสอบ Chrome จริงสองรายวิชาก่อนปิด Issue #1; §130 แก้ PDF/i18n ไม่ได้ปิด acceptance วิดีโอของ EBC314. อย่าอ้างว่า “แม่นยำ ≥90%” จากจำนวน unit tests เพียงอย่างเดียว
+
+### Release integrity & checks
+
+- §130: LL 0.3.30 — Archive ZIP 151 entries, 9,581,967 bytes, SHA-256 `781740c8655805965b9ed5cd8370a435cc3e06f045c92a4779e6f824b8dddac5`; regression 50/50, 104 JS/module syntax checks ผ่านตามบันทึกใน Archive
+- แยก **patch overlay** รุ่น 0.3.23 จาก full ZIP; overlay ตัวเดียว **ติดตั้งเป็น Extension ไม่ได้** ต้องประกอบกับ source base ให้ถูก
+- การแก้ LL ทุกรอบต้องรักษา Extension ID/ประวัติ Local, ตรวจ PDF ที่ Save แล้ว, ทั้ง TH/EN และไม่ไปแตะ Dashboard/Supabase/Main Data หากไม่ได้รับมอบหมาย
+
 ## Change log
 
 - 2026-11-24 — แยก LL ด้วยบริบทจาก §§15–27, 48–56, 63, 66–67, 120–130; ไม่ย้าย Source/ZIP หรือเปลี่ยนผลตรวจ

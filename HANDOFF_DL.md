@@ -52,6 +52,37 @@
 - [ ] Worker publish & outbox sync verified if outcome changes
 - [ ] Handoff update + Shared Core compatibility note before port to DB/LC/LL
 
+
+## Operational baseline — DL 0.13.39 และ production-safe guard
+
+| หัวข้อ | แนวปฏิบัติจากหลักฐานใน Archive |
+|---|---|
+| Source | ใช้ release 0.13.39 ที่มี `release.json` hash ยืนยัน; `supabase/functions/api/criteria-12569.mjs` เป็น Source policy แต่ **runtime อาจ deploy คนละรุ่น** |
+| Scope | GR, `semester_code=1/2569`, `criteria_mode=legacy_12569`; ห้ามให้ GS, DB current หรือ LL หลุดเงื่อนไข |
+| คะแนน | Theory 100/70, practical 50/40 และ mandatory gates; อย่ายกคะแนนเดิมจาก current 110/80 มาเทียบตรง ๆ |
+| Quiz | §114 พบ regression Pre/Post eligible Moodle Quiz ช่วง Session 2–10; 0.13.39 ปรับ `presentQuiz`; ห้ามนับย้อนหลังช่วง 11–15 โดยไร้ policy ใหม่ |
+| Instructor | รูป/ชื่อ/ช่องทางติดต่อต้องอ่าน context ให้ถูก; การอนุโลมขาดชื่อที่ §114 ใช้กับ ICT218 มี trace ไม่ใช่การให้อภัยทุกรายวิชา |
+| Video | §116 BUS431: 34 VOD ที่ `duration_read`, 30 LiveRecord ที่ skipped — ข้อความคำเตือนผิด ≠ URL เสีย; เวลาไม่ครบยังไม่ผ่าน |
+| การยืนยัน | ห้ามละเมิด reviewer decision หรือ override manual score โดยไม่มี evidence mapping/trace |
+| Publishing | Supabase score+public projection ต้องสอดคล้องกัน และ outbox verified/Google Sheets V/W/X จริงก่อนบอก Sync สำเร็จ |
+
+### Regressions ที่ต้องป้องกัน
+
+- **ALB311**: instructor/photo+QR และ Session 9 video time old/new mismatch. ระวัง replay/regression (§109)
+- **ICT218**: 58→73 เพราะ Moodle Quiz tolerance และ reviewer-confirmed instructor name waiver (§114)
+- **ICT306**: Course ID 21261, activity under end-of-session heading though named Post-test, reviewer explicitly reclassified one activity; นับครั้งที่ 1 เท่านั้นและห้ามให้ Pre/Post ซ้ำ (§115)
+- **BUS431**: Course ID 21302, คำว่า “เปิดปลายทางไม่ได้” ผิดจากการสร้างข้อความ; video score ไม่ได้เปลี่ยนจาก UI fix (§116)
+- **MKT453**: old passes/current nonpass เป็นการเทียบ **ข้ามเกณฑ์**; readback พบ video durations/duplication/access issues ไม่ใช่ข้อสรุปว่า defect เดียว (§117)
+
+### Production correction rules
+
+1. ตรวจ latest published run ID, audit mode/group/semester, review confirmation และหลักฐาน `evidenceSnapshot` จริงก่อนคำนวณ
+2. ทำ independent score replay และ guard MD5/source payload, no queued/running job, no active outbox lease
+3. เก็บ original criteria, scorecard, reviewer decision และเหตุผลก่อนเขียน; แก้เฉพาะ applicable criterion ไม่ sweep ทั้งวิชา
+4. เปลี่ยนคะแนนโดยไม่มี outcome change ต้องตรวจ public projection เท่ากับ source; หาก outcome change ต้องสร้าง/ติดตาม outbox sync ไม่อ้างว่า verified ทันที
+5. ดูไฟล์ `HANDOFF_WEB_PLATFORM.md` เมื่อต้องเปลี่ยน API/Schema/Cloud Worker; ห้าม Deploy server จาก commit ที่ยังไม่ยืนยันความตรงกับ production
+6. ไม่ให้ตัวยืนยัน / manual correction เก่าถูกตรวจซ้ำด้วย Extension รุ่นก่อนหน้าแล้วทับผลโดยไม่ตรวจ
+
 ## Change log
 
 - 2026-11-24 — แยก DL จาก current DB; จุดอ้างอิง Source เป็นรุ่น GitHub 0.13.39; ไม่มีการตรวจใหม่/เปลี่ยนคะแนน

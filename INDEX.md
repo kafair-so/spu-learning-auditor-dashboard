@@ -3,6 +3,12 @@
 > สถานะเอกสาร: **Migration baseline 24 พ.ย. 2569** จาก Handoff เดิมถึง §130 และ Source ใน `main` ณ Commit `b1813af93b45`  
 > **ไม่ใช่การรับรองเวอร์ชันที่ติดตั้งบนเครื่อง หรือสถานะ production ปัจจุบัน**: ทุกครั้งที่ทำงานต้องตรวจ Source/Release/CI/Runtime ล่าสุดก่อน
 
+## Quick start — ต้องอ่านอะไรไม่ให้ข้อมูลคลาดเคลื่อน
+
+**Handoff แต่ละฉบับมีรายละเอียดปฏิบัติที่คัดออกมาจาก Archive เพิ่มแล้ว**: Policy snapshots, historical release/test evidence, regression fixtures, safety/rollback gates และงานเปิดค้าง. แต่ต้องอ่าน `source` รุ่นที่ใช้จริงก่อนทุกครั้ง โดยเฉพาะ DB/LC ที่เคยเก็บ ZIP ในเครื่อง Local ไม่ใช่ใน GitHub ทั้งหมด.
+
+`DB/LC/DL/LL` **ห้ามแชร์ตัวเลขเกณฑ์หรือภาคเรียนโดยอัตโนมัติ**: DB/LC current ในเอกสารรุ่น 0.13.34/0.13.27 = 80/110 + mandatory; DL 1/2569 theory 70/100 practical 40/50; LL legacy ระบุ 70/100/40/50 ในประวัติช่วงหลัง. รายละเอียดอาจเปลี่ยนใน runtime; ให้ถือ source+policy+scope เป็นตัวตัดสิน ไม่ใช้ข้อความสรุปนี้แทน code.
+
 ## เริ่มงานจากตรงนี้
 
 โครงการนี้แยก Handoff ตาม **สายพัฒนา (track)** ไม่ใช่แยกเลข release ทุกตัว และแยกมาตรฐานการตรวจออกจากเกณฑ์ให้คะแนนของแต่ละสาย

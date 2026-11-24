@@ -57,6 +57,26 @@
 - [ ] Regression fixture ของ media warning ไม่กล่าวหาลิงก์เสียจาก `skipped_recording` / ไม่มีเวลา
 - [ ] Handoff ของ affected Extension ระบุ compatibility decision; Shared Core parity อัปเดตหากพฤติกรรม reader เปลี่ยน
 
+
+## Operational troubleshooting — Evidence / Queue / Sync
+
+| อาการ | จุดที่ควรเริ่มตรวจ | ห้ามสรุปเร็วเกินไป |
+|---|---|---|
+| User/Admin ผลต่างกัน | `audit_runs` ล่าสุดที่ published, `public_course_results`, `evidenceSnapshot` และ cache | ไม่ใช่ทุกครั้งที่ต้องรัน Extension ใหม่ |
+| คะแนนใน Supabase ถูกแต่ Sheet ยังเก่า | `gr_sheet_sync_outbox` state/lease/run, Worker polling, Google Sheet V/W/X, GRGS_Public formula | `saved` ไม่เท่ากับ `verified` |
+| วิดีโอเปิดได้แต่ banner บอกเปิดไม่ได้ | `mediaStatus` ของ video จริง เทียบ recording skipped และข้อความจาก UI | อย่านับทุก LiveRecord เป็นลิงก์เสีย (§116) |
+| สลับ EN แล้วไทยค้าง | `ui-i18n.js`, dynamic nodes, raw/last source and templates, language storage, PDF output | ไม่แปลชื่อไฟล์/ข้อความที่ผู้สอนสร้าง (§§113,118–119,130) |
+| คิวซ้ำ/ผลหาย | job id/run id, ack/retry, prior review decisions, outbox; ตรวจ `audit-review.js` และ API | retry ไม่ควรทำ score/review ย้อนหรือสร้าง run ซ้ำ |
+| หน้าโหลดแสดงรุ่นไม่ตรง ZIP | manifest, Release JSON, checksum parts, admin hardcoded version, Pages cache | เปลี่ยน label หน้าเว็บไม่ได้แปลว่า ZIP ที่ติดตั้งเปลี่ยน (§112) |
+
+### คำสั่งตรวจรับก่อนส่งรายงาน
+
+1. อ่าน source version และ GitHub Pages workflow ของ Web แยกจาก Extension ZIP workflow
+2. ถ้ามีการเปลี่ยน publication ให้ตรวจจำนวน active Course IDs, latest/published run, public status, review evidence และ sync state ณ เวลาเดียวกัน
+3. ไม่ส่งผลคะแนนกลับ Sheet หรือยืนยันการเปลี่ยน status ด้วย SQL ที่ไม่ guard latest run + reviewer decision + no-job/no-lease
+4. หน้า Evidence ของ User ต้องไม่เผย internal scoring/reviewer-only action และต้องแสดง overview + sessions ตามผล published จริง
+5. Test ไฟล์ `tests/dashboard-appearance.test.mjs` และ `tests/audit-evidence-issues.test.mjs` ก่อน release UI; automated test ไม่ใช่การรับรอง authenticated Chrome
+
 ## Change log
 
 - 2026-11-24 — แยก Web Platform ownership ออกจาก 4 Extension; ไม่แก้ runtime, DB, API หรือคะแนน

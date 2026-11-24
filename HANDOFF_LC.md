@@ -31,6 +31,30 @@
 - [ ] สร้าง contract test LC output ให้เทียบกับ shared normalized evidence ได้โดยไม่เปลี่ยนคะแนน
 - [ ] ประเมินว่าการแก้ LL `0.3.30` เรื่อง EN report และ EBC314 media mapping ควร backport เฉพาะ reader/renderer หรือไม่
 
+
+## Operational baseline — Local Current (LC)
+
+**การให้คะแนนที่มีหลักฐานใน Archive ณ §69:** Current LC รุ่น 0.13.26 อ้างเกณฑ์ GR/GS แบบเดียวกับ Dashboard 0.13.33 คือคะแนนขั้นต่ำ **80/110** พร้อม mandatory gates. Theory ต้องมีแผน/เอกสาร/วิดีโอครบตาม session ที่บังคับ และ Pre/Post 2–15; Practical แต่ละองค์ประกอบต้องผ่านอย่างน้อย 7 ครั้ง (§69). ต่อมา **LC 0.13.27 (§70) ตัดแผนครั้งที่ 1 ออกจากข้อบังคับ**. กติกาเหล่านี้เป็น snapshot ของ Source ตอนนั้น ไม่ใช่การยืนยัน current runtime วันนี้
+
+### Version milestones and source provenance
+
+| รุ่น | งานสำคัญ | สถานะใน Handoff เดิม |
+|---|---|---|
+| 0.13.19 | รับ shared parser จาก LL 0.3.x พร้อม AI Tutor; คง local storage/export และ current 110/80 | §47: test 36/36, ZIP สร้างแล้ว, ยังไม่เผยแพร่ในรอบนั้น |
+| 0.13.26 | sync parser/mandatory gates กับ Dashboard 0.13.33 แต่แยก local result และ Central queue | §69: test 39/39, ZIP 9,359,372 bytes, SHA-256 `95AFF513F7EC7A7B6297212312B474BF534CE2E7D0236712A976CC564BDA76A0` |
+| 0.13.27 | ปรับ Session 1 lesson plan rule ร่วมกับ DB 0.13.34 | §70: test 39/39, ZIP 9,359,663 bytes, SHA-256 `6BDA6F6BAD02ABB34A487D0E07607B35BB0C526C0398237950A7C5DFA145E8C7` |
+
+**คำสั่งกันงานคลาดเคลื่อน:** ห้ามอ้างว่า LC 0.13.27 มีคะแนน legacy 100/70, ไม่นำ `legacy_12569` หรือ GR 1/2569 เข้าเกณฑ์ LC. หากพบแต่ไฟล์ Dashboard Legacy 0.13.39 ห้ามใช้แทน Source LC; ต้องขอ/ตรวจ ZIP หรือเครื่องที่ติดตั้ง LC จริงก่อนแก้
+
+### LC-specific regression / acceptance
+
+- [ ] แยก Local export/result storage จาก Central Worker, Supabase API และ Main Data Sync ให้ชัด
+- [ ] ทดสอบ Course ID/Profile, T/L, Moodle Quiz vs Assignment, case ที่ชื่อผิดและป้ายภาพกำกับ
+- [ ] ทดสอบ AI Tutor trusted provider กับ external chat; ห้ามนับหน้าประชาสัมพันธ์ provider เป็น AI Tutor ที่ใช้งานได้
+- [ ] ตรวจ required gates 80/110 และ session-1 exception ตาม version จริง; เทียบกับ DB ด้วย fixture ชุดเดียวกันแต่คนละ adapter
+- [ ] ถ้าปรับ media/ชื่อผู้สอนจาก LL ให้ทดสอบผลเก่าทั้งผ่านและไม่ผ่านก่อน accept backport
+- [ ] บันทึก file path, manifest version, ZIP hash, full tests, Chrome acceptance และ rollback ต่อครั้งในไฟล์นี้
+
 ## Change log
 
 - 2026-11-24 — แยก Handoff สาย LC; รุ่นที่อ้างเป็น **last documented** ไม่ใช่ verified latest runtime

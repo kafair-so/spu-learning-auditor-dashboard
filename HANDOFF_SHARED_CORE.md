@@ -77,6 +77,20 @@
 - [ ] นำกรณีผิดพลาดที่แก้ใน DL/LL ไปประเมินว่า DB/LC ได้รับผลกระทบหรือไม่; ไม่ cherry-pick ค่าคะแนนตามกัน
 - [ ] กู้/ตรวจประวัติ §§28–46 จาก Git history (ต้นฉบับมี pre-existing truncation; ดู [INDEX](INDEX.md))
 
+
+## Cross-version rollout decision register — baseline 2026-11-24
+
+| หัวข้อที่เคยแก้ | Track ต้นทางในประวัติ | แนะนำให้ตรวจผลกระทบกับ | ข้อห้ามขณะ backport |
+|---|---|---|---|
+| Moodle Quiz Pre/Post ชื่อผิด/ป้ายภาพ (§§21–24, 121–122) | LL | DB, LC, DL | ห้ามเปลี่ยนเกณฑ์นับช่วงสัปดาห์หรือคะแนนโดยไม่แยก policy |
+| Video Class ชื่อ/ภาพ/Pre-record vs LiveRecord (§§123–128) | LL | DB, LC, DL | ห้ามเหมารวม recording กับ VOD; ห้ามเครดิตเวลาเพราะกดลิงก์เปิดได้ |
+| เครดิต Moodle Quiz เกณฑ์ผ่อนปรน 1/2569 (§114) | DL | LL เฉพาะ review policy, DB/LC เฉพาะ classifier | **ห้ามคัดลอกการผ่อนปรน 2–10 ไป current** |
+| รูปผู้สอน/QR/LINE และชื่อไม่ครบ (§§59,66–67,109,114) | DB/DL/LL | ทุก track | Generic QR/ภาพประกอบไม่ใช่รูปผู้สอนจริง; การ waive ชื่อต้องเก็บเหตุผล |
+| PDF English rendering ของ EBC211 (§130) | LL | DB/LC/DL ในส่วนรายงาน | แปลข้อความระบบเท่านั้น ไม่แปลชื่อวิชาและชื่อไฟล์อาจารย์ |
+| Wrong broken-video banner ของ BUS431 (§116) | Web Platform | ทุก track ที่ส่ง media status | `duration_unreadable` และ `skipped_recording` ไม่ใช่ `link_error` |
+
+**ตารางนี้ยังเป็น `needs evaluation`** ไม่ใช่คำสั่งให้ merge หรืออ้างว่าแต่ละรุ่นผ่านแล้ว. ทุกงานที่รับเข้าต้องระบุ `source version`, `target track/version`, fixture, expected behavior, acceptance result และ release commit ก่อนเปลี่ยน Parity Matrix
+
 ## Change log
 
 - 2026-11-24 — สร้างมาตรฐาน Shared Core และ Parity baseline; ยังไม่แก้/รวม Source Code หรือเปลี่ยนผลตรวจ
