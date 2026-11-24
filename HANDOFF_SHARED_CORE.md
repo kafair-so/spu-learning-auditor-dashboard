@@ -93,4 +93,6 @@
 
 ## Change log
 
+- 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
+
 - 2026-11-24 — สร้างมาตรฐาน Shared Core และ Parity baseline; ยังไม่แก้/รวม Source Code หรือเปลี่ยนผลตรวจ

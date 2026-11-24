@@ -78,4 +78,6 @@
 
 ## Change log
 
+- 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
+
 - 2026-11-24 — แยก LL ด้วยบริบทจาก §§15–27, 48–56, 63, 66–67, 120–130; ไม่ย้าย Source/ZIP หรือเปลี่ยนผลตรวจ

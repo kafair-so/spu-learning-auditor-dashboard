@@ -73,4 +73,6 @@
 
 ## Change log
 
+- 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
+
 - 2026-11-24 — เริ่ม Handoff สาย DB ด้วยข้อมูลเฉพาะที่ Archive ยืนยัน; ไม่มีการเปลี่ยน Source หรือ Deploy

@@ -64,4 +64,6 @@
 
 ## Change log
 
+- 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
+
 - **2026-11-24 — Handoff separation:** ตั้ง Shared Core + Web Platform + DB/LC/LL/DL + Index; สำรอง Archive เป็น Blob เดิม; เก็บ entrypoint เดิม; ระบุ parity ที่ยังต้องตรวจแทนการอ้างว่ารองรับเท่ากันแล้ว
