@@ -289,6 +289,25 @@ The old LL reference in §9.2 described 5/10/20 as relaxed minimum minutes for s
 - GN scoring and population/eligibility work, and additional academic exclusions/inclusion policy, are explicitly deferred to the future. Keep the first prototype GS/GR-only; do not invent exceptions, relax existing queue/display safety guards or enable scan-all on live data before an approved eligibility policy. Retain the previously confirmed objective of all relevant GS/GR Profiles, separate from display, and document unresolved reconciliation.
 - Preserve the previously agreed two-term Legacy family, all original result-isolation and manual-review requirements. Use design/fixture mode for any policy uncertainty, with no final live publication. GN and future terms remain feature-gated.
 
+### 9.7 OWNER-approved video duration policy — subtract tolerance (2026-11-25)
+
+**Status: OWNER CONFIRMED for QA vNext design; NOT IMPLEMENTED / NOT DEPLOYED.** This resolves the ambiguity in §9.6 B and supersedes any earlier description of relief figures as standalone minimum durations. OWNER clarified that a 30-minute requirement with a 5-minute tolerance means a 25-minute minimum, and approved the separate first-session policy including the proposed 15-minute allowance for 4 credits.
+
+For GS/GR QA vNext, use the following approved duration policy within the planned Legacy term scope (3/2568 and 1/2569), with separate per-session applicability and other approved rubric requirements. Do not modify the historical rules or published results of other Auditor tracks.
+
+| Credits | Session 1 standard (minutes) | Session 1 tolerance (minutes) | Session 1 minimum (minutes) | Sessions 2–15 standard (minutes) | Sessions 2–15 tolerance (minutes) | Sessions 2–15 minimum (minutes) |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | 15 | 3 | 12 | 30 | 5 | 25 |
+| 2 | 30 | 5 | 25 | 60 | 10 | 50 |
+| 3 | 45 | 10 | 35 | 90 | 20 | 70 |
+| 4 | 60 | 15 | 45 | 120 | 30 | 90 |
+
+- Standard = credits × 15 minutes for Session 1; credits × 30 minutes for Sessions 2–15. Passing minimum = standard minus the applicable tolerance. Do not interpret tolerance as the minimum itself. Session 1 remains separate from Sessions 2–15.
+- Evaluate verified eligible video duration in actual seconds, without rounding the duration upward; minimum is inclusive. For example, 3 credits in Sessions 2–15: 90:00 meets the standard, 70:00–89:59 meets the relaxed requirement, 69:59 fails the duration requirement. Keep normal-standard pass vs tolerance pass distinguishable internally. Do not conflate video duration criterion with overall course pass.
+- Keep the actual duration evidence, source and confidence; unreadable/unknown durations must remain unresolved rather than assumed zero or granted points. Preserve existing verified rules for eligible video categories, aggregation, deduplication, and required session coverage; do not invent new rules. Unsupported credit values must be reviewed rather than coerced to a supported value.
+- Do not expose the tolerance values or internal relaxed-minimum rules on public teacher-facing evidence. Preserve authorized Admin access and traceability. Final-score rounding under §9.5/9.6 applies to the overall payment score only, not media duration.
+- Acceptance: parameterized tests for each of 4 credit values and both session groups, just below/at/above each minimum and normal threshold, unknown duration and unsupported credits, with separate public/internal report checks. Preserve old results and all four existing Auditor tracks. No code, extension, database or deployment changes authorized by this documentation entry.
+
 ## 10. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
@@ -297,6 +316,8 @@ The old LL reference in §9.2 described 5/10/20 as relaxed minimum minutes for s
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — OWNER duration policy approved:** confirmed tolerance is subtracted from the normal requirement; Session 1 minima 12/25/35/45 minutes and Sessions 2–15 minima 25/50/70/90 minutes for 1–4 credits, respectively. OWNER approved 4-credit Session 1 tolerance of 15 minutes, actual-second comparison and internal-only tolerance visibility. Resolves §9.6 B. **Docs only.**
 
 - **2026-11-25 — OWNER scope confirmation:** approved exact 90:10 automated/manual allocation, clarified AI Tutor/Podcast presence-only (no KPI development), supplied 1–4-credit standard/relief figures (semantics and session scope pending clarification), delegated topology recommendation with strict result isolation, requested portable implementation package + commit prompt for colleague-owned account, and deferred GN/extra eligibility exceptions. **Docs only.**
 
