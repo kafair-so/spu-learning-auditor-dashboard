@@ -118,14 +118,47 @@ Raw Course Profiles (Neon, d-Learning + i-Learning; immutable/provenance)
 
 ## 7. Open decisions / blockers — do not make assumptions
 
-1. **Audit Eligible vs Display Eligible**: current QA `effective_visible` gating versus requested QA-filtered raw master; how should hidden but relevant courses be handled? **OWNER decision pending**.
-2. **GN**: category-specific QA rubric, mandatory/optional components, 15-week gates, Podcast/AI Tutor, exclusions and scoring **not approved by this document**.
-3. **Term versioning**: choose rubric by date/type/profile, source-specific exceptions and GN/GR/GS coverage (not blindly 110/80 or 100/70).
-4. **Publication**: whether new QA results may auto-publish, whether it supersedes existing QA 0.13.34 published runs, and how to preserve history; default **no auto replacement**.
+1. **Audit Eligible vs Display Eligible**: OWNER confirmed **audit all target-course Profiles in principle, GS/GR first and GN later, independently of public Dashboard display**. Exactly which academic exemptions apply and whether Admin-hidden courses may be audited remains **pending rubric/OWNER policy review**; current QA `effective_visible` checks must remain fail-closed until a separate approved implementation changes them.
+2. **GN**: OWNER confirmed GN as secondary/deferred audit scope, with no requirement to publish it on primary payment-oriented Dashboard; category-specific rubric, mandatory/optional components, 15-week gates, Podcast/AI Tutor, exclusions and scoring are **pending supplied criteria**, not approved here.
+3. **Term versioning**: OWNER confirmed 3/2568 and 1/2569 use the **Legacy family**. Exact term-specific thresholds, tolerances, source exceptions and GN/GR/GS eligibility require reviewing the forthcoming criteria documents; future terms have **no approved rubric** and require a new OWNER decision. Never infer one shared numeric score gate merely from the word Legacy.
+4. **Publication/storage**: OWNER confirmed **QA vNext results must be stored completely separately from current QA/DB published results**, never overwrite existing run or publication pointers. New QA auto-publication/default visibility and exact storage schema/provider are **not yet approved**; default is no auto replacement.
 5. **Repository/release ownership**: whether QA Extension source stays in `donut204/spu-course-qa/extension/` or moves to dedicated source branch/repo; require ownership/CI/test path confirmation.
 6. **Source freshness**: reconcile Neon live Raw/Published/Override/Personnel/SCMS data without changing it; earlier mismatched Course ID investigations remain unconfirmed until Neon read-only checks.
 
-## 8. Handoff and Change Log protocol
+## 8. OWNER confirmed scope + database consultation — 2026-11-25
+
+**Status:** `owner_policy_confirmed_in_part / storage_design_proposal_only`; historical source analysis is based on Course QA `main@003926456e16`, not live Neon inspection. **This entry records decisions and alternatives only; no new extension/schema/DB/queue/deployment created.**
+
+### A. Confirmed academic and deployment requirements
+
+- **Priorities:** Scan **all relevant GS and GR Course Profiles first** for faculty payment-supporting audit; support GN as a later, lower-priority scan group whose results do **not** have to be visible on the primary payment-oriented Dashboard.
+- **Main Concern:** GS, GR, GN. Previously excluded group codes `GU/FN/GI/FS/GH` remain out of initial audit concern; raw database rows must remain untouched. "All target Profiles" does **not** authorize inventing academic exemptions (student=0, special-only faculty, project, etc.). Await OWNER-provided academic criteria for full inclusion/exclusion and GN rubric.
+- **Term family:** Semester **3/2568** and **1/2569** use Legacy criteria as a **family**. Freeze rubric by `academic_year + semester + course_group + source + approved version`; numeric criteria and relief rules require the forthcoming documents. Later terms require explicit policy negotiation and approval, not automatic inheritance.
+- **Result isolation:** New QA vNext results must never mix or overwrite published data, immutable evidence, user corrections, or publication pointers of the current QA-integrated `0.13.34` / DB / DL / LC / LL.
+- **Retention:** Keep **latest three audit results per course** as the operating history (recommended identity = `source + Moodle Course ID + academic year + semester`); retain **course Profile/metadata history for 3–5 years**. Clarify exact years, revision/legal obligations and cold-archive policies before physical deletions.
+- **Migration direction:** Temporary Cloud storage now; the full application and database are intended to move to the university's **on-premises** servers. Keep implementation PostgreSQL-portable.
+
+### B. Storage options (recommendation pending OWNER decision)
+
+1. **Preferred for initial integration (proposal, not approved):** Keep Neon PostgreSQL as the QA data source and add a separate proposed `qa_auditor_v2` schema with its **own roles, migrations, queue/job/run/evidence/review/publication tables, endpoints, feature flags and versioned contract**. Existing `auditor.*` remains untouched and the new vNext presentation reads its own result pointers only. Reuse `course_profiles` and scoped immutable reference snapshots as read-only source data; do not clone raw master rows unnecessarily. Because schemas share compute/storage, run isolated tests in a **separate non-Production Neon project/branch or local PostgreSQL**, and complete capacity/load/permission gates before production integration.
+2. **Stronger resource isolation if needed:** Dedicated Neon **project/database** for new Auditor records plus explicit read-only Course QA source connection. Benefits: separated compute/limits/blast radius; costs: two DB connection domains, cross-DB referential integrity impossible without replicated identifiers, additional reconciliation and migration/backup complexity. Consider only after measured size/load/security constraints; **do not switch vendor merely to obtain a new table**.
+3. **On-prem:** Retain PostgreSQL schemas or separate them into databases according to university IAM/backups. Export/import using tested `pg_dump`/`pg_restore` and explicit restore verification; check PG version/extensions/roles, replayable migrations, row counts, SHA-256 checksums, read-only Moodle config, backups and RPO/RTO. Never assume a ZIP or SQL dump alone proves successful migration.
+
+**Cost truth:** QA Handoff states Neon was changed to **Launch** on 13 Nov 2026; user mentioned Free Cloud generally. **Actual production plan, storage, compute, growth and remaining quotas require direct Neon console verification**; do not assume Free quota. Budget with measured audit evidence size (median/p95), number of GS/GR/GN Profiles, retained 3 runs, metadata over 3–5 years, indexes, backup/archive and concurrency. Evidence may be large (current QA schema2 allows up to 2 MiB per payload); keep heavyweight artifacts out of main result tables unless justified.
+
+**Proposed retention semantics, pending policy:** Latest three *full* results per audit subject available online; older results that must remain legally/accountably traceable are transitioned to immutable metadata/archive records without breaking publication/reviewer FKs. Existing QA `auditor.audit_run_snapshots` and guarded retention migrations are examples to inspect, **not** authorization to reuse their destructive cleanup for `qa_auditor_v2`. Course snapshots should be captured by year/term/version with source/capture timestamp; a course missing in a later term must not erase its earlier history.
+
+### C. Gates before real coding / integration
+
+- [ ] OWNER sends academic eligibility and scoring documents (including GN) for rule inventory; resolve exclusions per term and profile **separately from Dashboard display eligibility**
+- [ ] Confirm actual Neon project/plan, `pg_total_relation_size`, Cloud storage remaining, quota and retention policy; estimate 3-result + 3–5-year growth
+- [ ] Approve separate-schema versus separate-project topology, migration ownership, feature flags and independent QA results route
+- [ ] Define new `qa_auditor_v2` schema contract + access role boundaries without writing to existing `auditor` or historical publications
+- [ ] Define source/readiness/priority rule `GS/GR → GN`, de-dup by source-qualified Course ID, archive references and 3-run handling
+- [ ] Isolated PostgreSQL + Browser/Moodle READ-ONLY replay, then OWNER Production approval and on-prem migration dry-run plan
+- [ ] Mirror implementation facts into `donut204/spu-course-qa/SPU_COURSE_QA_HANDOFF.md` **when QA repository actually changes**; shared scanner changes go to Shared Core Handoff
+
+## 9. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
 - If implementation touches Course QA repo, **also** update `SPU_COURSE_QA_HANDOFF.md` and follow `AGENTS.md` on that repo, production/Neon safety and reviewed release approvals.
@@ -133,5 +166,7 @@ Raw Course Profiles (Neon, d-Learning + i-Learning; immutable/provenance)
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — OWNER decisions / QA storage planning:** confirmed GS/GR-first all-target-profile audit, GN later and not required for payment-facing Dashboard, Legacy rubric family for 3/2568 and 1/2569, strict isolation of new results, latest three results and 3–5 year course metadata goal; proposed separate Neon PostgreSQL schema versus isolated project, future on-prem migration and pending criteria. **Docs only; no DB or Extension changes**.
 
 - **2026-11-25 — QA track registered:** OWNER proposed independent QA Auditor to protect DB/DL/LC/LL and current QA published results; this handoff, shared-core parity entry and INDEX were created as **design only**. Baselines: Auditor `5f86bd146e09`, QA `003926456e16`. **No Extension Source, Backend, Neon, Moodle, queue or published result changed.**
