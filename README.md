@@ -2,8 +2,8 @@
 
 ## 📚 Project Handoff (เริ่มงานจากนี่)
 
-**[เปิด Handoff Index — DB / LC / LL / DL / Shared Core / Web Platform](handoff/INDEX.md)**  
-[Archive ประวัติเดิม](handoff/HANDOFF_MASTER_ARCHIVE.md) · [Working Protocol](handoff/INDEX.md#ขั้นตอนบังคับก่อนและหลังทำงาน)
+**[เปิด Handoff Index — DB / LC / LL / DL / QA / Shared Core / Web Platform](handoff/INDEX.md)**  
+[QA Auditor — สายใหม่ (Design)](handoff/HANDOFF_QA.md) · [Archive ประวัติเดิม](handoff/HANDOFF_MASTER_ARCHIVE.md) · [Working Protocol](handoff/INDEX.md#ขั้นตอนบังคับก่อนและหลังทำงาน)
 
 > ประวัติเดิมที่ [SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md](SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md) คงอยู่เพื่อรักษาลิงก์ย้อนหลัง; บันทึกงานใหม่ใน Handoff ของระบบที่เกี่ยวข้อง
 

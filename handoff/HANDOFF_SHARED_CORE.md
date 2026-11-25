@@ -4,7 +4,7 @@
 > **ไม่ใช่การรับรองเวอร์ชันที่ติดตั้งบนเครื่อง หรือสถานะ production ปัจจุบัน**: ทุกครั้งที่ทำงานต้องตรวจ Source/Release/CI/Runtime ล่าสุดก่อน
 
 > เจ้าของเรื่อง: **มาตรฐานความสามารถร่วม, compatibility contract, regression suite, feature parity และการกระจายการแก้ไข**  
-> ไม่ใช่เจ้าของเกณฑ์คะแนนหรือกฎผ่อนปรนของ DB/LC/LL/DL
+> ไม่ใช่เจ้าของเกณฑ์คะแนนหรือกฎผ่อนปรนของ DB/LC/LL/DL/QA
 
 ## หลักการร่วม (สำคัญ)
 
@@ -33,22 +33,22 @@
 
 **สัญลักษณ์:** `D` = มีหลักฐานใน Handoff/Source ว่า *เคยรองรับหรือเคยพัฒนา*; `?` = ต้องตรวจ implementation/runtime หรือยังไม่พบหลักฐานชัด; `N/A` = ไม่มีเป้าหมายใช้งานตาม track. ตัว `D` **ไม่แปลว่าพฤติกรรมตรงกันหรือผ่าน acceptance ล่าสุด**.
 
-| Feature | DB | LC | LL | DL | เงื่อนไขก่อนถือว่า Parity สำเร็จ |
+| Feature | DB | LC | LL | DL | QA | เงื่อนไขก่อนถือว่า Parity สำเร็จ |
 |---|---|---|---|---|---|
-| Course ID, Course Profile, ชนิดวิชา | D | D | D | D | กรณี URL/Section/Course Type เดียวกันแปลง schema ถูก; ใช้ policy คนละชุดได้ |
-| Section / Week topology | D | D | D | D | ไม่สลับ Week; ทดสอบ 15 ครั้งและหัวข้อ Image-only |
-| Moodle Quiz Pre/Post / activity | D | D | D | D | ชื่อผิด/ป้ายภาพ/Forum/Quiz tests; ตรวจขอบเขตผ่อนปรนของแต่ละ track |
-| รูปผู้สอน + QR/LINE + OCR uncertainty | D | ? | D | D | ห้ามนับ avatar ทั่วไป, missing name waiver ต้องมีหลักฐานและ policy |
-| Video class vs LiveRecord | D | ? | D | D | recording skipped ไม่ถูกคิดเป็น broken VOD |
-| OneDrive/SharePoint/Drive/Vidyard duration | D | ? | D | D | เปิดจริง, consent, duration confidence, no bogus zero, no cross-file access cache |
-| PDF/Teaching materials classification | D | D | D | D | ตรวจปลายทางจริงและ section, ไม่ทึกทักว่าไฟล์ทุกชนิดเป็น PDF |
-| Reviewer confirmation reuse | D | ? | D | D | ไม่ทับผลผู้ตรวจเดิม, audit trail และ no duplicate count |
-| Report TH/EN & persisted evidence | D | ? | D | D | ตรวจ saved PDF/actual Chrome, free-form user titles ไม่ถูกแปล |
-| Publishing / Main Data sync | Web | N/A | N/A | Web | ไม่บังคับ Local ใช้ queue กลาง; outcome verification อยู่ Web Platform |
+| Course ID, Course Profile, ชนิดวิชา | D | D | D | ? | D | กรณี URL/Section/Course Type เดียวกันแปลง schema ถูก; ใช้ policy คนละชุดได้ |
+| Section / Week topology | D | D | D | ? | D | ไม่สลับ Week; ทดสอบ 15 ครั้งและหัวข้อ Image-only |
+| Moodle Quiz Pre/Post / activity | D | D | D | ? | D | ชื่อผิด/ป้ายภาพ/Forum/Quiz tests; ตรวจขอบเขตผ่อนปรนของแต่ละ track |
+| รูปผู้สอน + QR/LINE + OCR uncertainty | D | ? | D | ? | D | ห้ามนับ avatar ทั่วไป, missing name waiver ต้องมีหลักฐานและ policy |
+| Video class vs LiveRecord | D | ? | D | ? | D | recording skipped ไม่ถูกคิดเป็น broken VOD |
+| OneDrive/SharePoint/Drive/Vidyard duration | D | ? | D | ? | D | เปิดจริง, consent, duration confidence, no bogus zero, no cross-file access cache |
+| PDF/Teaching materials classification | D | D | D | ? | D | ตรวจปลายทางจริงและ section, ไม่ทึกทักว่าไฟล์ทุกชนิดเป็น PDF |
+| Reviewer confirmation reuse | D | ? | D | ? | D | ไม่ทับผลผู้ตรวจเดิม, audit trail และ no duplicate count |
+| Report TH/EN & persisted evidence | D | ? | D | ? | D | ตรวจ saved PDF/actual Chrome, free-form user titles ไม่ถูกแปล |
+| Publishing / Main Data sync | Web | N/A | N/A | ? | Web | ไม่บังคับ Local ใช้ queue กลาง; outcome verification อยู่ Web Platform |
 
-ตารางนี้เป็น **starting audit** ไม่ใช่ข้อรับรองว่าทั้ง 4 รุ่นมี code parity ให้ลง `source hash`, `test ID`, `verified at` และ `owner` เมื่อเริ่มรับงานแต่ละ feature
+ตารางนี้เป็น **starting audit** ไม่ใช่ข้อรับรองว่าทั้ง 5 สายมี code parity ให้ลง `source hash`, `test ID`, `verified at` และ `owner` เมื่อเริ่มรับงานแต่ละ feature
 
-## วิธีรับการแก้ไขจาก Track หนึ่งไปอีก 3 Track
+## วิธีรับการแก้ไขจาก Track หนึ่งไปอีก 4 Track (หรือเฉพาะ track ที่ได้รับอนุมัติ)
 
 | Phase | กิจกรรม | ข้อกำหนดผ่าน |
 |---|---|---|
@@ -70,7 +70,7 @@
 
 ## Open cross-track backlog
 
-- [ ] ทำ authoritative source/version inventory **แยก DB/LC/LL/DL** พร้อม manifest hash; งานใน Local อาจไม่ได้เก็บ Source ใน repo
+- [ ] ทำ authoritative source/version inventory **แยก DB/LC/LL/DL/QA** พร้อม manifest hash; งานใน Local อาจไม่ได้เก็บ Source ใน repo
 - [ ] รวบรวม fixture ที่ใช้ร่วมกันให้เป็นชุดตรวจเดียว แต่ parameterize policy ต่อ track
 - [ ] ตรวจจริง Instructor contextual image + QR และ OneDrive foreground duration ทุก track ก่อนเลื่อน `?` เป็น `D (verified)`
 - [ ] แยก source-level event `unreadable` / `not_found` / `skipped_recording` / `invalid` ใน shared evidence contract
@@ -91,7 +91,16 @@
 
 **ตารางนี้ยังเป็น `needs evaluation`** ไม่ใช่คำสั่งให้ merge หรืออ้างว่าแต่ละรุ่นผ่านแล้ว. ทุกงานที่รับเข้าต้องระบุ `source version`, `target track/version`, fixture, expected behavior, acceptance result และ release commit ก่อนเปลี่ยน Parity Matrix
 
+## QA Track adoption contract — 2026-11-25 (design only)
+
+- [HANDOFF_QA.md](HANDOFF_QA.md) เป็น Handoff ของสายที่ 5. คอลัมน์ QA ใน Matrix เป็น `?` = **ยังไม่ยืนยันว่า QA vNext รองรับและทดสอบแล้ว** แม้ QA repo จะมี integrated 0.13.34 อยู่; ห้ามใช้ Matrix เป็นสัญญารับรอง runtime.
+- Reuse *reader + evidence* ด้วย Adapter และ fixtures โดยไม่ขยาย rubrics current/legacy ของ DB/LC/LL/DL ไป QA โดยปริยาย; QA ต้องมี source/term/group-specific policy registry.
+- ห้ามเอา `spu-course-catalog-2569.json`, Supabase/Google Sheets sync หรือ Dashboard origin เข้า QA; QA Backend Neon เป็นเจ้าของ `source + course ID + term + credits + rubric + target generation + lease`, schema2 allowlist และ privacy.
+- ประเด็นที่ต้องให้ OWNER ตัดสินก่อน code: Audit Eligibility จาก raw master vs QA `effective_visible` ที่ใช้อยู่, GN rubric, ผล published เก่าและ multi-term readiness.
+
 ## Change log
+
+- **2026-11-25 — QA track:** บันทึก QA เป็นสายที่ 5 ใน Shared Core และขยาย Parity Matrix; การพัฒนาและ testing ยังเป็น `planned` ไม่มีการแก้ Scanner/QA Production.
 
 - 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
 

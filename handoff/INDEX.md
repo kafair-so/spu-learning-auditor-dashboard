@@ -7,7 +7,7 @@
 
 **Handoff แต่ละฉบับมีรายละเอียดปฏิบัติที่คัดออกมาจาก Archive เพิ่มแล้ว**: Policy snapshots, historical release/test evidence, regression fixtures, safety/rollback gates และงานเปิดค้าง. แต่ต้องอ่าน `source` รุ่นที่ใช้จริงก่อนทุกครั้ง โดยเฉพาะ DB/LC ที่เคยเก็บ ZIP ในเครื่อง Local ไม่ใช่ใน GitHub ทั้งหมด.
 
-`DB/LC/DL/LL` **ห้ามแชร์ตัวเลขเกณฑ์หรือภาคเรียนโดยอัตโนมัติ**: DB/LC current ในเอกสารรุ่น 0.13.34/0.13.27 = 80/110 + mandatory; DL 1/2569 theory 70/100 practical 40/50; LL legacy ระบุ 70/100/40/50 ในประวัติช่วงหลัง. รายละเอียดอาจเปลี่ยนใน runtime; ให้ถือ source+policy+scope เป็นตัวตัดสิน ไม่ใช้ข้อความสรุปนี้แทน code.
+`DB/LC/DL/LL/QA` **ห้ามแชร์ตัวเลขเกณฑ์หรือภาคเรียนโดยอัตโนมัติ**: DB/LC current ในเอกสารรุ่น 0.13.34/0.13.27 = 80/110 + mandatory; DL 1/2569 theory 70/100 practical 40/50; LL legacy ระบุ 70/100/40/50 ในประวัติช่วงหลัง. รายละเอียดอาจเปลี่ยนใน runtime; ให้ถือ source+policy+scope เป็นตัวตัดสิน ไม่ใช้ข้อความสรุปนี้แทน code.
 
 ## เริ่มงานจากตรงนี้
 
@@ -21,6 +21,7 @@
 | [LC — Local Current](HANDOFF_LC.md) | Local Current; ความสามารถออฟไลน์/การออกผล/เกณฑ์เฉพาะ LC |
 | [LL — Local Legacy](HANDOFF_LL.md) | Local Legacy; legacy criteria, GN, PDF, local releases และ issue เฉพาะ LL |
 | [DL — Dashboard Legacy](HANDOFF_DL.md) | Dashboard Legacy; คิวกลาง/GR 1/2569/legacy_12569 และ integration ในสาย DL |
+| [QA — Course QA Auditor](HANDOFF_QA.md) | **สายที่ 5 (Design only)**: Extension สำหรับ d-/i-Learning บน Course QA Neon; raw→eligibility→queue, GN/GR/GS design, isolation จากเดิม |
 | [Master Archive — สำเนาต้นฉบับ](HANDOFF_MASTER_ARCHIVE.md) | สำเนา **ตรง Git Blob ทุกไบต์** จากไฟล์ก่อนย้าย; อ่านประวัติย้อนหลัง |
 | [Legacy entrypoint เดิม](../SPU_AUDITOR_HANDOFF_KNOWLEDGE_BASE.md) | คงไฟล์เดิมและลิงก์เก่าทั้งหมดไว้โดยไม่แก้ไข; **หยุดใช้เป็นจุดบันทึกงานใหม่** |
 
@@ -32,16 +33,17 @@
 | LC | **0.13.27** ใน §70 | เป็นรุ่นสุดท้ายที่ระบุโดยชื่อ LC โดยตรง; Source/ZIP อยู่ในเครื่องเดิมตาม Archive; ไม่ได้ตรวจเครื่องจริง |
 | LL | **0.3.30** ใน §130 (23 พ.ย. 2569) | บันทึก Build/ZIP และ test ใน Archive; ยังมี live acceptance EBC314 ค้าง |
 | DL | **0.13.39** ใน §114 / `downloads/dashboard/0.13.39/release.json` | ยืนยันไฟล์ Release ใน GitHub และ Source ที่เก็บไว้; **ไม่เท่ากับ** ยืนยัน Chrome ปัจจุบัน |
+| QA | **QA-0.1.0-dev (proposed only)** | แยก Handoff สายใหม่แล้ว; QA repo มี integrated baseline **0.13.34** แต่ **ยังไม่มี QA vNext build, deploy หรือ Chrome verification** |
 
 การเรียก DB/DL มีแหล่งโค้ด Dashboard ร่วมและช่วงประวัติที่เรียก “Dashboard” ไม่ชัดว่า track ใด: **ให้ตรวจเกณฑ์และ `criteria_mode` ก่อนจัดเรื่องเข้า DB หรือ DL** และห้ามนำ `0.13.39` ไปอ้างเป็น latest DB โดยอัตโนมัติ
 
 ## ขั้นตอนบังคับก่อนและหลังทำงาน
 
 1. อ่าน **Index + Handoff สายที่ทำงาน + Shared Core**; ถ้าแตะ API/เว็บ/DB/Sheet ต้องอ่าน Web Platform เพิ่ม
-2. ยืนยัน Branch SHA ล่าสุด, รุ่น/manifest/ไฟล์ที่ใช้งานจริง, เงื่อนไขรายวิชา, scope (`DB/LC/LL/DL`, `GR/GS/GN`, ภาคเรียน และ `criteria_mode`) ก่อนแก้
+2. ยืนยัน Branch SHA ล่าสุด, รุ่น/manifest/ไฟล์ที่ใช้งานจริง, เงื่อนไขรายวิชา, scope (`DB/LC/LL/DL/QA`, `GR/GS/GN`, ภาคเรียน และ `criteria_mode`) ก่อนแก้
 3. แยกสถานะ **ยืนยันใน Source**, **ผ่าน automated test**, **Deploy สำเร็จ**, **ทดสอบใน Chrome/Moodle จริง**, **ผู้ใช้รายงาน**, **ยังไม่ยืนยัน** ออกจากกัน
 4. แก้เฉพาะสายที่ร้องขอ; เมื่อเป็นความสามารถร่วม เพิ่มรายการ/การประเมินผลกระทบใน [Shared Core](HANDOFF_SHARED_CORE.md) และตัดสินการรับไปใช้ของแต่ละสายทีละราย
-5. หากแก้ Web/Backend ให้บันทึก [Web Platform](HANDOFF_WEB_PLATFORM.md) และลงหมายเหตุความเข้ากันได้ของทั้ง 4 สายเมื่อเกี่ยวข้อง
+5. หากแก้ Web/Backend ให้บันทึก [Web Platform](HANDOFF_WEB_PLATFORM.md) และลงหมายเหตุความเข้ากันได้ของทั้ง 5 สายเมื่อเกี่ยวข้อง; กรณี QA Backend/Neon ให้บันทึกใน QA repo โดยเฉพาะ ไม่ใช้ Web Platform ฝั่ง Supabase เป็นเจ้าของ
 6. **ทุกครั้งที่มีการแก้ไขหรือข้อค้นพบ** ให้เพิ่มบันทึกใน Handoff เจ้าของเรื่อง: เวลา, ปัญหา, สาเหตุ, Source/Commit, test, Deploy/runtime, ผลต่อคะแนน/ข้อมูล, rollback, ปัญหาคงค้างและ next task
 7. อัปเดต Matrix/รายการค้างใน Shared Core **เมื่อความสามารถร่วมเปลี่ยนจริง**; อัปเดต Index **เฉพาะเมื่อมีการเปลี่ยนเวอร์ชัน/โครงสร้าง/สถานะสำคัญ**
 8. ห้ามอ้างว่าซิงก์ Main Data สำเร็จจากการบันทึกลง Supabase อย่างเดียว ต้องอ่านค่าการ Sync ที่ยืนยันแล้ว
@@ -50,7 +52,8 @@
 
 - **ตัวตรวจจับหลักฐาน/Media/Quiz/ผู้สอน**: track ที่แก้เป็นเจ้าของ + Shared Core สำหรับผลกระทบข้าม track
 - **คะแนน/เกณฑ์/ผ่อนปรน/โครงสร้าง pass gates**: Handoff ของ track เท่านั้น; Shared Core เก็บเพียง interface และ guardrails
-- **Admin/User evidence, PDF delivery endpoint, REST/DB/Sheets/Auth/Sync, TH/EN, Dark/Light**: Web Platform; ข้อกำหนด export ของ Extension บันทึกที่ track ด้วย
+- **Admin/User evidence, PDF delivery endpoint, REST/DB/Sheets/Auth/Sync, TH/EN, Dark/Light**: Web Platform ของโปรเจกต์เดิม; ข้อกำหนด export ของ Extension บันทึกที่ track ด้วย
+- **QA Course Profiles/Neon/Eligibility/Queue/Flask/Vercel**: บันทึก Source/Architecture ใน `donut204/spu-course-qa/SPU_COURSE_QA_HANDOFF.md`; ฝั่ง Extension QA ใน [QA Handoff](HANDOFF_QA.md) และ Shared Core ที่เกี่ยวข้อง
 - **ทดสอบย้อนหลังว่าคะแนนหาย/ผลผ่าน→ไม่ผ่าน**: track เจ้าของเกณฑ์ พร้อม Web Platform ถ้าเกี่ยวกับการเผยแพร่หรือ sync
 - เรื่องที่ยังไม่แน่ชัดว่า track ใด ให้ติดป้าย **UNCLASSIFIED — NEEDS SOURCE CHECK** ไม่คัดลอกตามคำว่า Dashboard/Local อย่างเดียว
 
@@ -63,6 +66,8 @@
 - Migration นี้สร้างเอกสารจัดหมวดและข้อกำหนดการทำงานเท่านั้น **ไม่เปลี่ยน Extension, score, API, database, queue หรือข้อมูล Google Sheets**
 
 ## Change log
+
+- **2026-11-25 — Independent QA Auditor track (design only):** เพิ่ม [HANDOFF_QA.md](HANDOFF_QA.md) เป็นสายพัฒนาที่ 5 ของ Extension. อ้าง Course QA integration `0.13.34`, current target GR/GS 2569/1, separation of Raw/Eligibility/Readiness, GN future work, schema2/Neon/lease and production rollback gates. ยังไม่สร้างเวอร์ชันใหม่หรือแก้ระบบใช้งานจริง.
 
 - 2026-11-24 — เพิ่มข้อมูลปฏิบัติจาก Archive: policy/เวอร์ชันที่มีหลักฐาน, test/ZIP/checksum, regression guard และข้อห้ามข้าม track; Source-grounded enrichment commit `2200787f6e2d`. สถานะดังกล่าวเป็น historical baseline ไม่ได้ยืนยัน runtime วันนี้
 
