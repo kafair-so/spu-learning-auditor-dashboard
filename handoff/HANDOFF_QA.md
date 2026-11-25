@@ -308,6 +308,18 @@ For GS/GR QA vNext, use the following approved duration policy within the planne
 - Do not expose the tolerance values or internal relaxed-minimum rules on public teacher-facing evidence. Preserve authorized Admin access and traceability. Final-score rounding under §9.5/9.6 applies to the overall payment score only, not media duration.
 - Acceptance: parameterized tests for each of 4 credit values and both session groups, just below/at/above each minimum and normal threshold, unknown duration and unsupported credits, with separate public/internal report checks. Preserve old results and all four existing Auditor tracks. No code, extension, database or deployment changes authorized by this documentation entry.
 
+### 9.8 Prototype milestone — isolated policy workbench (2026-11-25)
+
+**Status: prototype source created and automated policy tests passed; browser installation and real scanner acceptance NOT VERIFIED; no deployment.** OWNER authorized starting implementation. Artifact prepared locally for delivery, not committed to the colleague's repo. Actual package: `QA-Auditor-0.1.0-dev-Policy-Prototype.zip`, 15 entries, 22,372 bytes, SHA-256 `ffeee2cf93c824fae554a2648e37bf6e9ac63efbd20971a93ffda4e744730645`. ZIP integrity checked, manifest version 0.1.0. Package includes independent source, README, IMPLEMENTATION-PROMPT.md, file checksums, tests and logs.
+
+Source preflight: Auditor main `267f7bd8c0c2faeddde5c1405fd8f099e1068b7c`; Course QA main `003926456e16b69b417f524543039f640c3b49cf`. Reviewed selected portions of AGENTS/Handoff, QA 0.13.34 manifest/integration, contract, classifier/content/background and legacy `criteria-12569.mjs` blob `4e8ded8d34251d1b2db7d5e7b75edaad06efd4c0`. The actual legacy threshold helper subtracts tolerance; it also uses intermediate half-point rounding which vNext must not inherit. No complete scanner port or full repository preflight claimed.
+
+Implemented files: `extension/manifest.json`, `policy.mjs`, `index.html`, `ui.mjs`, `style.css`, inert `worker.js`. Isolated MV3 local workbench: activeTab read-only DOM activity inventory on exact d/i-Learning course hosts, candidate classification with native Quiz excluded as candidate, manual evidence statuses and entered verified duration, five manual Table-3 checkboxes and explicit confirmation, rational exact 90:10 scores and half-up final decision, 1–4-credit duration thresholds, pending review, practical gates from legacy reference, light/dark basics, one local draft and JSON export. No network API or queue, no production origin bridge, no Moodle/Neon writes or old-result changes. Native Quiz external verification, real automatic reader/eligibility and server authority remain unimplemented; manual user selections are not a verified evidence engine. AI Podcast candidates presence-only, no KPI.
+
+Validation: Node 22.16.0, `node --test tests/*.test.mjs` **35/35 pass**, syntax checks for policy/UI/worker pass. Tests cover duration boundaries, exact rational score, full/zero, rounding, pending and practical gate, candidate classification and URL sanitization. Chromium extension navigation blocked (`ERR_BLOCKED_BY_CLIENT`), service worker wait timed out on retry, separate localhost UI attempt blocked (`ERR_BLOCKED_BY_ADMINISTRATOR`); logs included. No real Chrome/Moodle scan, accuracy claim, provider reading, authenticated Admin, EN/PDF, retention-3 or Neon integration achieved. Prototype instructor scoring is binary only, unlike partial instructor scoring in legacy reference; verify and port appropriate source rules before production.
+
+Next: validate Chrome install with sample and authorized actual courses; select compatible QA overlay and port shared readers (LL EBC314 etc.), evidence validation, server-owned credits/term, isolated backend, authenticated review and public redaction, and real accuracy acceptance. Deliver code package + colleague prompt for authorized branch/PR; no changes to existing QA/DB/DL/LC/LL, existing publications, Neon or deployments. GN/extra eligibility deferred. This is partial progress, not a complete QA scanner release.
+
 ## 10. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
@@ -316,6 +328,8 @@ For GS/GR QA vNext, use the following approved duration policy within the planne
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — Isolated policy prototype:** source package built locally, 35/35 Node tests passed, ZIP integrity verified. Browser tests blocked by environment; no authenticated scanner/accuracy or production verification. See §9.8 for artifact checksum, limitations and next steps. Documentation only in this repository; colleague-owned implementation untouched.
 
 - **2026-11-25 — OWNER duration policy approved:** confirmed tolerance is subtracted from the normal requirement; Session 1 minima 12/25/35/45 minutes and Sessions 2–15 minima 25/50/70/90 minutes for 1–4 credits, respectively. OWNER approved 4-credit Session 1 tolerance of 15 minutes, actual-second comparison and internal-only tolerance visibility. Resolves §9.6 B. **Docs only.**
 
