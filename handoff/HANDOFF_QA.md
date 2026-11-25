@@ -256,6 +256,39 @@ Required QA vNext behavior: restore **Table 3 as a visible dedicated section** i
 - Test checklist pending vs explicitly confirmed, no silent failure for unreviewed items, permission checks, audit trail, manual decision reuse only with valid provenance, and isolated publication pointers.
 - Confirm no historical result recomputation or overwrite, no changes to DB/LC/LL/DL or existing QA-integrated 0.13.34, and no production/schema changes until separately authorized. This is a documentation-only decision record.
 
+### 9.6 OWNER scope confirmation — scoring allocation, duration, storage and delivery (2026-11-25)
+
+**Status: DESIGN ONLY; OWNER confirmed allocation and reduced scope; duration semantics/session scope still require clarification. No implementation, deployment, database migration, or historical recomputation authorized by this entry.** This is the controlling decision where it supersedes §8–9.5.
+
+#### A. Final allocation approved
+
+- OWNER explicitly approved the 90:10 split proposed in §9.5. For GS/GR theory, Tables 1/2 automated maximum = 90, Table 3 Admin maximum = 10 (2 points per each of 5 checks), total = 100, pass threshold = 70. For practical, automated maximum = 45, manual maximum = 5 (1 point per check), total = 50, pass threshold = 40.
+- Keep the exact raw decimal total and round the final sum once, half up, to an integer for display and threshold determination, with other approved gates unchanged. Existing published and manually confirmed results remain untouched. The historical Table 3 weights investigation remains historical reconciliation only; do not imply that the newly approved 90:10 allocation was the original official formula. Existing automated component weights, applicable gates and source-specific policy must still be verified before production.
+- AI Tutor and Podcast: OWNER clarified that a colleague already maintains a separate KPI system. QA Auditor is an **element-presence audit, not a KPI system**. For GS/GR, record presence/absence (unreadable or unverified separately, not a false absence), course/session evidence and source links where available. AI Tutor/Podcast must not affect payment scores or gates. No KPI score, aggregation, KPI Dashboard, KPI integration, or duplicated monitoring pipeline is in QA vNext scope. This supersedes any earlier suggestion that QA should calculate or report KPI metrics; do not modify the colleague's existing KPI system.
+
+#### B. Video duration: OWNER-supplied figures; disambiguate before scoring
+
+OWNER stated exactly: 1 credit 30 minutes, relief 5 minutes; 2 credits 60 minutes, relief 10 minutes; 3 credits 90 minutes, relief 20 minutes; allow for 4 credits 120 minutes, relief 30 minutes.
+
+| Credits | Standard minutes | OWNER relief figure | If figure is relaxed minimum | If figure is permitted shortfall |
+|---|---:|---:|---:|---:|
+| 1 | 30 | 5 | 5 | 25 |
+| 2 | 60 | 10 | 10 | 50 |
+| 3 | 90 | 20 | 20 | 70 |
+| 4 | 120 | 30 | 30 | 90 |
+
+The old LL reference in §9.2 described 5/10/20 as relaxed minimum minutes for sessions 2–15, not as subtractions from standard time. The new wording could also mean an allowed shortfall. **Do not hardcode either interpretation until OWNER confirms**. Clarify whether these figures apply to sessions 2–15 only with a distinct first-session rule (historical 3/5/10, and 4-credit first session not yet specified), or all sessions, and confirm term applicability. Preserve exact duration evidence and separate unknown/unreadable from a true zero. A four-credit course must not be silently treated as three credits. For an isolated prototype, parameterize thresholds and leave unconfirmed policies provisional; no final certification or live publication under an ambiguous rule.
+
+#### C. Database and collaborator-owned repository delivery
+
+- OWNER delegates the database topology recommendation to the developer, subject to protection of old results. **Recommended prototype direction:** reuse existing Neon PostgreSQL project and raw Profile source with read-only access; no need for a new Cloud provider or separate paid project merely to build the prototype. Keep QA vNext audit runs, review/evidence and publication pointers logically isolated (prefer a separate versioned schema such as `qa_auditor_v2`, or equivalent dedicated tables with independent roles/constraints). Never append unqualified new results to existing published tables or overwrite `auditor.*`. For real development/testing use an isolated non-production branch/database or local PostgreSQL; production migration, quota/capacity and RBAC verification remain separate gates. Physical isolation may still be warranted if measured risk/capacity requires it. No actual topology change or live connection write in this docs-only step.
+- OWNER states that the primary Course QA repository/account belongs to a colleague and some commits or deployment actions may be unavailable to this account. Treat access restrictions as expected; do not bypass permissions or assume access to secrets. Prepare a transferable deliverable even when direct commit is possible: a clean patch or isolated source ZIP, exact repository/branch/base SHA and file manifest, implementation/acceptance notes, test commands/results, explicit required permissions/config placeholders, migration plan and rollback (only if applicable), release artifact/checksum when built, and a copy-ready prompt for the colleague's authorized agent/account. The prompt must instruct reading `AGENTS.md` and latest `SPU_COURSE_QA_HANDOFF.md`, checking current HEAD/diff and resolving conflicts safely, reviewing changes, testing on isolated data, updating the Course QA Handoff, committing via an authorized branch/PR and verifying the resulting SHA. No automatic Production deployment or mutation of Neon/Moodle/published data without specific approval. If direct write fails, deliver the actual files/prompt and state which steps remain for the authorized colleague; never claim a commit or deployment that did not happen. This is a future delivery requirement, not a claim that a code package or prompt attachment has been built now.
+
+#### D. Deferred scope
+
+- GN scoring and population/eligibility work, and additional academic exclusions/inclusion policy, are explicitly deferred to the future. Keep the first prototype GS/GR-only; do not invent exceptions, relax existing queue/display safety guards or enable scan-all on live data before an approved eligibility policy. Retain the previously confirmed objective of all relevant GS/GR Profiles, separate from display, and document unresolved reconciliation.
+- Preserve the previously agreed two-term Legacy family, all original result-isolation and manual-review requirements. Use design/fixture mode for any policy uncertainty, with no final live publication. GN and future terms remain feature-gated.
+
 ## 10. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
@@ -264,6 +297,8 @@ Required QA vNext behavior: restore **Table 3 as a visible dedicated section** i
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — OWNER scope confirmation:** approved exact 90:10 automated/manual allocation, clarified AI Tutor/Podcast presence-only (no KPI development), supplied 1–4-credit standard/relief figures (semantics and session scope pending clarification), delegated topology recommendation with strict result isolation, requested portable implementation package + commit prompt for colleague-owned account, and deferred GN/extra eligibility exceptions. **Docs only.**
 
 - **2026-11-25 — OWNER Table 3 manual review + final score rounding:** agreed to integrate all five manual Admin checks into unchanged GS/GR Legacy totals and pass thresholds, with no historical overwrite; documented proposed 90:10 allocation (exact weights pending). OWNER explicitly confirmed integer half-up rounding of final total for display and pass/fail threshold, including 69.75→70. Raw decimal retained, other gates preserved. **Docs only; not implemented or deployed.**
 
