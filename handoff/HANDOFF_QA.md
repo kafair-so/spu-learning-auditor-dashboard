@@ -214,6 +214,48 @@ Required QA vNext behavior: restore **Table 3 as a visible dedicated section** i
 
 **Additional open evidence required:** Original Sheet **Table 1/2/3 including actual score cells and formulas/weights**, current hand-maintained exception list and effective date, authorized quality grading evidence, video-tolerance matrix by term, and backup-verification method. These are **not blockers for documentation**, but are gates for scoring engine changes, publication and retroactive computation.
 
+### 9.5 OWNER decision — Table 3 manual scoring and integer final-score decision (2026-11-25)
+
+**Status: OWNER-confirmed design direction; NOT IMPLEMENTED / NOT RECOMPUTED / NO PRODUCTION CHANGE.** This entry extends §9.3–9.4 for the independent QA vNext GS/GR payment audit only. Preserve all prior published results, confirmed reviewer decisions, and the existing four Auditor tracks. The OWNER requested documentation before implementation.
+
+#### A. Table 3 — integrate into the existing total, Admin verifies manually
+
+- OWNER confirms the five overall checks should contribute to the existing scoring total without increasing the full score or changing the pass threshold: theory **100 points / pass 70**, practical **50 points / pass 40**. Preserve other approved mandatory gates; do not invent new mandatory gates. The OWNER/Admin will personally verify these items in the Admin evidence/review page rather than require the automated scanner to decide them.
+- Show a dedicated **Table 3 — การตรวจสอบข้อกำหนดทั่วไปของรายวิชา (ตรวจสอบภาพรวม)** checklist:
+  1. การจัดให้มีการพบนักศึกษา 3 ครั้ง — scheduled meetings as specified by policy.
+  2. คุณภาพวิดีโอบันทึกการสอน — GS/GR minimum B per §9.2; Admin confirms quality evidence.
+  3. การวางลิงก์วิดีโอและคลิปเสียงแทนการอัปโหลดโดยตรง — distinguish audio/video from permitted document uploads.
+  4. ข้อกำหนดเกี่ยวกับการส่งงานของนักศึกษา — assignments may be announced in d-Learning, but student submissions must not be required there.
+  5. การสำรองเนื้อหาและวิดีโอ — Admin checks approved backup evidence/method.
+- Proposed interaction: five checkboxes, per-item point display, running subtotal and explicit Admin confirmation/save. An unchecked box **before confirmation means unreviewed**, not fail. After the reviewer explicitly confirms the complete checklist, checked items receive their assigned points and unchecked items receive zero under the proposed binary scoring model. Keep review pending until complete confirmation; retain evidence/notes and distinguish unreviewed, fail and not-verifiable internally. Do not silently assign zero or publish final pass/fail before confirmation. If evidence is not verifiable, require reviewer resolution rather than treating it as an automatic failure.
+- Proposed workflow: scan Tables 1/2 automatically → persist provisional exact score/evidence → Admin manually reviews Table 3 → combine scores → round final total → apply threshold and other mandatory gates → authorized confirmation/publication in the isolated QA vNext store. Preserve reviewer identity, timestamps, notes/evidence, checklist state, policy version, corrections and audit trail; no automatic rerun may overwrite confirmed manual decisions or prior published results.
+- **Proposed allocation, not independently approved as final weights:** preserve the relative weights of existing automatic components, scale their normalized scores to 90% of the original total, allocate 10% to Table 3 equally across its five checks. Theory: auto max 90 + manual max 10 (2 each) = 100; practical: auto max 45 + manual max 5 (1 each) = 50. Illustrative formula with old automatic subtotal normalized to the original maximum and excluding AI Podcast from payment: `raw_total = 0.9 * auto_score + passed_checks * (full_score * 0.02)`. AI Tutor and Podcast still appear as monitoring/KPI evidence, never contribute payment points or payment pass gates for GS/GR. If the old automatic score has a different denominator after exclusions, normalize explicitly before scaling; do not double-count removed categories. The OWNER agreed with the direction of integrating Table 3 and preserving historical results; the exact 90:10 allocation and source historical weights remain to be confirmed before implementation. Retain §9.3's investigation of the original graded Sheets/formulas; the proposed allocation is not a claim of historical official weights.
+- Consequence: even with unchanged maximum and threshold, redistributing points may change an outcome. Use a new versioned rubric for QA vNext, compare fixtures around the threshold and never retroactively replace already certified results. GN-specific scoring/eligibility remains pending.
+
+#### B. OWNER-confirmed final score rounding and pass decision
+
+- Calculate all component scores and weighted subtotals at their real decimal precision (not restricted to .0/.5); **do not round individual components or intermediate subtotals before addition**.
+- Persist the exact raw final score and the rounded integer final score separately, with the rubric version and inputs needed for independent replay.
+- Round the final combined total once to the nearest integer, conventional **round half up** for non-negative scores: fractional part below 0.5 rounds down, 0.5 or above rounds up. Avoid binary floating-point boundary artifacts; use deterministic decimal/fixed-precision arithmetic and explicit rounding semantics, not banker's rounding.
+- **OWNER explicitly confirms:** if the rounded total reaches the unchanged pass threshold, count the score criterion as passed even when the raw score is below it. Theory: rounded >=70/100; practical: rounded >=40/50 (corresponding unchanged practical threshold). Other approved mandatory gates and complete manual review still apply; a rounded passing score cannot bypass an unmet gate.
+- Display integer scores consistently in Admin, Dashboard, teacher-facing evidence and PDF reports. If component scores are displayed, format them as integers for presentation only; never sum displayed rounded component values to compute the total. The raw decimals remain accessible to authorized auditors for traceability, not as conflicting public pass indicators.
+
+| Type | Exact final score | Displayed / decision score | Score criterion |
+|---|---:|---:|---|
+| Theory | 69.49 | 69/100 | Fail |
+| Theory | 69.50 | 70/100 | Pass |
+| Theory | 69.75 | 70/100 | Pass (explicit OWNER example) |
+| Practical | 39.49 | 39/50 | Fail |
+| Practical | 39.50 | 40/50 | Pass |
+| Practical | 39.85 | 40/50 | Pass |
+
+#### C. Acceptance before implementation/release
+
+- Confirm actual Table 1/2/3 weights and approved new allocation; preserve maximum 100/50, pass threshold 70/40 and all approved mandatory gates.
+- Test arbitrary fractional component values, half-up boundaries, zero/full totals, no intermediate rounding, exact-score replay, and identical integer display/status across Admin/Dashboard/evidence/PDF.
+- Test checklist pending vs explicitly confirmed, no silent failure for unreviewed items, permission checks, audit trail, manual decision reuse only with valid provenance, and isolated publication pointers.
+- Confirm no historical result recomputation or overwrite, no changes to DB/LC/LL/DL or existing QA-integrated 0.13.34, and no production/schema changes until separately authorized. This is a documentation-only decision record.
+
 ## 10. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
@@ -222,6 +264,8 @@ Required QA vNext behavior: restore **Table 3 as a visible dedicated section** i
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — OWNER Table 3 manual review + final score rounding:** agreed to integrate all five manual Admin checks into unchanged GS/GR Legacy totals and pass thresholds, with no historical overwrite; documented proposed 90:10 allocation (exact weights pending). OWNER explicitly confirmed integer half-up rounding of final total for display and pass/fail threshold, including 69.75→70. Raw decimal retained, other gates preserved. **Docs only; not implemented or deployed.**
 
 - **2026-11-25 — GS/GR/GN criteria reviewed + Table 3 issue:** Read OWNER's blue GS/GR and pink GN infographics and Table-3 overall checklist; recorded payment vs AI Podcast KPI split, withdrawal of native Moodle Quiz tolerance, accepted non-PDF instructional resources, B minimum GS/GR video quality, preserved video time tolerance (exact policy verification pending), 5 overview checks and missing Table-3 score investigation. Future university policy remains under discussion. **Docs only**.
 
