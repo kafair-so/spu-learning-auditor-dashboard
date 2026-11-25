@@ -119,8 +119,8 @@ Raw Course Profiles (Neon, d-Learning + i-Learning; immutable/provenance)
 ## 7. Open decisions / blockers — do not make assumptions
 
 1. **Audit Eligible vs Display Eligible**: OWNER confirmed **audit all target-course Profiles in principle, GS/GR first and GN later, independently of public Dashboard display**. Exactly which academic exemptions apply and whether Admin-hidden courses may be audited remains **pending rubric/OWNER policy review**; current QA `effective_visible` checks must remain fail-closed until a separate approved implementation changes them.
-2. **GN**: OWNER confirmed GN as secondary/deferred audit scope, with no requirement to publish it on primary payment-oriented Dashboard; category-specific rubric, mandatory/optional components, 15-week gates, Podcast/AI Tutor, exclusions and scoring are **pending supplied criteria**, not approved here.
-3. **Term versioning**: OWNER confirmed 3/2568 and 1/2569 use the **Legacy family**. Exact term-specific thresholds, tolerances, source exceptions and GN/GR/GS eligibility require reviewing the forthcoming criteria documents; future terms have **no approved rubric** and require a new OWNER decision. Never infer one shared numeric score gate merely from the word Legacy.
+2. **GN**: OWNER confirmed GN as secondary/deferred audit scope, with no requirement to publish it on primary payment-oriented Dashboard. **GN criteria infographic was supplied on 25 Nov 2026**, including separate first-session and weeks 2–15 components, theory/practical recording count and monitoring elements; scoring weights/thresholds and full eligibility exceptions still require reviewed decisions (see §9).
+3. **Term versioning**: OWNER confirmed 3/2568 and 1/2569 use the **Legacy family**. **Criteria infographics and updated owner exceptions received 25 Nov 2026**; numeric weights/score threshold, policy effective dates, source exceptions and exhaustive eligibility still require formal reconciliation. Future terms have **no approved rubric** and require a new OWNER decision. Never infer one shared numeric score gate merely from the word Legacy.
 4. **Publication/storage**: OWNER confirmed **QA vNext results must be stored completely separately from current QA/DB published results**, never overwrite existing run or publication pointers. New QA auto-publication/default visibility and exact storage schema/provider are **not yet approved**; default is no auto replacement.
 5. **Repository/release ownership**: whether QA Extension source stays in `donut204/spu-course-qa/extension/` or moves to dedicated source branch/repo; require ownership/CI/test path confirmation.
 6. **Source freshness**: reconcile Neon live Raw/Published/Override/Personnel/SCMS data without changing it; earlier mismatched Course ID investigations remain unconfirmed until Neon read-only checks.
@@ -158,7 +158,63 @@ Raw Course Profiles (Neon, d-Learning + i-Learning; immutable/provenance)
 - [ ] Isolated PostgreSQL + Browser/Moodle READ-ONLY replay, then OWNER Production approval and on-prem migration dry-run plan
 - [ ] Mirror implementation facts into `donut204/spu-course-qa/SPU_COURSE_QA_HANDOFF.md` **when QA repository actually changes**; shared scanner changes go to Shared Core Handoff
 
-## 9. Handoff and Change Log protocol
+## 9. Criteria intake — 2026-11-25: GS/GR, GN and overall Table 3
+
+**Status: DOCUMENTS RECEIVED + OWNER POLICY CONFIRMED FOR QA DESIGN; NOT IMPLEMENTED / NOT RECOMPUTED.**  
+Source evidence from chat: `GR-GS.jpg` (blue Fully Online criteria), `GN.jpg` (pink in-class criteria), `image(20261125-043426).png` (Table 3 overall checks). These sources were inspected at full resolution, with manual magnification of the component rows. **The screenshots do not specify numeric scoring weights for Table 3.** In prose below distinguish (A) infographic baseline, (B) OWNER's later authorized exceptions, (C) pending grading decisions.
+
+### 9.1 Source scope and baseline components (what the images actually say)
+
+- The GS/GR infographic is titled "เกณฑ์การจัดการเรียนการสอน สำหรับรายวิชาที่จัดการเรียนการสอนแบบออนไลน์ (Fully Online)"; the GN infographic is titled "เกณฑ์การจัดการเรียนการสอน สำหรับรายวิชาที่จัดการเรียนการสอนในห้องเรียน". Both state application **from term 2/2568 onward** in their headers. For QA vNext, OWNER previously specified Legacy family for **3/2568** and **1/2569**, with future-term policy explicitly TBD; do not silently retroactively change historical public results.
+- **GS/GR first session:** subject/instructor overview (subject name, credits, prerequisite where relevant, description, learning outcomes, evaluation/weights, instructor name/photo, contact and learning agreement); course-wide teaching material/document (including 15-session plan); course introductory/prerecorded video; Podcast; first-session activity (Assignment/Quiz/other suitable); AI Tutor.
+- **GS/GR sessions 2–15:** per-session teaching plan; per-session teaching materials; prerecord video; Podcast; pre-test and post-test with **at least 5 questions each** according to blue infographic; optional end-of-session activity.
+- **GN first session:** subject/instructor overview; course-wide teaching material/document and 15-session outline; introductory/prerecorded video; Podcast; AI Tutor. GN infographic does **not** list first-session activity as an independent row.
+- **GN sessions 2–15:** per-session teaching plan; materials; prerecord video; Podcast; no GS/GR-style mandatory pre/post requirement in the pink infographic. Pink infographic notes theoretical courses need video+Podcast all 15 sessions while practical courses need them for **at least 7 sessions** across the term.
+- **Unrelaxed video durations stated in images:** GS/GR first session >=15 minutes per credit (combined intro/video), sessions 2–15 >=30 minutes per credit per session. GN first >=15 minutes per credit; sessions 2–15 >=15 minutes per credit per session. These are source-document requirements, **not the operational relaxed minimum**; see §9.2 for owner preference and verification gate.
+- **AI Tutor / Podcast details shown:** Podcast content/audio at least one per cited session and 10 minutes total according to infographic; week1 AI Tutor is a learning-support/feedback tool. Keep exact found/missing counts and provenance even if payment scoring does not require them.
+
+### 9.2 OWNER's controlling operational decisions for QA vNext
+
+1. **Payment versus OOE KPI are separate outputs:** For **GS/GR only**, AI Tutor and Podcast (combined shorthand **"AI Podcast"**) must still be scanned and reported `present/absent/unreadable` with relevant evidence/count and KPI applicability, **but contribute zero payment score and cannot fail a faculty-payment audit**. Do not silently remove the AI Podcast checklist from evidence. GN KPI/scoring disposition remains to be separately confirmed; GN is not in initial payment-dashboard priority.
+2. **Strict external Quiz:** Withdraw the 1/2569 concession that accepted **Moodle-native Quiz**; use externally linked Quiz/pre-/post-test evidence as required by the approved criteria. The supplied instruction explicitly says ordinary Moodle Quiz is not countable for QA vNext, regardless of previous DL/LL relaxed behavior. Preserve course-specific legacy results; do not rewrite prior published records. Review the distinction between week1 generic activity and weeks2–15 pre/post separately before coding.
+3. **Alternative learning documents are accepted:** A legitimate lesson plan or teaching material that is not a native PDF may count, including **Canva, Google services/Docs/Drive, Excel, DOC/DOCX, PowerPoint, Gamma, PDF and other authentic instructional resources or external links**. Reader must verify relevant content and correct component/session, not award points for empty, unrelated or inaccessible links; use `needs_review/unreadable` when the target cannot be verified. Differentiate teaching plan from teaching materials while preserving source URLs/type.
+4. **Recording quality for GS and GR:** Minimum changed from the blue image's **B+** standard (historical GR non-plan exception B) to **B for both GS and GR** per OWNER's current rule. GN infographic already states B minimum; no invented GN adjustment.
+5. **Video runtime tolerance stays in force:** OWNER requests *preserving existing reduced minima by course credits and session*. Historical LL Handoff provides **first session 3/5/10 min and sessions 2–15 5/10/20 min for 1/2/3+ credits**. This is an existing-tracking reference, not an automatic proof that QA's 3/2568 and 1/2569 runtime implementation is aligned. Before hardcoding, verify the precise approved DL/LL tolerance, combined-duration handling, relevant group, source, and effective term against current course policies. Never interpret unreadable time as genuine zero.
+6. **New results isolated:** QA vNext reads/analyzes these criteria without writing over QA old `auditor` results, other tracks or earlier confirmed manual corrections; publish only with separately authorized migration/release.
+
+### 9.3 Table 3 — "การตรวจสอบข้อกำหนดทั่วไปของรายวิชา (ตรวจสอบภาพรวม)"
+
+Owner reports that a **third scored table existed in older Sheet reporting but its scoring disappeared in later Auditor output**. Supplied screenshot is an overview checklist with **five items and checkboxes, not explicit numeric weights**:
+
+| # | Check | Source requirement | Implementation/evidence note |
+|---|---|---|---|
+| 1 | การจัดให้มีการพบนักศึกษา | กำหนดตารางพบนักศึกษาเพื่อเพิ่มประสิทธิภาพการเรียนการสอน **รวม 3 ครั้ง** | Inspect documented contact plan; distinguish scheduled from proven completed meetings when policy specifies |
+| 2 | คุณภาพวิดีโอบันทึกการสอน | Image: >= B+ (GR non-plan >= B); **OWNER override: GS/GR >= B** | Track quality evidence separately from presence/duration; manual review if no reliable classification |
+| 3 | การวางสื่อใน d-Learning | วาง **ลิงก์วิดีโอและคลิปเสียง** ในระบบ ไม่วางไฟล์โดยตรง | Validate LMS link-versus-direct-upload; do not confuse permitted *document* file types with forbidden direct *video/audio* uploads |
+| 4 | การส่งงานของนักศึกษา | มอบหมายงานใน d-Learning ได้ แต่ไม่กำหนดให้ส่งงานใน d-Learning | Separate announcement/assignment from submission destination |
+| 5 | การสำรองเนื้อหา | จัดเก็บเนื้อหาและวิดีโอเข้าระบบตามที่มหาวิทยาลัยกำหนดและตามช่วงเวลาที่กำหนด | Cross-system backup may be **not externally verifiable** without approved evidence; do not infer fail or pass |
+
+**Source-code comparison:** At `kafair-so/spu-learning-auditor-dashboard/main` on 25 Nov, `supabase/functions/api/criteria-12569.mjs` computes theory 100/70 and practical 50/40 from first-session and weekly checklist categories (`courseInformation`, `teachingPlan`, `teachingMaterials`, `video`, `preTest`, `postTest`, `assignment`). **No distinct weighted Table-3 overview score is visible in this scorer**. This supports an investigation but does **not** establish prior Table-3 point weights or whether original Sheet points were included elsewhere. **Do not invent Table-3 scores or mandatory gates.**
+
+Required QA vNext behavior: restore **Table 3 as a visible dedicated section** in evidence and report, with `pass/fail/needs_review/not_verifiable` for each of five checks, source provenance, and an explicit `score_weight_pending_source_verification` state until original graded Sheet/formula or approved weight matrix is obtained. If confirmed mandatory/scored, build a separately versioned rubric, test against original expected scores, then document any overall pass/fail change before activation.
+
+### 9.4 Policy precedence / term applicability / regression
+
+| Topic | Infographic / existing legacy code | OWNER instruction for new QA | Status |
+|---|---|---|---|
+| GS/GR AI Tutor, Podcast | Listed as weekly/session elements | Preserve monitoring and KPI presence; **exclude payment scoring and pass gate** | OWNER-confirmed QA vNext |
+| Moodle-native Quiz | Old relaxed code counts various Moodle Quiz evidence, e.g. 1/2569 Pre/Post 2–10 in `criteria-12569.mjs` | **External link only** for countable Quiz; no Moodle internal Quiz tolerance | OWNER-confirmed QA vNext |
+| Plan/material format | "File PDF" in two infographics | Accept suitable verified alternative file/links | OWNER-confirmed QA vNext |
+| GS/GR video quality | B+ baseline with GR non-plan B exception | **B minimum for both** | OWNER-confirmed QA vNext |
+| Video duration | Original mins higher | Preserve reduced per-credit/session tolerance; map exact term-wise baseline | Confirm exact matrix before implementation |
+| Table 3 score | Image includes 5 checks, no numeric weights; Legacy scorer has no independent overview total | Include 5 checks; investigate missing grading and original Sheet | Scoring/mandatory status **OPEN** |
+| Future course format/rubric | Infographics state 2/2568 onward | University deliberations ongoing, retain present approved policy **until new official announcement** | Future changes NOT assumed |
+
+**Testing gates:** GN/GR/GS per-term/per-profile fixtures, full 15-session mapping, alternative teaching plans (Canva/Word/Gamma/etc), course-specific link validity, strict external pre/post Quiz, quality B check, session-specific duration tolerance, AI Podcast exclusion-from-payment with KPI still captured, Table-3 five-row section and pending grade, regression comparing original Legacy results without overwriting them.
+
+**Additional open evidence required:** Original Sheet **Table 1/2/3 including actual score cells and formulas/weights**, current hand-maintained exception list and effective date, authorized quality grading evidence, video-tolerance matrix by term, and backup-verification method. These are **not blockers for documentation**, but are gates for scoring engine changes, publication and retroactive computation.
+
+## 10. Handoff and Change Log protocol
 
 - Edit `HANDOFF_QA.md` for QA Extension scope and compatibility, `HANDOFF_SHARED_CORE.md` for cross-track parity, `handoff/INDEX.md` for important status/versions.
 - If implementation touches Course QA repo, **also** update `SPU_COURSE_QA_HANDOFF.md` and follow `AGENTS.md` on that repo, production/Neon safety and reviewed release approvals.
@@ -166,6 +222,8 @@ Raw Course Profiles (Neon, d-Learning + i-Learning; immutable/provenance)
 - State values: `planned` / `implemented` / `tested` / `deployed` / `browser_verified`. **Never mark a state without evidence.**
 
 ### Change log
+
+- **2026-11-25 — GS/GR/GN criteria reviewed + Table 3 issue:** Read OWNER's blue GS/GR and pink GN infographics and Table-3 overall checklist; recorded payment vs AI Podcast KPI split, withdrawal of native Moodle Quiz tolerance, accepted non-PDF instructional resources, B minimum GS/GR video quality, preserved video time tolerance (exact policy verification pending), 5 overview checks and missing Table-3 score investigation. Future university policy remains under discussion. **Docs only**.
 
 - **2026-11-25 — OWNER decisions / QA storage planning:** confirmed GS/GR-first all-target-profile audit, GN later and not required for payment-facing Dashboard, Legacy rubric family for 3/2568 and 1/2569, strict isolation of new results, latest three results and 3–5 year course metadata goal; proposed separate Neon PostgreSQL schema versus isolated project, future on-prem migration and pending criteria. **Docs only; no DB or Extension changes**.
 
