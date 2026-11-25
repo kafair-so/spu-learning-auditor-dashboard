@@ -34,17 +34,17 @@
 **สัญลักษณ์:** `D` = มีหลักฐานใน Handoff/Source ว่า *เคยรองรับหรือเคยพัฒนา*; `?` = ต้องตรวจ implementation/runtime หรือยังไม่พบหลักฐานชัด; `N/A` = ไม่มีเป้าหมายใช้งานตาม track. ตัว `D` **ไม่แปลว่าพฤติกรรมตรงกันหรือผ่าน acceptance ล่าสุด**.
 
 | Feature | DB | LC | LL | DL | QA | เงื่อนไขก่อนถือว่า Parity สำเร็จ |
-|---|---|---|---|---|---|
-| Course ID, Course Profile, ชนิดวิชา | D | D | D | ? | D | กรณี URL/Section/Course Type เดียวกันแปลง schema ถูก; ใช้ policy คนละชุดได้ |
-| Section / Week topology | D | D | D | ? | D | ไม่สลับ Week; ทดสอบ 15 ครั้งและหัวข้อ Image-only |
-| Moodle Quiz Pre/Post / activity | D | D | D | ? | D | ชื่อผิด/ป้ายภาพ/Forum/Quiz tests; ตรวจขอบเขตผ่อนปรนของแต่ละ track |
-| รูปผู้สอน + QR/LINE + OCR uncertainty | D | ? | D | ? | D | ห้ามนับ avatar ทั่วไป, missing name waiver ต้องมีหลักฐานและ policy |
-| Video class vs LiveRecord | D | ? | D | ? | D | recording skipped ไม่ถูกคิดเป็น broken VOD |
-| OneDrive/SharePoint/Drive/Vidyard duration | D | ? | D | ? | D | เปิดจริง, consent, duration confidence, no bogus zero, no cross-file access cache |
-| PDF/Teaching materials classification | D | D | D | ? | D | ตรวจปลายทางจริงและ section, ไม่ทึกทักว่าไฟล์ทุกชนิดเป็น PDF |
-| Reviewer confirmation reuse | D | ? | D | ? | D | ไม่ทับผลผู้ตรวจเดิม, audit trail และ no duplicate count |
-| Report TH/EN & persisted evidence | D | ? | D | ? | D | ตรวจ saved PDF/actual Chrome, free-form user titles ไม่ถูกแปล |
-| Publishing / Main Data sync | Web | N/A | N/A | ? | Web | ไม่บังคับ Local ใช้ queue กลาง; outcome verification อยู่ Web Platform |
+|---|---|---|---|---|---|---|
+| Course ID, Course Profile, ชนิดวิชา | D | D | D | D | ? | กรณี URL/Section/Course Type เดียวกันแปลง schema ถูก; ใช้ policy คนละชุดได้ |
+| Section / Week topology | D | D | D | D | ? | ไม่สลับ Week; ทดสอบ 15 ครั้งและหัวข้อ Image-only |
+| Moodle Quiz Pre/Post / activity | D | D | D | D | ? | ชื่อผิด/ป้ายภาพ/Forum/Quiz tests; ตรวจขอบเขตผ่อนปรนของแต่ละ track |
+| รูปผู้สอน + QR/LINE + OCR uncertainty | D | ? | D | D | ? | ห้ามนับ avatar ทั่วไป, missing name waiver ต้องมีหลักฐานและ policy |
+| Video class vs LiveRecord | D | ? | D | D | ? | recording skipped ไม่ถูกคิดเป็น broken VOD |
+| OneDrive/SharePoint/Drive/Vidyard duration | D | ? | D | D | ? | เปิดจริง, consent, duration confidence, no bogus zero, no cross-file access cache |
+| PDF/Teaching materials classification | D | D | D | D | ? | ตรวจปลายทางจริงและ section, ไม่ทึกทักว่าไฟล์ทุกชนิดเป็น PDF |
+| Reviewer confirmation reuse | D | ? | D | D | ? | ไม่ทับผลผู้ตรวจเดิม, audit trail และ no duplicate count |
+| Report TH/EN & persisted evidence | D | ? | D | D | ? | ตรวจ saved PDF/actual Chrome, free-form user titles ไม่ถูกแปล |
+| Publishing / Main Data sync | Web | N/A | N/A | Web | ? | ไม่บังคับ Local ใช้ queue กลาง; outcome verification อยู่ Web Platform |
 
 ตารางนี้เป็น **starting audit** ไม่ใช่ข้อรับรองว่าทั้ง 5 สายมี code parity ให้ลง `source hash`, `test ID`, `verified at` และ `owner` เมื่อเริ่มรับงานแต่ละ feature
 
